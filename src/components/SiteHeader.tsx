@@ -27,7 +27,7 @@ export function SiteHeader() {
       <div className="bg-navy-deep text-ivory/80 text-xs">
         <div className="container mx-auto flex items-center justify-between gap-3 px-4 py-1.5">
           <span className="hidden sm:inline">UGC Guided · AICTE Aligned · ISO Certified · BSDM Supported</span>
-          <span>support@ugcintern.in · +91 1800-XXX-XXX</span>
+          <span>support@ugcintern.in</span>
         </div>
       </div>
       <div className="border-b border-border bg-background/80 backdrop-blur-xl">
