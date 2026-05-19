@@ -9,7 +9,7 @@ import { supabase, supabaseConfigured } from "@/lib/supabase";
 
 export const Route = createFileRoute("/forgot-password")({
   component: ForgotPage,
-  head: () => ({ meta: [{ title: "Forgot Password — UGC INTERN" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({ meta: [{ title: "Forgot Password — TechLaunchpad" }, { name: "robots", content: "noindex" }] }),
 });
 
 function ForgotPage() {

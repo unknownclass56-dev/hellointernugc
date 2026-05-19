@@ -12,7 +12,7 @@ const SUGGESTIONS = [
 export function ChatbotWidget() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<{ role: "bot" | "user"; text: string }[]>([
-    { role: "bot", text: "Namaste 🙏 I'm UGC INTERN's assistant. Ask me anything about internships, certificates, or our programs." },
+    { role: "bot", text: "Namaste 🙏 I'm TechLaunchpad's assistant. Ask me anything about internships, certificates, or our programs." },
   ]);
   const [input, setInput] = useState("");
 
@@ -23,7 +23,7 @@ export function ChatbotWidget() {
     setTimeout(() => {
       setMessages((m) => [
         ...m,
-        { role: "bot", text: "Thanks for your question! Our team will route this to the right resource. For instant help, please email support@ugcintern.in or browse our FAQ." },
+        { role: "bot", text: "Thanks for your question! Our team will route this to the right resource. For instant help, please email support@techlaunchpad.in or browse our FAQ." },
       ]);
     }, 600);
   }
@@ -50,7 +50,7 @@ export function ChatbotWidget() {
             <div className="flex items-center gap-2 border-b border-border bg-navy-deep px-4 py-3 text-ivory">
               <Sparkles className="size-4 text-gold" />
               <div className="flex-1">
-                <div className="text-sm font-semibold">UGC INTERN Assistant</div>
+                <div className="text-sm font-semibold">TechLaunchpad Assistant</div>
                 <div className="text-[11px] text-ivory/60">Typically replies in seconds</div>
               </div>
             </div>

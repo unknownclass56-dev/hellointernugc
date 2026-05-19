@@ -15,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/lib/supabase";
 import { createClient } from "@supabase/supabase-js";
-import logo from "@/assets/ugc-intern-logo.png";
+import logo from "@/assets/techlaunchpad-logo.png";
 
 export const Route = createFileRoute("/register")({
   component: RegisterPage,
@@ -388,7 +388,7 @@ function RegisterPage() {
         </div>
 
         <div className="mt-12 text-center text-[10px] font-black text-slate-300 uppercase tracking-[0.5em]">
-          © 2026 OFFICIAL PORTAL — UGC INTERN CONNECT
+          © 2026 OFFICIAL PORTAL — TechLaunchpad
         </div>
 
       </div>

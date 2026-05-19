@@ -12,7 +12,7 @@ export const Route = createFileRoute("/blog/$slug")({
   },
   head: ({ loaderData, params }) => ({
     meta: [
-      { title: `${loaderData?.title ?? "Article"} — UGC INTERN Blog` },
+      { title: `${loaderData?.title ?? "Article"} — TechLaunchpad Blog` },
       { name: "description", content: loaderData?.excerpt ?? "" },
       { property: "og:title", content: loaderData?.title ?? "Article" },
       { property: "og:description", content: loaderData?.excerpt ?? "" },
@@ -52,7 +52,7 @@ function BlogPost() {
           <ul>
             <li>Audit your resume against three real internship listings.</li>
             <li>Pick one project you've shipped and write a 200-word case study about it.</li>
-            <li>Apply to at least two AICTE or UGC aligned internships through UGC INTERN.</li>
+            <li>Apply to at least two AICTE or UGC aligned internships through TechLaunchpad.</li>
           </ul>
         </div>
       </article>

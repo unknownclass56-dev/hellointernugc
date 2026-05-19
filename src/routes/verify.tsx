@@ -11,8 +11,8 @@ export const Route = createFileRoute("/verify")({
   component: VerifyPage,
   head: () => ({
     meta: [
-      { title: "Verify Certificate — UGC INTERN" },
-      { name: "description", content: "Verify any UGC INTERN certificate by entering its unique verification ID." },
+      { title: "Verify Certificate — TechLaunchpad" },
+      { name: "description", content: "Verify any TechLaunchpad certificate by entering its unique verification ID." },
       { property: "og:url", content: "/verify" },
     ],
     links: [{ rel: "canonical", href: "/verify" }],
@@ -43,7 +43,7 @@ function VerifyPage() {
         .maybeSingle();
 
       if (data) {
-        const generatedId = `UGC/OFFER/${data.university_roll_number?.slice(-4) || "0000"}/${new Date(data.created_at || Date.now()).getFullYear()}`;
+        const generatedId = `TL/OFFER/${data.university_roll_number?.slice(-4) || "0000"}/${new Date(data.created_at || Date.now()).getFullYear()}`;
         if (generatedId.toUpperCase() === id.trim().toUpperCase()) {
           setVerifiedStudent({
             ...data,
@@ -115,7 +115,7 @@ function VerifyPage() {
               <XCircle className="size-6" />
               <h3 className="font-display text-xl font-bold">No certificate found</h3>
             </div>
-            <p className="mt-2 text-sm text-muted-foreground">We couldn't find a certificate with that verification ID. Please check the ID and try again, or contact <a href="mailto:support@ugcintern.in" className="text-navy underline">support@ugcintern.in</a>.</p>
+            <p className="mt-2 text-sm text-muted-foreground">We couldn't find a certificate with that verification ID. Please check the ID and try again, or contact <a href="mailto:support@techlaunchpad.in" className="text-navy underline">support@techlaunchpad.in</a>.</p>
           </motion.div>
         )}
       </section>

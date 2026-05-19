@@ -36,7 +36,7 @@ const DETAILS: Record<string, {
   iso: {
     badge: "ISO",
     title: "ISO Certified Programs",
-    intro: "All UGC INTERN processes — from candidate screening to certification — operate under ISO 9001:2015 quality management standards.",
+    intro: "All TechLaunchpad processes — from candidate screening to certification — operate under ISO 9001:2015 quality management standards.",
     features: ["ISO 9001:2015 process documentation", "Independent audits", "Standardised mentor onboarding", "Transparent grievance redressal"],
     outcomes: ["Globally recognised quality benchmark", "Trusted by international universities", "Predictable, premium intern experience"],
   },
@@ -52,7 +52,7 @@ export const Route = createFileRoute("/programs/$slug")({
     const d = DETAILS[params.slug];
     return {
       meta: [
-        { title: `${d?.title ?? "Program"} — UGC INTERN` },
+        { title: `${d?.title ?? "Program"} — TechLaunchpad` },
         { name: "description", content: d?.intro ?? "" },
         { property: "og:title", content: d?.title ?? "Program" },
         { property: "og:description", content: d?.intro ?? "" },

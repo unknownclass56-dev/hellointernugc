@@ -9,7 +9,7 @@ import { supabase, supabaseConfigured } from "@/lib/supabase";
 
 export const Route = createFileRoute("/reset-password")({
   component: ResetPage,
-  head: () => ({ meta: [{ title: "Reset Password — UGC INTERN" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({ meta: [{ title: "Reset Password — TechLaunchpad" }, { name: "robots", content: "noindex" }] }),
 });
 
 function ResetPage() {

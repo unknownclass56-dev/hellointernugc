@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-auth";
 import { ShieldCheck, Printer, ArrowLeft, Award, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import logo from "@/assets/techlaunchpad-logo.png";
 
 export const Route = createFileRoute("/dashboard/student/certificate")({
   component: CertificatePage,
@@ -53,7 +54,7 @@ function CertificatePage() {
   });
 
   const durationStr = student?.internship_duration || "8 Weeks";
-  const certId = `UGC/OFFER/${student?.university_roll_number?.slice(-4) || "0000"}/${new Date(student?.created_at || Date.now()).getFullYear()}`;
+  const certId = `TL/OFFER/${student?.university_roll_number?.slice(-4) || "0000"}/${new Date(student?.created_at || Date.now()).getFullYear()}`;
 
   if (student && !student.certificate_generated) {
     return (
@@ -93,7 +94,7 @@ function CertificatePage() {
         >
           {/* WATERMARK BACKGROUND */}
           <div className="absolute inset-0 opacity-[0.02] flex items-center justify-center pointer-events-none z-0">
-            <Award size={450} className="text-navy" />
+            <img src={logo} alt="Watermark" className="w-[450px] grayscale object-contain" />
           </div>
 
           {/* INNER BORDER */}
@@ -163,9 +164,9 @@ function CertificatePage() {
           <div className="w-full grid grid-cols-3 items-end mt-8 relative z-20">
             {/* LEFT: ISSUING AUTHORITY */}
             <div className="flex flex-col items-center">
-              <div className="text-xs font-black text-navy-deep font-mono mb-1">UGC INTERN</div>
+              <div className="text-xs font-black text-navy-deep font-mono mb-1">TECHLAUNCHPAD</div>
               <div className="h-px w-36 bg-slate-300 my-1"></div>
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Director, UGC Connect</span>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Director, TechLaunchpad</span>
             </div>
 
             {/* CENTER: VERIFIED GOLD BADGE */}

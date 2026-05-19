@@ -11,7 +11,7 @@ export const Route = createFileRoute("/internships/")({
   component: InternshipsIndex,
   head: () => ({
     meta: [
-      { title: "Internships — UGC INTERN" },
+      { title: "Internships — TechLaunchpad" },
       { name: "description", content: "Browse live AICTE, UGC, BSDM and ISO aligned internships across India. Filter by category, duration and mode." },
       { property: "og:url", content: "/internships" },
     ],

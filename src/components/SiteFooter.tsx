@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Facebook, Instagram, Linkedin, Twitter, Youtube, Mail, MapPin, Phone } from "lucide-react";
-import logo from "@/assets/ugc-intern-logo.png";
+import logo from "@/assets/techlaunchpad-logo.png";
 import { ApprovalBadge } from "./ApprovalBadge";
 
 export function SiteFooter() {
@@ -10,19 +10,19 @@ export function SiteFooter() {
         <div className="grid gap-10 lg:grid-cols-12">
           <div className="lg:col-span-4">
             <div className="flex items-center gap-3">
-              <img src={logo} alt="UGC INTERN" className="size-14 object-contain bg-white rounded-full p-1" />
+              <img src={logo} alt="TechLaunchpad" className="size-14 object-contain bg-white rounded-full p-1" />
               <div>
-                <div className="font-display text-xl font-bold">UGC INTERN</div>
-                <div className="text-[10px] tracking-[0.25em] text-gold">LEARN · GROW · SUCCEED</div>
+                <div className="font-display text-xl font-bold">TechLaunchpad</div>
+                <div className="text-[10px] tracking-[0.25em] text-gold">LEARN · GROW · LAUNCH.</div>
               </div>
             </div>
             <p className="mt-5 text-sm leading-relaxed text-ivory/75">
-              UGC INTERN is an industry-focused internship and training platform providing AICTE aligned,
+              TechLaunchpad is an industry-focused internship and training platform providing AICTE aligned,
               UGC guided, BSDM supported and ISO certified learning opportunities.
             </p>
             <div className="mt-6 space-y-2 text-sm text-ivory/80">
               <div className="flex items-start gap-2"><MapPin className="size-4 shrink-0 mt-0.5 text-gold" /> Plot 14, Knowledge Park, New Delhi, India 110001</div>
-              <div className="flex items-center gap-2"><Mail className="size-4 text-gold" /> support@ugcintern.in</div>
+              <div className="flex items-center gap-2"><Mail className="size-4 text-gold" /> support@techlaunchpad.in</div>
             </div>
           </div>
 
@@ -58,13 +58,13 @@ export function SiteFooter() {
               <ApprovalBadge kind="ISO" variant="dark" />
             </div>
             <p className="mt-4 text-xs leading-relaxed text-ivory/55">
-              Disclaimer: Approval & certification badges shown above represent program alignment with the respective bodies. Specific scheme details and certificate numbers are available on each program page and on request from <a href="mailto:support@ugcintern.in" className="text-gold underline-offset-2 hover:underline">support@ugcintern.in</a>.
+              Disclaimer: Approval & certification badges shown above represent program alignment with the respective bodies. Specific scheme details and certificate numbers are available on each program page and on request from <a href="mailto:support@techlaunchpad.in" className="text-gold underline-offset-2 hover:underline">support@techlaunchpad.in</a>.
             </p>
           </div>
         </div>
 
         <div className="mt-10 flex flex-col items-center gap-4 border-t border-white/10 pt-6 sm:flex-row sm:justify-between">
-          <p className="text-xs text-ivory/60">© {new Date().getFullYear()} UGC INTERN. All rights reserved.</p>
+          <p className="text-xs text-ivory/60">© {new Date().getFullYear()} TechLaunchpad. All rights reserved.</p>
           <div className="flex items-center gap-4 text-xs text-ivory/70">
             <Link to="/privacy" className="hover:text-gold">Privacy Policy</Link>
             <span className="opacity-30">·</span>

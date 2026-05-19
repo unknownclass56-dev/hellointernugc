@@ -13,8 +13,8 @@ export const Route = createFileRoute("/contact")({
   component: ContactPage,
   head: () => ({
     meta: [
-      { title: "Contact — UGC INTERN" },
-      { name: "description", content: "Get in touch with the UGC INTERN team for support, partnerships, or media enquiries." },
+      { title: "Contact — TechLaunchpad" },
+      { name: "description", content: "Get in touch with the TechLaunchpad team for support, partnerships, or media enquiries." },
       { property: "og:url", content: "/contact" },
     ],
     links: [{ rel: "canonical", href: "/contact" }],
@@ -56,7 +56,7 @@ function ContactPage() {
       <section className="container mx-auto grid gap-10 px-4 py-16 lg:grid-cols-3">
         <div className="space-y-4">
           {[
-            { icon: Mail, title: "Email", lines: ["support@ugcintern.in"] },
+            { icon: Mail, title: "Email", lines: ["support@techlaunchpad.in"] },
             { icon: MapPin, title: "Office", lines: ["Plot 14, Knowledge Park", "New Delhi, India 110001"] },
           ].map((c) => (
             <div key={c.title} className="rounded-2xl border border-border bg-card p-6 shadow-sm">

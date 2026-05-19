@@ -9,7 +9,7 @@ export const Route = createFileRoute("/programs/")({
   component: ProgramsIndex,
   head: () => ({
     meta: [
-      { title: "Programs — UGC INTERN" },
+      { title: "Programs — TechLaunchpad" },
       { name: "description", content: "Explore AICTE, UGC, BSDM and ISO certified internship programs across engineering, management, design, data and more." },
       { property: "og:url", content: "/programs" },
     ],
@@ -31,7 +31,7 @@ function ProgramsIndex() {
         <div className="container mx-auto px-4 text-center">
           <div className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-gold">Internship Programs</div>
           <h1 className="font-display text-4xl font-bold sm:text-5xl text-balance">Choose a path. Earn a recognition.</h1>
-          <p className="mx-auto mt-5 max-w-2xl text-ivory/80">Every program on UGC INTERN aligns with at least one national framework. Pick the recognition that matches your career goals.</p>
+          <p className="mx-auto mt-5 max-w-2xl text-ivory/80">Every program on TechLaunchpad aligns with at least one national framework. Pick the recognition that matches your career goals.</p>
         </div>
       </section>
 

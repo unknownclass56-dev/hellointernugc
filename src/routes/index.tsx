@@ -9,7 +9,7 @@ import { StatCounter } from "@/components/StatCounter";
 import { SectionHeader } from "@/components/SectionHeader";
 import { MOCK_INTERNSHIPS, PARTNERS, STATS, TESTIMONIALS } from "@/lib/mock-data";
 import hero from "@/assets/hero-illustration.jpg";
-import logo from "@/assets/ugc-intern-logo.png";
+import logo from "@/assets/techlaunchpad-logo.png";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
@@ -95,7 +95,7 @@ function Home() {
                 <img src={logo} alt="" className="size-10 rounded-full bg-white p-0.5" />
                 <div>
                   <div className="text-xs text-ivory/70 font-bold">Verified Certificate</div>
-                  <div className="font-mono text-sm text-gold">UGC-IN-2026-V88X</div>
+                  <div className="font-mono text-sm text-gold">TL-IN-2026-V88X</div>
                 </div>
                 <BadgeCheck className="size-5 text-gold" />
               </div>

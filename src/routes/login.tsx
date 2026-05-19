@@ -9,7 +9,7 @@ import { supabase, supabaseConfigured } from "@/lib/supabase";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
-  head: () => ({ meta: [{ title: "Login — UGC INTERN" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({ meta: [{ title: "Login — TechLaunchpad" }, { name: "robots", content: "noindex" }] }),
 });
 
 function LoginPage() {
@@ -39,7 +39,7 @@ function LoginPage() {
       <section className="container mx-auto max-w-md px-4 py-20">
         <div className="rounded-2xl border border-border bg-card p-8 shadow-[var(--shadow-elegant)]">
           <h1 className="font-display text-3xl font-bold text-navy-deep">Welcome back</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Sign in to your UGC INTERN account.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Sign in to your TechLaunchpad account.</p>
           <form onSubmit={onSubmit} className="mt-6 space-y-4">
             <div><Label htmlFor="email">Email</Label><Input id="email" name="email" type="email" required /></div>
             <div><Label htmlFor="password">Password</Label><Input id="password" name="password" type="password" required /></div>

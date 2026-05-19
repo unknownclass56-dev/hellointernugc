@@ -107,7 +107,7 @@ function StudentDashboard() {
           </div>
           <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">Your Official Offer Letter</h2>
           <p className="text-white/70 text-sm max-w-xl font-medium leading-relaxed">
-            Your digitally verified internship offer letter from UGC Intern Connect and BSDM is generated and ready for download. Keep this document secure for your academic records.
+            Your digitally verified internship offer letter from TechLaunchpad and BSDM is generated and ready for download. Keep this document secure for your academic records.
           </p>
         </div>
         
@@ -166,7 +166,7 @@ function StudentDashboard() {
                 <GraduationCap className="size-6 text-gold" />
               </div>
               <p className="text-xs font-bold text-navy-deep">Completion Certificate</p>
-              <p className="text-[10px] text-muted-foreground mt-1">Verifiable BSDM & UGC Intern Credential</p>
+              <p className="text-[10px] text-muted-foreground mt-1">Verifiable BSDM & TechLaunchpad Credential</p>
             </div>
             <Button asChild className="w-full bg-gold hover:bg-gold/90 text-navy-deep font-black text-xs uppercase tracking-widest h-10 rounded-xl">
               <Link to="/dashboard/student/certificate">View & Print Certificate</Link>

@@ -9,8 +9,8 @@ export const Route = createFileRoute("/blog")({
   component: BlogIndex,
   head: () => ({
     meta: [
-      { title: "Blog & News — UGC INTERN" },
-      { name: "description", content: "Career guides, internship tips, and platform news from UGC INTERN." },
+      { title: "Blog & News — TechLaunchpad" },
+      { name: "description", content: "Career guides, internship tips, and platform news from TechLaunchpad." },
       { property: "og:url", content: "/blog" },
     ],
     links: [{ rel: "canonical", href: "/blog" }],
@@ -23,7 +23,7 @@ function BlogIndex() {
       <section className="bg-gradient-to-b from-navy-deep to-navy py-16 text-ivory">
         <div className="container mx-auto px-4 text-center">
           <h1 className="font-display text-4xl font-bold sm:text-5xl">Blog & News</h1>
-          <p className="mt-4 text-ivory/80">Insights, guides and updates from the UGC INTERN team.</p>
+          <p className="mt-4 text-ivory/80">Insights, guides and updates from the TechLaunchpad team.</p>
         </div>
       </section>
 

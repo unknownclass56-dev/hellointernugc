@@ -19,8 +19,8 @@ export const Route = createFileRoute("/apply/$id")({
   },
   head: ({ loaderData }) => ({
     meta: [
-      { title: `Apply: ${loaderData?.title ?? "Internship"} — UGC INTERN` },
-      { name: "description", content: `Apply for ${loaderData?.title} via UGC INTERN.` },
+      { title: `Apply: ${loaderData?.title ?? "Internship"} — TechLaunchpad` },
+      { name: "description", content: `Apply for ${loaderData?.title} via TechLaunchpad.` },
       { name: "robots", content: "noindex" },
     ],
   }),

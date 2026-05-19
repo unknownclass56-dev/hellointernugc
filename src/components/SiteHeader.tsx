@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
-import logo from "@/assets/ugc-intern-logo.png";
+import logo from "@/assets/techlaunchpad-logo.png";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -27,16 +27,16 @@ export function SiteHeader() {
       <div className="bg-navy-deep text-ivory/80 text-xs">
         <div className="container mx-auto flex items-center justify-between gap-3 px-4 py-1.5">
           <span className="hidden sm:inline">UGC Guided · AICTE Aligned · ISO Certified · BSDM Supported</span>
-          <span>support@ugcintern.in</span>
+          <span>support@techlaunchpad.in</span>
         </div>
       </div>
       <div className="border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="container mx-auto flex h-16 items-center justify-between gap-4 px-4">
           <Link to="/" className="flex items-center gap-3">
-            <img src={logo} alt="UGC INTERN" className="h-11 w-11 object-contain" />
+            <img src={logo} alt="TechLaunchpad" className="h-11 w-11 object-contain" />
             <div className="leading-tight">
-              <div className="font-display text-lg font-bold text-navy-deep">UGC INTERN</div>
-              <div className="text-[10px] tracking-[0.2em] text-gold">LEARN · GROW · SUCCEED</div>
+              <div className="font-display text-lg font-bold text-navy-deep">TechLaunchpad</div>
+              <div className="text-[10px] tracking-[0.2em] text-gold">LEARN · GROW · LAUNCH.</div>
             </div>
           </Link>
 

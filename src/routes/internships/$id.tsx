@@ -14,8 +14,8 @@ export const Route = createFileRoute("/internships/$id")({
   },
   head: ({ loaderData }) => ({
     meta: [
-      { title: `${loaderData?.title ?? "Internship"} — UGC INTERN` },
-      { name: "description", content: `${loaderData?.title} at ${loaderData?.company} — apply via UGC INTERN.` },
+      { title: `${loaderData?.title ?? "Internship"} — TechLaunchpad` },
+      { name: "description", content: `${loaderData?.title} at ${loaderData?.company} — apply via TechLaunchpad.` },
       { property: "og:url", content: `/internships/${loaderData?.id}` },
     ],
     links: [{ rel: "canonical", href: `/internships/${loaderData?.id}` }],

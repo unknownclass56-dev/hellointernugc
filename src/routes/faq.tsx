@@ -8,8 +8,8 @@ export const Route = createFileRoute("/faq")({
   component: FAQPage,
   head: () => ({
     meta: [
-      { title: "FAQ — UGC INTERN" },
-      { name: "description", content: "Frequently asked questions about UGC INTERN's internships, certificates, programs and applications." },
+      { title: "FAQ — TechLaunchpad" },
+      { name: "description", content: "Frequently asked questions about TechLaunchpad's internships, certificates, programs and applications." },
       { property: "og:url", content: "/faq" },
     ],
     links: [{ rel: "canonical", href: "/faq" }],
@@ -50,7 +50,7 @@ function FAQPage() {
         </Accordion>
         <div className="mt-10 rounded-2xl border border-dashed border-border bg-secondary/40 p-6 text-center">
           <p className="text-sm text-muted-foreground">Didn't find what you were looking for?</p>
-          <a href="mailto:support@ugcintern.in" className="mt-2 inline-block font-semibold text-navy hover:text-gold">support@ugcintern.in</a>
+          <a href="mailto:support@techlaunchpad.in" className="mt-2 inline-block font-semibold text-navy hover:text-gold">support@techlaunchpad.in</a>
         </div>
       </section>
     </PageShell>

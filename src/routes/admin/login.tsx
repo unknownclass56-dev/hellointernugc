@@ -12,7 +12,7 @@ export const Route = createFileRoute("/admin/login")({
   component: AdminLoginPage,
   head: () => ({ 
     meta: [
-      { title: "Admin Login — UGC INTERN" }, 
+      { title: "Admin Login — TechLaunchpad" }, 
       { name: "robots", content: "noindex" }
     ] 
   }),
@@ -69,7 +69,7 @@ function AdminLoginPage() {
           <form onSubmit={onSubmit} className="p-8 space-y-5">
             <div className="space-y-1">
               <Label htmlFor="email text-xs font-bold uppercase">Administrator Email</Label>
-              <Input id="email" name="email" type="email" placeholder="support@ugcintern.in" required className="bg-secondary/20" />
+              <Input id="email" name="email" type="email" placeholder="support@techlaunchpad.in" required className="bg-secondary/20" />
             </div>
             
             <div className="space-y-1">

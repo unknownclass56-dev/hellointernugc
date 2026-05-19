@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
-import logo from "@/assets/ugc-intern-logo.png";
+import logo from "@/assets/techlaunchpad-logo.png";
 
 export const Route = createFileRoute("/dashboard")({
   component: DashboardLayout,
@@ -114,7 +114,7 @@ function DashboardLayout() {
           <img src={logo} alt="Logo" className="size-10 rounded-full bg-white p-1" />
           {!isCollapsed && (
             <div>
-              <div className="font-display font-bold text-sm tracking-widest text-white uppercase">UGC INTERN</div>
+              <div className="font-display font-bold text-sm tracking-widest text-white uppercase">TechLaunchpad</div>
               <div className="text-[10px] text-gold font-bold uppercase">{role} Portal</div>
             </div>
           )}

@@ -15,7 +15,7 @@ export const MOCK_INTERNSHIPS = [
 export const CATEGORIES = ["All", "Web Development", "Data Science", "AI/ML", "Mobile Development", "Cybersecurity", "Design", "Marketing", "Content"] as const;
 
 export const TESTIMONIALS = [
-  { name: "Aarav Mehta", role: "B.Tech, IIT Roorkee", quote: "UGC INTERN matched me with a real-world AI internship in 48 hours. The certificate helped me land my first job.", rating: 5 },
+  { name: "Aarav Mehta", role: "B.Tech, IIT Roorkee", quote: "TechLaunchpad matched me with a real-world AI internship in 48 hours. The certificate helped me land my first job.", rating: 5 },
   { name: "Priya Sharma", role: "MBA, Symbiosis Pune", quote: "The mentorship and structured projects gave me confidence to pitch in interviews. Best decision of my final year.", rating: 5 },
   { name: "Rohit Verma", role: "B.Sc CS, DU", quote: "Government-grade certification and real industry projects — this is what every student needs.", rating: 5 },
   { name: "Sneha Kapoor", role: "B.Des, NID", quote: "From applying to certificate download, every step felt premium and professional.", rating: 5 },
@@ -33,12 +33,12 @@ export const STATS = [
 ];
 
 export const FAQS = [
-  { q: "What is UGC INTERN?", a: "UGC INTERN is an industry-focused internship and training platform offering AICTE aligned, UGC guided, BSDM supported and ISO certified opportunities for students across India." },
+  { q: "What is TechLaunchpad?", a: "TechLaunchpad is an industry-focused internship and training platform offering AICTE aligned, UGC guided, BSDM supported and ISO certified opportunities for students across India." },
   { q: "How do I apply for an internship?", a: "Create a free student account, complete your profile, browse approved internships, and apply with one click. You can track your application status in your dashboard." },
   { q: "Are the certificates verifiable?", a: "Yes. Every certificate carries a unique verification ID that anyone can check on our public verification page." },
-  { q: "Is there any application fee?", a: "Browsing and applying for internships on UGC INTERN is completely free for students." },
+  { q: "Is there any application fee?", a: "Browsing and applying for internships on TechLaunchpad is completely free for students." },
   { q: "Can companies post internships?", a: "Yes. Companies can register, get verified, and post internships. All listings are reviewed by our admin team for quality and authenticity." },
-  { q: "What approvals does UGC INTERN hold?", a: "Our programs are aligned with AICTE guidelines, guided by UGC frameworks, supported by BSDM and follow ISO certification standards. Refer to each program page for specifics." },
+  { q: "What approvals does TechLaunchpad hold?", a: "Our programs are aligned with AICTE guidelines, guided by UGC frameworks, supported by BSDM and follow ISO certification standards. Refer to each program page for specifics." },
 ];
 
 export const BLOG_POSTS = [

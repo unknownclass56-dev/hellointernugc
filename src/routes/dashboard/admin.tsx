@@ -124,7 +124,7 @@ function AdminDashboard() {
     const { data: pay } = await supabase.from("payments").select("*, profiles(full_name, email, university_roll_number)").order("created_at", { ascending: false });
     setPayments(pay || []);
     const { data: sett } = await supabase.from("portal_settings").select("*").eq("id", "global").maybeSingle();
-    setSettings(sett || { id: 'global', coordinator_name: 'Coordinator Name', company_name: 'UGC Intern Connect' });
+    setSettings(sett || { id: 'global', coordinator_name: 'Coordinator Name', company_name: 'TechLaunchpad' });
     setLoading(false);
   }
 
@@ -251,7 +251,7 @@ function AdminDashboard() {
       title: data.title,
       duration: data.duration,
       description: data.description,
-      company: data.company || "UGC Intern Connect",
+      company: data.company || "TechLaunchpad",
       category: data.category || "General",
     };
 
@@ -1192,7 +1192,7 @@ function AdminDashboard() {
             <DialogHeader><DialogTitle className="text-xl font-black text-navy-deep border-b pb-2 uppercase tracking-tighter">{selectedInternship ? "Update Domain" : "New Domain"}</DialogTitle></DialogHeader>
             <form onSubmit={onSaveInternship} className="space-y-4 py-4">
                <div className="space-y-1"><Label className="text-[9px] uppercase">Title *</Label><Input name="title" defaultValue={selectedInternship?.title} required className="h-10 rounded-xl text-xs" /></div>
-               <div className="space-y-1"><Label className="text-[9px] uppercase">Company *</Label><Input name="company" defaultValue={selectedInternship?.company || "UGC Intern Connect"} required className="h-10 rounded-xl text-xs" /></div>
+               <div className="space-y-1"><Label className="text-[9px] uppercase">Company *</Label><Input name="company" defaultValue={selectedInternship?.company || "TechLaunchpad"} required className="h-10 rounded-xl text-xs" /></div>
                <div className="space-y-1"><Label className="text-[9px] uppercase">Category *</Label><Input name="category" defaultValue={selectedInternship?.category || "General"} required className="h-10 rounded-xl text-xs" /></div>
                <div className="space-y-1"><Label className="text-[9px] uppercase">Duration</Label><Input name="duration" defaultValue={selectedInternship?.duration} className="h-10 rounded-xl text-xs" /></div>
                <div className="space-y-1"><Label className="text-[9px] uppercase">Overview</Label><textarea name="description" defaultValue={selectedInternship?.description} className="w-full h-24 border rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-gold/10"></textarea></div>

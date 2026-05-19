@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import logo from "@/assets/techlaunchpad-logo.png";
 
 export const Route = createFileRoute("/dashboard/certificates")({
   component: AdminCertificatesPage,
@@ -344,7 +345,7 @@ function AdminCertificatesPage() {
               {/* VERTICAL PREVIEW STACK OF LANDSCAPE CERTIFICATES */}
               <div className="space-y-8 bg-slate-50/50 p-6 rounded-3xl border print:p-0 print:bg-white print:border-none print:space-y-0">
                 {generatedStudents.map((s, idx) => {
-                  const sCertId = `UGC/OFFER/${s.university_roll_number?.slice(-4) || "0000"}/${new Date(s.created_at || Date.now()).getFullYear()}`;
+                  const sCertId = `TL/OFFER/${s.university_roll_number?.slice(-4) || "0000"}/${new Date(s.created_at || Date.now()).getFullYear()}`;
                   const sDuration = s.internship_duration || "8 Weeks";
                   
                   return (
@@ -359,7 +360,7 @@ function AdminCertificatesPage() {
                       >
                         {/* WATERMARK BACKGROUND */}
                         <div className="absolute inset-0 opacity-[0.02] flex items-center justify-center pointer-events-none z-0">
-                          <Award size={380} className="text-navy" />
+                          <img src={logo} alt="Watermark" className="w-[380px] grayscale object-contain" />
                         </div>
 
                         {/* INNER BORDER */}
@@ -428,9 +429,9 @@ function AdminCertificatesPage() {
                         {/* BOTTOM SIGNATURE SECTION */}
                         <div className="w-full grid grid-cols-3 items-end mt-4 relative z-20">
                           <div className="flex flex-col items-center">
-                            <div className="text-xs font-black text-navy-deep font-mono mb-1">UGC INTERN</div>
+                            <div className="text-xs font-black text-navy-deep font-mono mb-1">TECHLAUNCHPAD</div>
                             <div className="h-px w-32 bg-slate-300 my-1"></div>
-                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Director, UGC Connect</span>
+                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Director, TechLaunchpad</span>
                           </div>
 
                           <div className="flex flex-col items-center justify-center">

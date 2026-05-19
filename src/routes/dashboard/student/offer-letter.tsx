@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Printer, ArrowLeft, Mail, Phone, MapPin, ShieldCheck, CheckCircle, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import logo from "@/assets/ugc-intern-logo.png";
+import logo from "@/assets/techlaunchpad-logo.png";
 
 export const Route = createFileRoute("/dashboard/student/offer-letter")({
   component: OfferLetterView,
@@ -57,8 +57,8 @@ function OfferLetterView() {
 
   // Dynamic values with premium fallbacks including the requested Hyderabad Address
   const companyAddress = settings?.company_address || "Plot No. 45, 3rd Floor, Silicon Towers, Opposite Telangana State Secretariat, NTR Marg, Khairatabad, Hyderabad, Telangana 500022";
-  const companyName = settings?.company_name || "UGC INTERN CONNECT";
-  const companyEmail = settings?.company_email || "support@ugcintern.org";
+  const companyName = settings?.company_name || "TECHLAUNCHPAD";
+  const companyEmail = settings?.company_email || "support@techlaunchpad.in";
   const companyPhone = settings?.company_phone || "+91 80 4567 8900";
 
   return (
@@ -117,7 +117,7 @@ function OfferLetterView() {
             <div className="flex justify-between items-end mb-12 border-b-2 border-navy/10 pb-6">
                <div>
                   <div className="text-[9px] font-black uppercase text-gold mb-1 tracking-[0.2em]">Offer Letter ID</div>
-                  <div className="text-base font-black font-mono text-navy-deep tracking-wider">UGC/OFFER/{student?.university_roll_number?.slice(-4) || "0000"}/{new Date(student?.created_at || Date.now()).getFullYear()}</div>
+                  <div className="text-base font-black font-mono text-navy-deep tracking-wider">TL/OFFER/{student?.university_roll_number?.slice(-4) || "0000"}/{new Date(student?.created_at || Date.now()).getFullYear()}</div>
                </div>
                <div className="text-right">
                   <div className="text-[9px] font-black uppercase text-gold mb-1 tracking-[0.2em]">Date of Issuance</div>
@@ -198,7 +198,7 @@ function OfferLetterView() {
            {/* VERIFICATION & SIGNATURES SECTION */}
            <div className="pt-20 grid grid-cols-2 gap-8 items-end relative z-10">
               
-              {/* UGC Intern CEO Signature / Seal */}
+              {/* TechLaunchpad CEO Signature / Seal */}
               <div className="space-y-3 flex flex-col items-center text-center">
                  <div className="relative">
                     <div className="size-28 rounded-full border-[6px] border-double border-navy/20 flex flex-col items-center justify-center relative bg-white shadow-sm overflow-hidden">
