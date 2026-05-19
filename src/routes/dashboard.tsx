@@ -15,7 +15,9 @@ import {
   School,
   Scan,
   BookOpen,
-  CreditCard
+  CreditCard,
+  User,
+  Video
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
@@ -78,6 +80,8 @@ function DashboardLayout() {
     { to: "/dashboard/admin", search: { view: 'assignments' }, icon: BookOpen, label: "Assignment Hub" },
     { to: "/dashboard/admin", search: { view: 'transactions' }, icon: CreditCard, label: "Transactions" },
     { to: "/dashboard/admin", search: { view: 'leads' }, icon: Users, label: "Student Leads" },
+    { to: "/dashboard/admin", search: { view: 'lectures' }, icon: Video, label: "Online Lectures" },
+    { to: "/dashboard/admin", search: { view: 'profile' }, icon: User, label: "My Profile" },
     { to: "/dashboard/certificates", icon: ShieldCheck, label: "Certificates" },
     { to: "/dashboard/inbox", icon: Mail, label: "Inbox" },
   ];

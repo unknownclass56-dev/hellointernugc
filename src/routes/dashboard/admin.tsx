@@ -6,11 +6,13 @@ import {
   LayoutDashboard, School, BookOpen, Calendar, Clock, ClipboardList, Building, 
   Phone, User, Heart, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Zap,
   TrendingUp, Activity, Globe, MoreHorizontal, ChevronRight, FileText, Printer,
-  Loader2, MoreVertical, XCircle, Scan, Linkedin, Mail, Percent, UserPlus, Settings
+  Loader2, MoreVertical, XCircle, Scan, Linkedin, Mail, Percent, UserPlus, Settings,
+  Lock, Video
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -25,6 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/lib/supabase";
 import { createClient } from "@supabase/supabase-js";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/dashboard/admin")({
   component: AdminDashboard,
@@ -35,6 +38,35 @@ export const Route = createFileRoute("/dashboard/admin")({
 
 function AdminDashboard() {
   const { view } = (Route as any).useSearch();
+  const { user } = useAuth();
+  
+  // Admin Profile States
+  const [adminProfile, setAdminProfile] = useState<any>(null);
+  const [adminName, setAdminName] = useState("");
+  const [adminContact, setAdminContact] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [updatingProfile, setUpdatingProfile] = useState(false);
+  const [updatingEmail, setUpdatingEmail] = useState(false);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+
+  // Admin Lectures States
+  const [lecturesList, setLecturesList] = useState<any[]>([]);
+  const [loadingLectures, setLoadingLectures] = useState(false);
+  const [savingLecture, setSavingLecture] = useState(false);
+  
+  // Form States for New Lecture
+  const [newLectureTitle, setNewLectureTitle] = useState("");
+  const [newLectureDomain, setNewLectureDomain] = useState("");
+  const [newLectureMode, setNewLectureMode] = useState("Google Meet");
+  const [newLectureLink, setNewLectureLink] = useState("");
+  const [newLectureDesc, setNewLectureDesc] = useState("");
+  const [newLectureMaterialPdf, setNewLectureMaterialPdf] = useState<File | null>(null);
+  const [newLectureMaterialLink, setNewLectureMaterialLink] = useState("");
+
   const [students, setStudents] = useState<any[]>([]);
   const [preRegList, setPreRegList] = useState<any[]>([]);
   const [internships, setInternships] = useState<any[]>([]);
@@ -262,6 +294,248 @@ function AdminDashboard() {
     }
   }, [selectedStudent, universities]);
 
+  async function fetchAdminProfile() {
+    if (!user?.id) return;
+    setProfileLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (error) {
+        toast.error("Failed to load admin profile: " + error.message);
+      } else if (data) {
+        setAdminProfile(data);
+        setAdminName(data.full_name || "");
+        setAdminContact(data.contact_number || "");
+        setAdminEmail(user?.email || data.email || "");
+      } else {
+        // Create default profile for admin if not exists
+        const newProfile = {
+          id: user.id,
+          full_name: user.user_metadata?.full_name || "Admin User",
+          email: user.email,
+          role: "admin",
+          created_at: new Date().toISOString()
+        };
+        const { data: created, error: createError } = await supabase
+          .from("profiles")
+          .insert([newProfile])
+          .select()
+          .single();
+        if (!createError && created) {
+          setAdminProfile(created);
+          setAdminName(created.full_name || "");
+          setAdminContact(created.contact_number || "");
+          setAdminEmail(user?.email || created.email || "");
+        }
+      }
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setProfileLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchAdminProfile();
+    }
+  }, [user]);
+
+  async function handleUpdateProfile(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user?.id) return;
+    setUpdatingProfile(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        full_name: adminName,
+        contact_number: adminContact,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", user.id);
+
+    setUpdatingProfile(false);
+    if (error) {
+      toast.error("Error updating profile details: " + error.message);
+    } else {
+      toast.success("Profile details updated successfully!");
+      fetchAdminProfile();
+    }
+  }
+
+  async function handleUpdateEmail(e: React.FormEvent) {
+    e.preventDefault();
+    const cleanEmail = newEmail.trim().toLowerCase();
+    if (!cleanEmail) {
+      toast.error("Please enter a new email address.");
+      return;
+    }
+
+    // Email regex validation to check for a valid domain structure
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      toast.error("Please enter a valid email address (e.g., user@example.com).");
+      return;
+    }
+    
+    if (user?.email && cleanEmail === user.email.trim().toLowerCase()) {
+      toast.error("New email must be different from your current email.");
+      return;
+    }
+
+    setUpdatingEmail(true);
+    const { error } = await supabase.auth.updateUser({ email: cleanEmail });
+    setUpdatingEmail(false);
+    if (error) {
+      toast.error("Error updating email: " + error.message);
+    } else {
+      toast.success("Verification emails sent! Please check both your old and new email addresses to confirm the change.");
+      setNewEmail("");
+    }
+  }
+
+  async function handleUpdatePassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newPassword) {
+      toast.error("Please enter a new password.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters long.");
+      return;
+    }
+    setUpdatingPassword(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setUpdatingPassword(false);
+    if (error) {
+      toast.error("Error updating password: " + error.message);
+    } else {
+      toast.success("Password updated successfully!");
+      setNewPassword("");
+      setConfirmPassword("");
+    }
+  }
+
+  async function fetchLectures() {
+    setLoadingLectures(true);
+    try {
+      const { data, error } = await supabase
+        .from("lectures")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) {
+        toast.error("Error fetching lectures: " + error.message);
+      } else {
+        setLecturesList(data || []);
+      }
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setLoadingLectures(false);
+    }
+  }
+
+  async function handleCreateLecture(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newLectureTitle.trim()) {
+      toast.error("Please enter a lecture title.");
+      return;
+    }
+    if (!newLectureDomain) {
+      toast.error("Please select a domain.");
+      return;
+    }
+    if (!newLectureLink.trim()) {
+      toast.error("Please enter a lecture link.");
+      return;
+    }
+
+    setSavingLecture(true);
+    try {
+      let pdfUrl = "";
+      if (newLectureMaterialPdf) {
+        const path = `materials/${Date.now()}-${newLectureMaterialPdf.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("resumes")
+          .upload(path, newLectureMaterialPdf);
+        
+        if (uploadError) {
+          if (uploadError.message === "Bucket not found") {
+            throw new Error("Failed to upload material PDF: The storage bucket 'resumes' does not exist in your Supabase project. Please log in to your Supabase Dashboard, navigate to Storage, create a public bucket named 'resumes', and configure policies to allow public uploads and access.");
+          }
+          throw new Error("Failed to upload material PDF: " + uploadError.message);
+        }
+        const { data: { publicUrl } } = supabase.storage
+          .from("resumes")
+          .getPublicUrl(path);
+        pdfUrl = publicUrl;
+      }
+
+      const descPayload = {
+        description: newLectureDesc,
+        domain: newLectureDomain,
+        mode: newLectureMode,
+        material_pdf: pdfUrl,
+        material_link: newLectureMaterialLink
+      };
+
+      const { error } = await supabase
+        .from("lectures")
+        .insert([{
+          title: newLectureTitle.trim(),
+          link: newLectureLink.trim(),
+          description: JSON.stringify(descPayload),
+          created_at: new Date().toISOString()
+        }]);
+
+      if (error) throw error;
+
+      toast.success("Lecture added successfully!");
+      setNewLectureTitle("");
+      setNewLectureDomain("");
+      setNewLectureMode("Google Meet");
+      setNewLectureLink("");
+      setNewLectureDesc("");
+      setNewLectureMaterialPdf(null);
+      setNewLectureMaterialLink("");
+      
+      const fileInput = document.getElementById("material_pdf_input") as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
+
+      fetchLectures();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add lecture.");
+    } finally {
+      setSavingLecture(false);
+    }
+  }
+
+  async function handleDeleteLecture(id: string) {
+    if (!confirm("Are you sure you want to delete this lecture?")) return;
+    try {
+      const { error } = await supabase
+        .from("lectures")
+        .delete()
+        .eq("id", id);
+      if (error) {
+        toast.error("Error deleting lecture: " + error.message);
+      } else {
+        toast.success("Lecture deleted successfully!");
+        fetchLectures();
+      }
+    } catch (err: any) {
+      console.error(err);
+    }
+  }
+
   useEffect(() => { fetchData(); }, [view]);
 
   async function fetchData() {
@@ -289,6 +563,11 @@ function AdminDashboard() {
     setPayments(pay || []);
     const { data: sett } = await supabase.from("portal_settings").select("*").eq("id", "global").maybeSingle();
     setSettings(sett || { id: 'global', coordinator_name: 'Coordinator Name', company_name: 'TechLaunchpad' });
+    
+    if (view === "lectures") {
+      fetchLectures();
+    }
+    
     setLoading(false);
   }
 
@@ -455,6 +734,8 @@ function AdminDashboard() {
                {view === "assignments" && "Assignment Hub"}
                {view === "transactions" && "Financial Transactions"}
                {view === "settings" && "Portal Configuration"}
+               {view === "profile" && "Admin Profile"}
+               {view === "lectures" && "Lecture Control Hub"}
             </h1>
          </div>
          <div className="flex gap-2">
@@ -1307,6 +1588,413 @@ function AdminDashboard() {
             </div>
          </div>
       )}
+
+      {view === "profile" && (
+         <div className="space-y-6 animate-in fade-in slide-in-from-bottom duration-300">
+            {profileLoading ? (
+               <div className="bg-white p-12 rounded-2xl border shadow-sm flex flex-col items-center justify-center space-y-4">
+                  <Loader2 className="size-8 text-gold animate-spin" />
+                  <p className="text-xs font-black text-navy uppercase tracking-widest">Loading Admin Profile...</p>
+               </div>
+            ) : (
+               <div className="grid md:grid-cols-2 gap-6">
+                  
+                  {/* Left Column: Admin Details */}
+                  <div className="space-y-6">
+                     <div className="bg-white p-6 rounded-2xl border shadow-sm flex flex-col justify-between h-full">
+                        <div>
+                           <div className="flex items-center gap-3 mb-6 border-b pb-4">
+                              <div className="size-10 rounded-xl bg-navy/5 text-navy grid place-items-center">
+                                 <User className="size-5" />
+                              </div>
+                              <div>
+                                 <h2 className="text-lg font-black text-navy-deep uppercase tracking-tighter">Admin Information</h2>
+                                 <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
+                                    Update your personal administrative account details
+                                 </p>
+                              </div>
+                           </div>
+
+                           <form onSubmit={handleUpdateProfile} className="space-y-4">
+                              <div className="space-y-1.5">
+                                 <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Full Name</Label>
+                                 <Input 
+                                    type="text" 
+                                    value={adminName} 
+                                    onChange={(e) => setAdminName(e.target.value)} 
+                                    required
+                                    placeholder="Enter full name"
+                                    className="font-bold text-sm rounded-xl border-2 h-11"
+                                 />
+                              </div>
+
+                              <div className="space-y-1.5">
+                                 <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Contact Number</Label>
+                                 <Input 
+                                    type="text" 
+                                    value={adminContact} 
+                                    onChange={(e) => setAdminContact(e.target.value)} 
+                                    placeholder="Enter contact number"
+                                    className="font-bold text-sm rounded-xl border-2 h-11"
+                                 />
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-4 pt-2">
+                                 <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-black text-navy uppercase tracking-wider">System Role</Label>
+                                    <div className="h-11 px-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center text-xs font-black text-slate-500 uppercase tracking-widest">
+                                       {adminProfile?.role || "ADMIN"}
+                                    </div>
+                                 </div>
+                                 <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Created At</Label>
+                                    <div className="h-11 px-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center text-xs font-black text-slate-500 uppercase tracking-widest">
+                                       {adminProfile?.created_at ? new Date(adminProfile.created_at).toLocaleDateString() : "-"}
+                                    </div>
+                                 </div>
+                              </div>
+
+                              <div className="pt-4">
+                                 <Button 
+                                    type="submit" 
+                                    disabled={updatingProfile} 
+                                    className="w-full bg-navy hover:bg-navy-deep text-white h-11 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-md flex items-center justify-center gap-2"
+                                 >
+                                    {updatingProfile ? <Loader2 className="animate-spin size-4" /> : <><CheckCircle2 size={16} /> Save Admin Details</>}
+                                 </Button>
+                              </div>
+                           </form>
+                        </div>
+                     </div>
+                  </div>
+
+                  {/* Right Column: Security (Email & Password) */}
+                  <div className="space-y-6">
+                     
+                     {/* Email Update Card */}
+                     <div className="bg-white p-6 rounded-2xl border shadow-sm">
+                        <div className="flex items-center gap-3 mb-6 border-b pb-4">
+                           <div className="size-10 rounded-xl bg-gold/10 text-gold grid place-items-center">
+                              <Mail className="size-5" />
+                           </div>
+                           <div>
+                              <h2 className="text-lg font-black text-navy-deep uppercase tracking-tighter">Change Email Address</h2>
+                              <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
+                                 Update your primary login email address
+                              </p>
+                           </div>
+                        </div>
+
+                        <form onSubmit={handleUpdateEmail} className="space-y-4">
+                           <div className="space-y-1.5">
+                              <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Current Email</Label>
+                              <div className="h-11 px-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center text-xs font-bold text-slate-500">
+                                 {adminEmail || "Loading..."}
+                              </div>
+                           </div>
+
+                           <div className="space-y-1.5">
+                              <Label className="text-[10px] font-black text-navy uppercase tracking-wider">New Email Address</Label>
+                              <Input 
+                                 type="email" 
+                                 value={newEmail} 
+                                 onChange={(e) => setNewEmail(e.target.value)} 
+                                 required
+                                 placeholder="Enter new email address"
+                                 className="font-bold text-sm rounded-xl border-2 h-11"
+                              />
+                           </div>
+
+                           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[10px] text-amber-700 leading-normal font-bold">
+                              <span className="uppercase text-amber-800 font-black">Note:</span> Changing your email requires verification. Supabase will send a confirmation link to both your current and new email addresses. The change will take effect only after both links are clicked.
+                           </div>
+
+                           <div className="pt-2">
+                              <Button 
+                                 type="submit" 
+                                 disabled={updatingEmail} 
+                                 className="w-full bg-gold hover:bg-gold-dark text-white h-11 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-md flex items-center justify-center gap-2"
+                              >
+                                 {updatingEmail ? <Loader2 className="animate-spin size-4" /> : <><RefreshCw size={16} /> Request Email Update</>}
+                              </Button>
+                           </div>
+                        </form>
+                     </div>
+
+                     {/* Password Update Card */}
+                     <div className="bg-white p-6 rounded-2xl border shadow-sm">
+                        <div className="flex items-center gap-3 mb-6 border-b pb-4">
+                           <div className="size-10 rounded-xl bg-navy/5 text-navy grid place-items-center">
+                              <Lock className="size-5" />
+                           </div>
+                           <div>
+                              <h2 className="text-lg font-black text-navy-deep uppercase tracking-tighter">Change Password</h2>
+                              <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
+                                 Set a secure new password for your login account
+                              </p>
+                           </div>
+                        </div>
+
+                        <form onSubmit={handleUpdatePassword} className="space-y-4">
+                           <div className="space-y-1.5">
+                              <Label className="text-[10px] font-black text-navy uppercase tracking-wider">New Password</Label>
+                              <Input 
+                                 type="password" 
+                                 value={newPassword} 
+                                 onChange={(e) => setNewPassword(e.target.value)} 
+                                 required
+                                 placeholder="At least 6 characters"
+                                 className="font-bold text-sm rounded-xl border-2 h-11"
+                              />
+                           </div>
+
+                           <div className="space-y-1.5">
+                              <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Confirm New Password</Label>
+                              <Input 
+                                 type="password" 
+                                 value={confirmPassword} 
+                                 onChange={(e) => setConfirmPassword(e.target.value)} 
+                                 required
+                                 placeholder="Re-enter new password"
+                                 className="font-bold text-sm rounded-xl border-2 h-11"
+                              />
+                           </div>
+
+                           <div className="pt-2">
+                              <Button 
+                                 type="submit" 
+                                 disabled={updatingPassword} 
+                                 className="w-full bg-navy hover:bg-navy-deep text-white h-11 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-md flex items-center justify-center gap-2"
+                              >
+                                 {updatingPassword ? <Loader2 className="animate-spin size-4" /> : <><CheckCircle2 size={16} /> Update Password</>}
+                              </Button>
+                           </div>
+                        </form>
+                     </div>
+
+                  </div>
+
+               </div>
+            )}
+         </div>
+      )}
+
+      {view === "lectures" && (
+         <div className="space-y-6 animate-in fade-in slide-in-from-bottom duration-300">
+             <div className="grid lg:grid-cols-3 gap-6">
+                
+                {/* Left Column: Form to Add Lecture */}
+                <div className="lg:col-span-1 space-y-6">
+                   <div className="bg-white p-6 rounded-2xl border shadow-sm">
+                      <div className="flex items-center gap-3 mb-6 border-b pb-4">
+                         <div className="size-10 rounded-xl bg-navy/5 text-navy grid place-items-center">
+                            <Video className="size-5" />
+                         </div>
+                         <div>
+                            <h2 className="text-lg font-black text-navy-deep uppercase tracking-tighter">Add Online Lecture</h2>
+                            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
+                               Create and dispatch a new video session to students
+                            </p>
+                         </div>
+                      </div>
+
+                      <form onSubmit={handleCreateLecture} className="space-y-4">
+                         <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Lecture Title</Label>
+                            <Input 
+                               type="text" 
+                               value={newLectureTitle} 
+                               onChange={(e) => setNewLectureTitle(e.target.value)} 
+                               required
+                               placeholder="e.g. Intro to React Hooks"
+                               className="font-bold text-sm rounded-xl border-2 h-11"
+                            />
+                         </div>
+
+                         <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Select Domain</Label>
+                            <select
+                               value={newLectureDomain}
+                               onChange={(e) => setNewLectureDomain(e.target.value)}
+                               required
+                               className="w-full font-bold text-sm rounded-xl border-2 h-11 px-3 bg-white focus:outline-none focus:ring-2 focus:ring-navy/20"
+                            >
+                               <option value="">-- Choose Internship Domain --</option>
+                               <option value="General">General / All Domains</option>
+                               {Array.from(new Set(internships.map(i => i.title).filter(Boolean))).map(domain => (
+                                 <option key={domain} value={domain}>{domain}</option>
+                               ))}
+                            </select>
+                         </div>
+
+                         <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Lecture Mode</Label>
+                            <select
+                               value={newLectureMode}
+                               onChange={(e) => setNewLectureMode(e.target.value)}
+                               required
+                               className="w-full font-bold text-sm rounded-xl border-2 h-11 px-3 bg-white focus:outline-none focus:ring-2 focus:ring-navy/20"
+                            >
+                               <option value="Google Meet">Google Meet</option>
+                               <option value="YouTube">YouTube</option>
+                               <option value="Other">Other</option>
+                            </select>
+                         </div>
+
+                         <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Lecture Link / Meeting URL</Label>
+                            <Input 
+                               type="url" 
+                               value={newLectureLink} 
+                               onChange={(e) => setNewLectureLink(e.target.value)} 
+                               required
+                               placeholder="e.g. https://meet.google.com/..."
+                               className="font-bold text-sm rounded-xl border-2 h-11"
+                            />
+                         </div>
+
+                         <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Description</Label>
+                            <Textarea 
+                               value={newLectureDesc} 
+                               onChange={(e) => setNewLectureDesc(e.target.value)} 
+                               placeholder="Enter session details, topics covered, or schedule..."
+                               rows={3}
+                               className="font-bold text-sm rounded-xl border-2 p-3 resize-none"
+                            />
+                         </div>
+
+                         <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Add Material (PDF)</Label>
+                            <Input 
+                               id="material_pdf_input"
+                               type="file" 
+                               accept="application/pdf"
+                               onChange={(e) => setNewLectureMaterialPdf(e.target.files?.[0] || null)}
+                               className="font-bold text-sm rounded-xl border-2 h-11 file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-navy/10 file:text-navy cursor-pointer"
+                            />
+                         </div>
+
+                         <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Add Material (Link)</Label>
+                            <Input 
+                               type="url" 
+                               value={newLectureMaterialLink} 
+                               onChange={(e) => setNewLectureMaterialLink(e.target.value)} 
+                               placeholder="e.g. https://github.com/..."
+                               className="font-bold text-sm rounded-xl border-2 h-11"
+                            />
+                         </div>
+
+                         <div className="pt-2">
+                            <Button 
+                               type="submit" 
+                               disabled={savingLecture} 
+                               className="w-full bg-gold hover:bg-gold-dark text-white h-11 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-md flex items-center justify-center gap-2"
+                            >
+                               {savingLecture ? <Loader2 className="animate-spin size-4" /> : <><Video size={16} /> Add Lecture</>}
+                            </Button>
+                         </div>
+                      </form>
+                   </div>
+                </div>
+
+                {/* Right Column: Existing Lectures List */}
+                <div className="lg:col-span-2 space-y-6">
+                   <div className="bg-white p-6 rounded-2xl border shadow-sm min-h-[400px] flex flex-col">
+                      <div className="flex items-center justify-between border-b pb-4 mb-6">
+                         <div>
+                            <h2 className="text-lg font-black text-navy-deep uppercase tracking-tighter">Active Lectures</h2>
+                            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
+                               Monitor or delete scheduled and recorded online sessions
+                            </p>
+                         </div>
+                         <div className="bg-slate-100 px-3 py-1 rounded-lg text-[10px] font-black text-navy uppercase">
+                            Total: {lecturesList.length}
+                         </div>
+                      </div>
+
+                      {loadingLectures ? (
+                         <div className="flex-1 flex flex-col items-center justify-center py-12 space-y-4">
+                            <Loader2 className="size-8 text-gold animate-spin" />
+                            <p className="text-xs font-black text-navy uppercase tracking-widest">Loading Lectures...</p>
+                         </div>
+                      ) : lecturesList.length === 0 ? (
+                         <div className="flex-1 flex flex-col items-center justify-center py-12 text-center text-muted-foreground border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50">
+                            <Video className="size-12 opacity-20 mb-4" />
+                            <p className="text-sm font-bold">No lectures scheduled yet.</p>
+                            <p className="text-[10px] opacity-75">Use the form on the left to add a lecture.</p>
+                         </div>
+                      ) : (
+                         <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                            {lecturesList.map((lecture) => {
+                               let parsedDesc = lecture.description;
+                               let domainName = "General";
+                               let modeName = "Other";
+                               let pdfUrl = "";
+                               let linkUrl = "";
+                               try {
+                                  const parsed = JSON.parse(lecture.description);
+                                  parsedDesc = parsed.description || "";
+                                  domainName = parsed.domain || "General";
+                                  modeName = parsed.mode || "Other";
+                                  pdfUrl = parsed.material_pdf || "";
+                                  linkUrl = parsed.material_link || "";
+                               } catch (e) {
+                                  // Fallback for raw descriptions
+                               }
+
+                               return (
+                                  <div key={lecture.id} className="p-4 rounded-xl border-2 hover:border-slate-300 transition-colors flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/20">
+                                     <div className="space-y-1.5 flex-1">
+                                        <div className="flex flex-wrap gap-2 items-center">
+                                           <span className="text-[9px] font-black bg-gold/10 border border-gold/20 text-gold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                              {domainName}
+                                           </span>
+                                           <span className="text-[9px] font-black bg-navy/10 border border-navy/20 text-navy px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                              {modeName}
+                                           </span>
+                                        </div>
+                                        <h3 className="font-bold text-sm text-navy-deep leading-snug">{lecture.title}</h3>
+                                        {parsedDesc && <p className="text-xs text-muted-foreground line-clamp-2">{parsedDesc}</p>}
+                                        <div className="text-[10px] text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 pt-1 font-medium">
+                                           <span className="font-mono truncate max-w-[200px] md:max-w-xs block">
+                                              Link: <a href={lecture.link} target="_blank" rel="noreferrer" className="text-navy hover:underline font-bold">{lecture.link}</a>
+                                           </span>
+                                           {pdfUrl && (
+                                              <span className="text-emerald-700 font-bold">
+                                                 PDF: <a href={pdfUrl} target="_blank" rel="noreferrer" className="hover:underline">View File</a>
+                                              </span>
+                                           )}
+                                           {linkUrl && (
+                                              <span className="text-indigo-700 font-bold">
+                                                 Material: <a href={linkUrl} target="_blank" rel="noreferrer" className="hover:underline">View Link</a>
+                                              </span>
+                                           )}
+                                        </div>
+                                     </div>
+                                     <div className="flex items-center gap-2 self-stretch md:self-auto justify-end border-t md:border-none pt-2 md:pt-0">
+                                        <Button 
+                                           variant="destructive" 
+                                           size="icon" 
+                                           className="size-9 rounded-lg"
+                                           onClick={() => handleDeleteLecture(lecture.id)}
+                                        >
+                                           <Trash2 className="size-4" />
+                                        </Button>
+                                     </div>
+                                  </div>
+                               );
+                            })}
+                         </div>
+                      )}
+                   </div>
+                </div>
+
+             </div>
+         </div>
+      )}
+
       {/* DIALOGS */}
       {/* Attendance History Dialog */}
       <Dialog open={!!viewingAttendance} onOpenChange={(o) => !o && setViewingAttendance(null)}>
