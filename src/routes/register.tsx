@@ -50,7 +50,7 @@ function RegisterPage() {
   
   const [selectedUni, setSelectedUni] = useState("");
   const [selectedCol, setSelectedCol] = useState("");
-  const [regFee, setRegFee] = useState(1500);
+  const [regFee, setRegFee] = useState(150);
   const [globalSettings, setGlobalSettings] = useState<any>(null);
 
   useEffect(() => {
@@ -92,7 +92,7 @@ function RegisterPage() {
     } else if (globalSettings?.registration_fee) {
       setRegFee(Number(globalSettings.registration_fee));
     } else {
-      setRegFee(1500);
+      setRegFee(150);
     }
   }
 
@@ -116,7 +116,7 @@ function RegisterPage() {
               } else if (globalSettings?.registration_fee) {
                 setRegFee(Number(globalSettings.registration_fee));
               } else {
-                setRegFee(1500);
+                setRegFee(150);
               }
             });
         }
@@ -387,6 +387,65 @@ function RegisterPage() {
     }
   }
 
+  const downloadReceipt = () => {
+    if (!paymentResult || !registeredUser) return;
+    const receiptHTML = `
+      <html>
+        <head>
+          <title>Payment Receipt - ${paymentResult.transactionId}</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #1e293b; background: #f8fafc; }
+            .receipt { background: white; border: 2px dashed #cbd5e1; padding: 50px; border-radius: 20px; max-width: 600px; margin: 0 auto; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
+            .header { text-align: center; margin-bottom: 40px; }
+            .header h1 { color: #16a34a; margin: 0; font-size: 28px; text-transform: uppercase; }
+            .header p { color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; margin-top: 8px; font-weight: bold; }
+            .row { display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px; }
+            .label { color: #64748b; font-weight: bold; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
+            .value { font-weight: 900; font-size: 14px; color: #0f172a; }
+            .footer { text-align: center; margin-top: 50px; font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <div class="receipt">
+            <div class="header">
+              <h1>Payment Successful</h1>
+              <p>Official Digital Receipt</p>
+            </div>
+            <div class="row">
+              <span class="label">Transaction ID</span>
+              <span class="value" style="font-family: monospace;">${paymentResult.transactionId}</span>
+            </div>
+            <div class="row">
+              <span class="label">Student Name</span>
+              <span class="value">${registeredUser.full_name}</span>
+            </div>
+            <div class="row">
+              <span class="label">Paid For</span>
+              <span class="value">Platform Verification & Registration Fee</span>
+            </div>
+            <div class="row">
+              <span class="label">Amount Paid</span>
+              <span class="value">INR ${paymentResult.amount}</span>
+            </div>
+            <div class="row">
+              <span class="label">Date & Time</span>
+              <span class="value">${paymentResult.date}</span>
+            </div>
+            <div class="footer">
+              This is a computer-generated receipt and does not require a physical signature.
+            </div>
+          </div>
+          <script>
+            window.onload = () => { setTimeout(() => { window.print(); }, 500); };
+          </script>
+        </body>
+      </html>
+    `;
+    const blob = new Blob([receiptHTML], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  };
+
   return (
     <div className="min-h-screen bg-[#f8fafc]">
       
@@ -574,26 +633,41 @@ function RegisterPage() {
                   </select>
                 </div>
                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Branch <span className="text-red-500">*</span></Label>
-                  <select name="department" disabled={!selectedCol} required className="w-full h-11 border-2 rounded-lg px-3 text-[11px] font-bold bg-white">
-                    <option value="">-- SELECT --</option>
-                    {Array.from(new Set(structures.map(s => s.department))).map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
+                  {Array.from(new Set(structures.map(s => s.department))).filter(d => d && d !== "General").length > 0 ? (
+                    <select name="department" disabled={!selectedCol} required className="w-full h-11 border-2 rounded-lg px-3 text-[11px] font-bold bg-white">
+                      <option value="">-- SELECT --</option>
+                      {Array.from(new Set(structures.map(s => s.department))).filter(d => d && d !== "General").map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  ) : (
+                    <Input name="department" disabled={!selectedCol} required placeholder="Enter Branch (e.g. CSE)" className="h-11 border-2 rounded-lg text-xs" />
+                  )}
                 </div>
                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Degree <span className="text-red-500">*</span></Label>
-                  <select name="degree" disabled={!selectedCol} required className="w-full h-11 border-2 rounded-lg px-3 text-[11px] font-bold bg-white">
-                    <option value="">-- SELECT --</option>
-                    {Array.from(new Set(structures.map(s => s.degree))).map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
+                  {Array.from(new Set(structures.map(s => s.degree))).filter(d => d && d !== "General").length > 0 ? (
+                    <select name="degree" disabled={!selectedCol} required className="w-full h-11 border-2 rounded-lg px-3 text-[11px] font-bold bg-white">
+                      <option value="">-- SELECT --</option>
+                      {Array.from(new Set(structures.map(s => s.degree))).filter(d => d && d !== "General").map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  ) : (
+                    <Input name="degree" disabled={!selectedCol} required placeholder="Enter Degree (e.g. B.Tech)" className="h-11 border-2 rounded-lg text-xs" />
+                  )}
                 </div>
                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Roll Number <span className="text-red-500">*</span></Label><Input name="university_roll_number" required className="h-11 border-2 rounded-lg font-mono" /></div>
                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Semester <span className="text-red-500">*</span></Label><Input name="semester" placeholder="e.g. 4th" required className="h-11 border-2 rounded-lg" /></div>
                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Academic Session <span className="text-red-500">*</span></Label>
-                  <select name="academic_session" disabled={!selectedCol} required className="w-full h-11 border-2 rounded-lg px-3 text-[11px] font-bold bg-white">
-                    <option value="">-- SELECT --</option>
-                    {(structures.some(s => s.session) ? Array.from(new Set(structures.map(s => s.session).filter(Boolean))) : ["2021-25", "2022-26", "2023-27", "2024-28"]).map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
+                  {Array.from(new Set(structures.map(s => s.session))).filter(s => s && s !== "General").length > 0 ? (
+                    <select name="academic_session" disabled={!selectedCol} required className="w-full h-11 border-2 rounded-lg px-3 text-[11px] font-bold bg-white">
+                      <option value="">-- SELECT --</option>
+                      {Array.from(new Set(structures.map(s => s.session))).filter(s => s && s !== "General").map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <select name="academic_session" disabled={!selectedCol} required className="w-full h-11 border-2 rounded-lg px-3 text-[11px] font-bold bg-white">
+                      <option value="">-- SELECT --</option>
+                      {["2021-25", "2022-26", "2023-27", "2024-28"].map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  )}
                 </div>
               </div>
 
@@ -717,7 +791,7 @@ function RegisterPage() {
 
               <div className="flex flex-col gap-4">
                 <Button 
-                  onClick={() => window.open(paymentResult.slipUrl, "_blank")}
+                  onClick={downloadReceipt}
                   className="w-full h-14 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-black text-xs uppercase tracking-widest border"
                 >
                   <Printer size={16} className="mr-2" /> Download Receipt

@@ -19,7 +19,7 @@ function StudentPayments() {
   const [profile, setProfile] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [paymentReason, setPaymentReason] = useState("Verification & Certification Fee");
-  const [paymentAmount, setPaymentAmount] = useState("1500");
+  const [paymentAmount, setPaymentAmount] = useState("150");
   const [customAmount, setCustomAmount] = useState("");
   const [processing, setProcessing] = useState(false);
 
@@ -167,7 +167,7 @@ function StudentPayments() {
                       onChange={(e) => {
                         const val = e.target.value;
                         setPaymentReason(val);
-                        if (val === "Verification & Certification Fee") setPaymentAmount("1500");
+                        if (val === "Verification & Certification Fee") setPaymentAmount("150");
                         else if (val === "Premium Placement Training Fee") setPaymentAmount("2500");
                         else if (val === "Internship Admission Processing Fee") setPaymentAmount("999");
                         else setPaymentAmount("0");
