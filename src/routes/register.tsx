@@ -35,9 +35,13 @@ function RegisterPage() {
   const [agreed, setAgreed] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
-  const [mode, setMode] = useState<"choice" | "lookup" | "view" | "form">("choice");
+  const [mode, setMode] = useState<"choice" | "lookup" | "view" | "form" | "payment_gateway" | "payment_success">("choice");
   const [rollNumber, setRollNumber] = useState("");
   const [foundStudent, setFoundStudent] = useState<any>(null);
+  const [registeredUser, setRegisteredUser] = useState<any>(null);
+  const [registeredPassword, setRegisteredPassword] = useState("");
+  const [paymentResult, setPaymentResult] = useState<any>(null);
+  const [paying, setPaying] = useState(false);
 
   const [unis, setUnis] = useState<any[]>([]);
   const [colleges, setColleges] = useState<any[]>([]);
@@ -46,6 +50,18 @@ function RegisterPage() {
   
   const [selectedUni, setSelectedUni] = useState("");
   const [selectedCol, setSelectedCol] = useState("");
+  const [regFee, setRegFee] = useState(1500);
+  const [globalSettings, setGlobalSettings] = useState<any>(null);
+
+  useEffect(() => {
+    supabase.from("portal_settings").select("*").eq("id", "global").maybeSingle()
+      .then(({ data }) => {
+        setGlobalSettings(data);
+        if (data?.registration_fee) {
+          setRegFee(Number(data.registration_fee));
+        }
+      });
+  }, []);
 
   useEffect(() => {
     fetchStaticData();
@@ -70,6 +86,14 @@ function RegisterPage() {
     setSelectedCol(colId);
     const { data } = await supabase.from("academic_structures").select("*").eq("college_id", colId);
     setStructures(data || []);
+    
+    if (globalSettings?.college_fees && globalSettings.college_fees[colId]) {
+      setRegFee(Number(globalSettings.college_fees[colId]));
+    } else if (globalSettings?.registration_fee) {
+      setRegFee(Number(globalSettings.registration_fee));
+    } else {
+      setRegFee(1500);
+    }
   }
 
   async function handleLookup() {
@@ -84,11 +108,181 @@ function RegisterPage() {
       } else {
         setFoundStudent(data);
         setMode("view");
+        if (data.college_name) {
+          supabase.from("colleges").select("id").eq("name", data.college_name).maybeSingle()
+            .then(({ data: colMatch }) => {
+              if (colMatch && globalSettings?.college_fees && globalSettings.college_fees[colMatch.id]) {
+                setRegFee(Number(globalSettings.college_fees[colMatch.id]));
+              } else if (globalSettings?.registration_fee) {
+                setRegFee(Number(globalSettings.registration_fee));
+              } else {
+                setRegFee(1500);
+              }
+            });
+        }
       }
     } else {
       setMode("form");
     }
   }
+
+  const loadRazorpay = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleRegistrationPayment = async () => {
+    if (!registeredUser) return;
+    setPaying(true);
+
+    const loaded = await loadRazorpay();
+    if (!loaded) {
+      setPaying(false);
+      return toast.error("Failed to load Razorpay payment gateway. Please check your internet connection.");
+    }
+
+    const options = {
+      key: "rzp_live_SWf4eSr5QxJyrn",
+      amount: Math.round(regFee * 100), // Dynamic fee in paise
+      currency: "INR",
+      name: "TechLaunchpad",
+      description: "Platform Registration & Verification Fee",
+      handler: async function (response: any) {
+        try {
+          // --- 1. SIGN UP THE USER AUTH IN SUPABASE ---
+          const tempClient = createClient(
+            import.meta.env.VITE_SUPABASE_URL,
+            import.meta.env.VITE_SUPABASE_ANON_KEY,
+            { auth: { persistSession: false } }
+          );
+
+          const { data: authData, error: authError } = await tempClient.auth.signUp({
+            email: registeredUser.email,
+            password: registeredPassword,
+            options: { 
+              data: { 
+                full_name: registeredUser.full_name,
+                role: "student", 
+                raw_password: registeredPassword 
+              }
+            }
+          });
+
+          if (authError) throw authError;
+
+          // --- 2. CREATE STUDENT PROFILE ---
+          const profileData: any = {
+            id: authData.user?.id,
+            full_name: registeredUser.full_name,
+            email: registeredUser.email,
+            contact_number: registeredUser.contact_number,
+            university_name: registeredUser.raw_lead_data.university_name,
+            college_name: registeredUser.raw_lead_data.college_name,
+            gender: registeredUser.raw_lead_data.gender,
+            parent_name: registeredUser.raw_lead_data.parent_name,
+            degree: registeredUser.raw_lead_data.degree,
+            department: registeredUser.raw_lead_data.department || registeredUser.raw_lead_data.department_stream,
+            semester: registeredUser.raw_lead_data.semester || registeredUser.raw_lead_data.class_semester,
+            academic_session: registeredUser.raw_lead_data.academic_session,
+            university_roll_number: registeredUser.university_roll_number,
+            program: registeredUser.program,
+            role: "student",
+            raw_password: registeredPassword,
+            created_at: new Date().toISOString()
+          };
+
+          const { error: profileError } = await supabase.from("profiles").insert([profileData]);
+          if (profileError) throw profileError;
+
+          // --- 3. MARK LEAD AS CLAIMED/PAID ---
+          await supabase
+            .from("leads")
+            .update({ is_claimed: true })
+            .eq("id", registeredUser.id);
+
+          if (foundStudent) {
+            await supabase
+              .from("pre_registrations")
+              .update({ is_claimed: true })
+              .eq("id", foundStudent.id);
+          } else {
+            await supabase
+              .from("pre_registrations")
+              .update({ is_claimed: true })
+              .eq("university_roll_number", registeredUser.university_roll_number);
+          }
+
+          // --- 4. RECORD SUCCESSFUL PAYMENT ---
+          const newPayment = {
+            student_id: authData.user?.id,
+            amount: regFee,
+            status: "Paid",
+            slip_url: `https://dashboard.razorpay.com/app/payments/${response.razorpay_payment_id}`,
+            created_at: new Date().toISOString()
+          };
+          const { error: payError } = await supabase.from("payments").insert([newPayment]);
+          if (payError) throw payError;
+
+          toast.success("Payment & Registration Completed successfully!");
+          
+          setPaymentResult({
+            transactionId: response.razorpay_payment_id,
+            amount: regFee,
+            date: new Date().toLocaleString(),
+            slipUrl: `https://dashboard.razorpay.com/app/payments/${response.razorpay_payment_id}`
+          });
+          setMode("payment_success");
+        } catch (err: any) {
+          toast.error("Failed to complete account registration: " + err.message);
+        } finally {
+          setPaying(false);
+        }
+      },
+      prefill: {
+        name: registeredUser.full_name,
+        email: registeredUser.email,
+        contact: registeredUser.contact_number
+      },
+      theme: {
+        color: "#1e40af"
+      },
+      modal: {
+        ondismiss: function () {
+          setPaying(false);
+        }
+      }
+    };
+
+    const rzp = new (window as any).Razorpay(options);
+    rzp.open();
+  };
+
+  const handleAutoLogin = async () => {
+    if (!registeredUser || !registeredPassword) {
+      navigate({ to: "/login" });
+      return;
+    }
+    setPaying(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: registeredUser.email,
+        password: registeredPassword
+      });
+      if (error) throw error;
+      toast.success("Welcome to your TechLaunchpad Student Dashboard!");
+      navigate({ to: "/dashboard/student" });
+    } catch (err: any) {
+      toast.error("Auto-login failed: " + err.message + ". Please login manually.");
+      navigate({ to: "/login" });
+    } finally {
+      setPaying(false);
+    }
+  };
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -99,55 +293,93 @@ function RegisterPage() {
 
     setBusy(true);
     try {
-      const tempClient = createClient(
-        import.meta.env.VITE_SUPABASE_URL,
-        import.meta.env.VITE_SUPABASE_ANON_KEY,
-        { auth: { persistSession: false } }
-      );
-
       const emailToUse = String(data.email || foundStudent?.email);
-      const { data: authData, error: authError } = await tempClient.auth.signUp({
+      
+      // Let's construct the complete lead record
+      const universityName = foundStudent?.university_name || unis.find(u => u.id === selectedUni)?.name || "";
+      const collegeName = foundStudent?.college_name || colleges.find(c => c.id === selectedCol)?.name || "";
+      
+      const leadData: any = {
+        full_name: String(data.full_name || foundStudent?.full_name),
         email: emailToUse,
-        password: String(data.password),
-        options: { 
-          data: { ...data, role: "student", raw_password: String(data.password) },
-          emailRedirectTo: `${window.location.origin}/dashboard/student` 
-        }
-      });
-
-      if (authError) throw authError;
-
-      const profileData: any = {
-        id: authData.user?.id,
-        ...data,
-        university_name: foundStudent?.university_name || unis.find(u => u.id === selectedUni)?.name,
-        college_name: foundStudent?.college_name || colleges.find(c => c.id === selectedCol)?.name,
-        gender: foundStudent?.gender || data.gender,
-        parent_name: foundStudent?.parent_name || data.parent_name,
-        contact_number: foundStudent?.contact_number || data.contact_number,
-        department: foundStudent?.department || data.department,
-        degree: foundStudent?.degree || data.degree,
-        semester: foundStudent?.semester || data.semester,
-        role: "student",
-        raw_password: String(data.password)
+        contact_number: String(data.contact_number || foundStudent?.contact_number),
+        gender: String(data.gender || foundStudent?.gender || "Male"),
+        parent_name: String(data.parent_name || foundStudent?.parent_name || ""),
+        university_name: universityName,
+        college_name: collegeName,
+        degree: String(data.degree || foundStudent?.degree),
+        department: String(data.department || foundStudent?.department || foundStudent?.department_stream),
+        semester: String(data.semester || foundStudent?.semester || foundStudent?.class_semester),
+        academic_session: String(data.academic_session || foundStudent?.academic_session),
+        university_roll_number: String(data.university_roll_number || foundStudent?.university_roll_number),
+        program: String(data.program),
+        raw_password: String(data.password),
+        is_claimed: false,
+        created_at: new Date().toISOString()
       };
 
-      delete profileData.confirmPassword;
-      delete profileData.password;
-
-      const { error: profileError } = await supabase.from("profiles").insert([profileData]);
-      if (profileError) throw profileError;
-
-      if (foundStudent) {
-        await supabase.from("pre_registrations").update({ 
-          is_claimed: true,
-          program: String(data.program),
-          raw_password: String(data.password)
-        }).eq("id", foundStudent.id);
+      let leadId = "";
+      
+      // Double check if this roll number is already registered in profiles
+      const { data: profileCheck } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("university_roll_number", leadData.university_roll_number)
+        .maybeSingle();
+      if (profileCheck) {
+        throw new Error("This Roll Number is already registered in the system. Please login.");
       }
 
-      toast.success("Account created successfully!");
-      navigate({ to: "/login" });
+      // Check if lead already exists in our dedicated leads table
+      const { data: existingLead } = await supabase
+        .from("leads")
+        .select("id, is_claimed")
+        .eq("university_roll_number", leadData.university_roll_number)
+        .maybeSingle();
+
+      if (existingLead) {
+        leadId = existingLead.id;
+        // Update details of existing unclaimed lead in leads table
+        const { error: updateError } = await supabase
+          .from("leads")
+          .update({ ...leadData, is_claimed: false })
+          .eq("id", existingLead.id);
+        if (updateError) throw updateError;
+      } else {
+        // Create new manual registration lead row in dedicated leads table
+        const { data: insertedLead, error: insertError } = await supabase
+          .from("leads")
+          .insert([leadData])
+          .select()
+          .single();
+        if (insertError) throw insertError;
+        leadId = insertedLead.id;
+      }
+
+      // If they were pre-registered, also sync details to pre_registrations
+      if (foundStudent) {
+        await supabase
+          .from("pre_registrations")
+          .update({
+            program: String(data.program),
+            raw_password: String(data.password),
+            created_at: new Date().toISOString()
+          })
+          .eq("id", foundStudent.id);
+      }
+
+      toast.success("Details saved successfully! Proceed to platform payment.");
+      setRegisteredUser({
+        id: leadId,
+        full_name: leadData.full_name,
+        email: leadData.email,
+        contact_number: leadData.contact_number,
+        university_roll_number: leadData.university_roll_number,
+        program: leadData.program,
+        raw_lead_data: leadData
+      });
+      setRegisteredPassword(String(data.password));
+      setMode("payment_gateway");
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -245,7 +477,7 @@ function RegisterPage() {
                 <h3 className="text-white font-black uppercase tracking-widest text-sm">Enrollment Verified — Complete Your Profile</h3>
               </div>
               <div className="p-10 space-y-12">
-                <div className="grid md:grid-cols-3 gap-8 bg-slate-50 p-10 rounded-3xl border border-slate-100">
+                <div className="grid md:grid-cols-4 gap-8 bg-slate-50 p-10 rounded-3xl border border-slate-100">
                   <div className="space-y-1">
                     <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Full Name</Label>
                     <div className="text-xl font-black text-[#1e40af] uppercase">{foundStudent.full_name}</div>
@@ -257,6 +489,10 @@ function RegisterPage() {
                   <div className="space-y-1">
                     <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Roll Number</Label>
                     <div className="text-xl font-black text-amber-600 font-mono">{foundStudent.university_roll_number}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Academic Session</Label>
+                    <div className="text-xl font-black text-slate-700">{foundStudent.academic_session || "—"}</div>
                   </div>
                 </div>
 
@@ -351,6 +587,14 @@ function RegisterPage() {
                 </div>
                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Roll Number <span className="text-red-500">*</span></Label><Input name="university_roll_number" required className="h-11 border-2 rounded-lg font-mono" /></div>
                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Semester <span className="text-red-500">*</span></Label><Input name="semester" placeholder="e.g. 4th" required className="h-11 border-2 rounded-lg" /></div>
+                <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Academic Session <span className="text-red-500">*</span></Label>
+                  <select name="academic_session" disabled={!selectedCol} required className="w-full h-11 border-2 rounded-lg px-3 text-[11px] font-bold bg-white">
+                    <option value="">-- SELECT --</option>
+                    {(structures.some(s => s.session) ? Array.from(new Set(structures.map(s => s.session).filter(Boolean))) : ["2021-25", "2022-26", "2023-27", "2024-28"]).map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* 3. ACCESS & SECURITY */}
@@ -383,6 +627,111 @@ function RegisterPage() {
                 </div>
               </div>
             </form>
+          )}
+
+          {/* PAYMENT GATEWAY MODE */}
+          {mode === "payment_gateway" && registeredUser && (
+            <div className="p-12 space-y-8 max-w-xl mx-auto text-center animate-in fade-in duration-500">
+              <div className="size-20 rounded-2xl bg-amber-50 text-gold grid place-items-center mx-auto shadow-md">
+                <CreditCard size={40} className="text-[#1e40af]" />
+              </div>
+              <div className="space-y-3">
+                <h3 className="text-3xl font-black text-slate-800 uppercase tracking-tighter">Registration Fee</h3>
+                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Secure Platform Processing & Enrollment Verification</p>
+              </div>
+
+              <div className="bg-slate-50 rounded-3xl p-8 border border-slate-100 space-y-4 text-left">
+                <div className="flex justify-between items-center text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <span>Student Name:</span>
+                  <span className="text-slate-800 font-black">{registeredUser.full_name}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <span>Selected Program:</span>
+                  <span className="text-slate-800 font-black">{registeredUser.program}</span>
+                </div>
+                <div className="h-px bg-slate-200"></div>
+                <div className="flex justify-between items-center text-sm font-black text-slate-700 uppercase">
+                  <span>Platform Verification Fee:</span>
+                  <span className="text-slate-800 font-black">₹{regFee.toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm font-black text-slate-700 uppercase">
+                  <span>Gateway Taxes & Processing:</span>
+                  <span className="text-green-600 text-xs font-black">Waived (₹0)</span>
+                </div>
+                <div className="h-px bg-slate-200"></div>
+                <div className="flex justify-between items-center text-lg font-black text-navy-deep uppercase">
+                  <span>Total Amount Payable:</span>
+                  <span className="text-gold text-2xl font-black">₹{regFee.toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+
+              <Button 
+                onClick={handleRegistrationPayment} 
+                disabled={paying}
+                className="w-full h-16 bg-[#1e40af] hover:bg-blue-800 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl flex items-center justify-center gap-2"
+              >
+                {paying ? <Loader2 className="animate-spin mr-2" /> : <CreditCard size={18} />}
+                PAY ₹{regFee.toLocaleString('en-IN')} via Razorpay
+              </Button>
+            </div>
+          )}
+
+          {/* PAYMENT SUCCESS MODE */}
+          {mode === "payment_success" && paymentResult && (
+            <div className="p-12 space-y-8 max-w-xl mx-auto text-center animate-in fade-in duration-500">
+              <div className="size-20 rounded-full bg-green-50 text-green-500 grid place-items-center mx-auto shadow-md">
+                <CheckCircle2 size={44} />
+              </div>
+              <div className="space-y-3">
+                <h3 className="text-3xl font-black text-green-600 uppercase tracking-tighter">Payment Successful!</h3>
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Your enrollment is verified and official digital receipt is ready.</p>
+              </div>
+
+              {/* RECEIPT BOX */}
+              <div className="bg-white rounded-3xl p-8 border-2 border-dashed border-slate-200 text-left space-y-4 shadow-sm relative">
+                <div className="absolute top-4 right-4 text-[9px] font-black text-green-600 uppercase bg-green-50 border border-green-200 px-3 py-1 rounded-full flex items-center gap-1">
+                  <CheckCircle2 size={10} /> Paid
+                </div>
+                
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b pb-2">Digital Receipt</h4>
+                
+                <div className="space-y-3">
+                  <div className="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    <span>Transaction ID:</span>
+                    <span className="text-slate-800 font-mono font-black">{paymentResult.transactionId}</span>
+                  </div>
+                  <div className="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    <span>Paid For:</span>
+                    <span className="text-slate-800 font-black">Platform Verification Fee</span>
+                  </div>
+                  <div className="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    <span>Amount Paid:</span>
+                    <span className="text-slate-800 font-black">₹{paymentResult.amount}</span>
+                  </div>
+                  <div className="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    <span>Date & Time:</span>
+                    <span className="text-slate-800 font-black">{paymentResult.date}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-4">
+                <Button 
+                  onClick={() => window.open(paymentResult.slipUrl, "_blank")}
+                  className="w-full h-14 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-black text-xs uppercase tracking-widest border"
+                >
+                  <Printer size={16} className="mr-2" /> Download Receipt
+                </Button>
+                
+                <Button 
+                  onClick={handleAutoLogin} 
+                  disabled={paying}
+                  className="w-full h-16 bg-[#1e40af] hover:bg-blue-800 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl flex items-center justify-center gap-2"
+                >
+                  {paying ? <Loader2 className="animate-spin" /> : "GO TO STUDENT DASHBOARD"}
+                </Button>
+              </div>
+            </div>
           )}
 
         </div>

@@ -77,6 +77,7 @@ function DashboardLayout() {
     { to: "/dashboard/admin", search: { view: 'attendance' }, icon: ListChecks, label: "Attendance Control" },
     { to: "/dashboard/admin", search: { view: 'assignments' }, icon: BookOpen, label: "Assignment Hub" },
     { to: "/dashboard/admin", search: { view: 'transactions' }, icon: CreditCard, label: "Transactions" },
+    { to: "/dashboard/admin", search: { view: 'leads' }, icon: Users, label: "Student Leads" },
     { to: "/dashboard/certificates", icon: ShieldCheck, label: "Certificates" },
     { to: "/dashboard/inbox", icon: Mail, label: "Inbox" },
   ];

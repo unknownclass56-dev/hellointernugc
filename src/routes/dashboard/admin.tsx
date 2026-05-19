@@ -853,77 +853,155 @@ function AdminDashboard() {
 
       {/* COMPACT PORTAL SETTINGS */}
       {view === "settings" && (
-        <div className="space-y-6">
-           <div className="bg-white p-6 rounded-2xl border shadow-sm">
-              <h2 className="text-xl font-black text-navy-deep uppercase tracking-tighter mb-4">Institutional Configuration</h2>
-              <form onSubmit={async (e) => {
-                 e.preventDefault();
-                 const fd = new FormData(e.currentTarget);
-                 const data = Object.fromEntries(fd);
-                 setBusy(true);
-                 const { error } = await supabase.from("portal_settings").upsert({ id: 'global', ...data });
-                 setBusy(false);
-                 if(!error) { toast.success("Settings Updated!"); fetchData(); }
-              }} className="space-y-8">
-                 
-                 <div className="grid md:grid-cols-2 gap-8">
-                    {/* Company Details */}
-                    <div className="space-y-4">
-                       <h3 className="text-[10px] font-black uppercase text-gold tracking-[0.2em] border-b pb-2">Corporate Identity</h3>
-                       <div className="space-y-4">
-                          <div className="space-y-2">
-                             <Label className="text-[9px] font-black uppercase opacity-40">Company Name</Label>
-                             <Input name="company_name" defaultValue={settings?.company_name} className="h-11 rounded-xl font-bold border-2" />
-                          </div>
-                          <div className="space-y-2">
-                             <Label className="text-[9px] font-black uppercase opacity-40">Official Address</Label>
-                             <textarea name="company_address" defaultValue={settings?.company_address} className="w-full h-24 bg-navy/5 border-2 rounded-xl p-3 text-xs font-bold outline-none focus:border-gold" />
-                          </div>
-                          <div className="grid grid-cols-2 gap-4">
-                             <div className="space-y-2">
-                                <Label className="text-[9px] font-black uppercase opacity-40">Contact Email</Label>
-                                <Input name="company_email" defaultValue={settings?.company_email} className="h-11 rounded-xl font-bold border-2" />
-                             </div>
-                             <div className="space-y-2">
-                                <Label className="text-[9px] font-black uppercase opacity-40">Contact Phone</Label>
-                                <Input name="company_phone" defaultValue={settings?.company_phone} className="h-11 rounded-xl font-bold border-2" />
-                             </div>
-                          </div>
-                       </div>
-                    </div>
+         <div className="space-y-6">
+            <div className="bg-white p-6 rounded-2xl border shadow-sm">
+               <h2 className="text-xl font-black text-navy-deep uppercase tracking-tighter mb-4">Institutional Configuration</h2>
+               <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  const fd = new FormData(e.currentTarget);
+                  const rawData = Object.fromEntries(fd);
+                  
+                  // Construct college-wise fees object
+                  const collegeFeesObj: Record<string, number> = {};
+                  for (const key in rawData) {
+                     if (key.startsWith('college_fee_')) {
+                        const colId = key.substring('college_fee_'.length);
+                        const val = rawData[key];
+                        if (val) {
+                           collegeFeesObj[colId] = Number(val);
+                        }
+                     }
+                  }
 
-                    {/* Authentication Details */}
-                    <div className="space-y-4">
-                       <h3 className="text-[10px] font-black uppercase text-gold tracking-[0.2em] border-b pb-2">Document Authentication</h3>
-                       <div className="space-y-4">
-                          <div className="space-y-2">
-                             <Label className="text-[9px] font-black uppercase opacity-40">Internship Coordinator Name</Label>
-                             <Input name="coordinator_name" defaultValue={settings?.coordinator_name} className="h-11 rounded-xl font-bold border-2" />
-                          </div>
-                          <div className="space-y-2">
-                             <Label className="text-[9px] font-black uppercase opacity-40">Signature (Image URL or Base64)</Label>
-                             <textarea name="coordinator_signature_url" defaultValue={settings?.coordinator_signature_url} placeholder="Paste image URL or Base64 data..." className="w-full h-24 bg-navy/5 border-2 rounded-xl p-3 text-[10px] font-mono outline-none focus:border-gold" />
-                          </div>
-                          {settings?.coordinator_signature_url && (
-                             <div className="p-4 bg-navy/5 rounded-xl border border-dashed text-center">
-                                <div className="text-[8px] font-black uppercase opacity-40 mb-2">Signature Preview</div>
-                                <img src={settings.coordinator_signature_url} alt="Signature" className="h-16 mx-auto object-contain bg-white p-2 rounded-lg border shadow-sm" />
-                             </div>
-                          )}
-                       </div>
-                    </div>
-                 </div>
+                  const payload = {
+                     id: 'global',
+                     company_name: rawData.company_name,
+                     company_address: rawData.company_address,
+                     company_email: rawData.company_email,
+                     company_phone: rawData.company_phone,
+                     coordinator_name: rawData.coordinator_name,
+                     coordinator_signature_url: rawData.coordinator_signature_url,
+                     registration_fee: Number(rawData.registration_fee || 1500),
+                     college_fees: collegeFeesObj
+                  };
 
-                 <div className="pt-6 border-t flex justify-end">
-                    <Button type="submit" disabled={busy} className="bg-navy text-white px-12 h-12 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-2">
-                       {busy ? <Loader2 className="animate-spin" /> : <><CheckCircle2 size={18} /> Save Portal Configuration</>}
-                    </Button>
-                 </div>
-              </form>
-           </div>
-        </div>
+                  setBusy(true);
+                  const { error } = await supabase.from("portal_settings").upsert(payload);
+                  setBusy(false);
+                  if(!error) { toast.success("Settings Updated!"); fetchData(); }
+               }} className="space-y-8">
+                  
+                  <div className="grid md:grid-cols-2 gap-8">
+                     {/* Company Details */}
+                     <div className="space-y-4">
+                        <h3 className="text-[10px] font-black uppercase text-gold tracking-[0.2em] border-b pb-2">Corporate Identity</h3>
+                        <div className="space-y-4">
+                           <div className="space-y-2">
+                              <Label className="text-[9px] font-black uppercase opacity-40">Company Name</Label>
+                              <Input name="company_name" defaultValue={settings?.company_name} className="h-11 rounded-xl font-bold border-2" />
+                           </div>
+                           <div className="space-y-2">
+                              <Label className="text-[9px] font-black uppercase opacity-40">Official Address</Label>
+                              <textarea name="company_address" defaultValue={settings?.company_address} className="w-full h-24 bg-navy/5 border-2 rounded-xl p-3 text-xs font-bold outline-none focus:border-gold" />
+                           </div>
+                           <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                 <Label className="text-[9px] font-black uppercase opacity-40">Contact Email</Label>
+                                 <Input name="company_email" defaultValue={settings?.company_email} className="h-11 rounded-xl font-bold border-2" />
+                              </div>
+                              <div className="space-y-2">
+                                 <Label className="text-[9px] font-black uppercase opacity-40">Contact Phone</Label>
+                                 <Input name="company_phone" defaultValue={settings?.company_phone} className="h-11 rounded-xl font-bold border-2" />
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+
+                     {/* Authentication Details */}
+                     <div className="space-y-4">
+                        <h3 className="text-[10px] font-black uppercase text-gold tracking-[0.2em] border-b pb-2">Document Authentication</h3>
+                        <div className="space-y-4">
+                           <div className="space-y-2">
+                              <Label className="text-[9px] font-black uppercase opacity-40">Internship Coordinator Name</Label>
+                              <Input name="coordinator_name" defaultValue={settings?.coordinator_name} className="h-11 rounded-xl font-bold border-2" />
+                           </div>
+                           <div className="space-y-2">
+                              <Label className="text-[9px] font-black uppercase opacity-40">Signature (Image URL or Base64)</Label>
+                              <textarea name="coordinator_signature_url" defaultValue={settings?.coordinator_signature_url} placeholder="Paste image URL or Base64 data..." className="w-full h-24 bg-navy/5 border-2 rounded-xl p-3 text-[10px] font-mono outline-none focus:border-gold" />
+                           </div>
+                           {settings?.coordinator_signature_url && (
+                              <div className="p-4 bg-navy/5 rounded-xl border border-dashed text-center">
+                                 <div className="text-[8px] font-black uppercase opacity-40 mb-2">Signature Preview</div>
+                                 <img src={settings.coordinator_signature_url} alt="Signature" className="h-16 mx-auto object-contain bg-white p-2 rounded-lg border shadow-sm" />
+                              </div>
+                           )}
+                        </div>
+                     </div>
+                  </div>
+
+                  {/* Fee Configurations */}
+                  <div className="space-y-4 border-t pt-6">
+                     <h3 className="text-[10px] font-black uppercase text-gold tracking-[0.2em] border-b pb-2">Registration Fee Configurations</h3>
+                     <div className="grid md:grid-cols-3 gap-6">
+                        <div className="space-y-2">
+                           <Label className="text-[9px] font-black uppercase opacity-40">Default Registration Fee (₹)</Label>
+                           <Input 
+                              name="registration_fee" 
+                              type="number" 
+                              defaultValue={settings?.registration_fee || "1500"} 
+                              className="h-11 rounded-xl font-bold border-2" 
+                              placeholder="1500"
+                           />
+                           <p className="text-[9px] font-medium text-slate-400">Used as fallback if college-wise fee is not set.</p>
+                        </div>
+                     </div>
+
+                     <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4 mt-4">
+                        <div>
+                           <h4 className="text-xs font-black text-navy uppercase tracking-tight">College-wise Fee Customization</h4>
+                           <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
+                              Set specific registration fees per institution. Leave empty to use the default fee.
+                           </p>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-4 max-h-[300px] overflow-y-auto pr-2">
+                           {universities.map(uni => (
+                              <div key={uni.id} className="bg-white p-4 rounded-xl border space-y-3">
+                                 <div className="text-[9px] font-black text-navy uppercase tracking-wider border-b pb-1.5 flex items-center gap-1.5">
+                                    <School className="size-3 text-gold" /> {uni.name}
+                                 </div>
+                                 <div className="space-y-2">
+                                    {(uni.colleges || []).map((col: any) => (
+                                       <div key={col.id} className="flex items-center justify-between gap-3 text-xs">
+                                          <span className="font-bold text-slate-600 truncate max-w-[180px]">{col.name}</span>
+                                          <Input 
+                                             name={`college_fee_${col.id}`} 
+                                             type="number" 
+                                             defaultValue={settings?.college_fees?.[col.id] || ""} 
+                                             placeholder={settings?.registration_fee || "1500"} 
+                                             className="h-8 w-24 font-bold text-right text-xs rounded-lg border-2"
+                                          />
+                                       </div>
+                                    ))}
+                                    {(!uni.colleges || uni.colleges.length === 0) && (
+                                       <span className="text-[9px] italic text-slate-400">No colleges registered</span>
+                                    )}
+                                 </div>
+                              </div>
+                           ))}
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="pt-6 border-t flex justify-end">
+                     <Button type="submit" disabled={busy} className="bg-navy text-white px-12 h-12 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-2">
+                        {busy ? <Loader2 className="animate-spin" /> : <><CheckCircle2 size={18} /> Save Portal Configuration</>}
+                     </Button>
+                  </div>
+               </form>
+            </div>
+         </div>
       )}
-
       {/* DIALOGS */}
       {/* Attendance History Dialog */}
       <Dialog open={!!viewingAttendance} onOpenChange={(o) => !o && setViewingAttendance(null)}>
