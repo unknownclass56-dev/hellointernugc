@@ -76,6 +76,7 @@ function StudentPayments() {
       key: "rzp_live_SrD6N9ylebiBCT",
       amount: Math.round(finalAmount * 100), // in paise
       currency: "INR",
+      payment_capture: 1,
       name: "TechLaunchpad",
       description: paymentReason === "Other" ? "Custom Training Fee" : paymentReason,
       handler: async function (response: any) {

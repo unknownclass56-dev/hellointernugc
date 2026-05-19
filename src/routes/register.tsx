@@ -150,6 +150,7 @@ function RegisterPage() {
       key: "rzp_live_SrD6N9ylebiBCT",
       amount: Math.round(regFee * 100), // Dynamic fee in paise
       currency: "INR",
+      payment_capture: 1,
       name: "TechLaunchpad",
       description: "Platform Registration & Verification Fee",
       handler: async function (response: any) {
