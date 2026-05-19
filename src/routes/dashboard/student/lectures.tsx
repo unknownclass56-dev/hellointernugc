@@ -3,15 +3,24 @@ import { Play, FileVideo, Calendar, ExternalLink, FileText, Link2, Youtube, Vide
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/dashboard/student/lectures")({
   component: StudentLectures,
 });
 
+function getYouTubeId(url: string): string | null {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+}
+
 function StudentLectures() {
   const [lectures, setLectures] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLectures();
@@ -100,11 +109,37 @@ function StudentLectures() {
             // Fallback for older non-JSON entries
           }
 
+          const ytVideoId = getYouTubeId(l.link);
+
+          const handleWatch = () => {
+            if (ytVideoId) {
+              setActiveVideoId(ytVideoId);
+            } else {
+              window.open(l.link, "_blank");
+            }
+          };
+
           return (
             <div key={l.id} className="group overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:shadow-md flex flex-col h-full justify-between">
               <div>
-                <div className="relative aspect-video bg-navy-deep/10 flex items-center justify-center">
-                  {modeName === "YouTube" ? (
+                <div 
+                  onClick={handleWatch}
+                  className={`relative aspect-video bg-navy-deep/10 flex items-center justify-center overflow-hidden ${ytVideoId ? "cursor-pointer" : ""}`}
+                >
+                  {ytVideoId ? (
+                    <>
+                      <img 
+                        src={`https://img.youtube.com/vi/${ytVideoId}/hqdefault.jpg`} 
+                        alt={l.title} 
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black/25 flex items-center justify-center group-hover:bg-black/35 transition-colors">
+                        <div className="size-12 rounded-full bg-red-600/90 text-white flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:bg-red-600 transition-all duration-300">
+                          <Play className="size-5 fill-current ml-0.5" />
+                        </div>
+                      </div>
+                    </>
+                  ) : modeName === "YouTube" ? (
                     <Youtube className="size-12 text-red-500 group-hover:scale-110 transition-transform" />
                   ) : modeName === "Google Meet" ? (
                     <Video className="size-12 text-blue-500 group-hover:scale-110 transition-transform" />
@@ -152,7 +187,7 @@ function StudentLectures() {
                   <div className="text-[10px] text-muted-foreground flex items-center gap-1 font-semibold">
                     <Calendar className="size-3" /> {new Date(l.created_at).toLocaleDateString()}
                   </div>
-                  <Button size="sm" className="bg-navy text-white hover:bg-navy-deep h-8 text-xs font-bold px-4 rounded-xl flex items-center gap-1.5" onClick={() => window.open(l.link, '_blank')}>
+                  <Button size="sm" className="bg-navy text-white hover:bg-navy-deep h-8 text-xs font-bold px-4 rounded-xl flex items-center gap-1.5" onClick={handleWatch}>
                     WATCH NOW <ExternalLink className="size-3" />
                   </Button>
                 </div>
@@ -161,6 +196,24 @@ function StudentLectures() {
           );
         })}
       </div>
+
+      {/* YouTube Video Player Modal */}
+      <Dialog open={!!activeVideoId} onOpenChange={(open) => !open && setActiveVideoId(null)}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black border-none rounded-2xl shadow-2xl">
+          <div className="relative aspect-video w-full bg-black">
+            {activeVideoId && (
+              <iframe
+                src={`https://www.youtube.com/embed/${activeVideoId}?autoplay=1`}
+                title="YouTube video player"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                className="absolute inset-0 w-full h-full"
+              ></iframe>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
