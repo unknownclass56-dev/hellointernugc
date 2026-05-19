@@ -76,10 +76,17 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const url = new URL(request.url);
-      if (request.method === "POST" && url.pathname === "/api/webhook") {
-        try {
-          const body: any = await request.json();
-          console.log("Razorpay Webhook Triggered:", body.event);
+      if (url.pathname === "/api/webhook") {
+        if (request.method === "GET") {
+          return new Response("Webhook receiver is active. Send POST request with JSON payload.", {
+            status: 200,
+            headers: { "content-type": "text/plain" }
+          });
+        }
+        if (request.method === "POST") {
+          try {
+            const body: any = await request.json();
+            console.log("Razorpay Webhook Triggered:", body.event);
 
           if (body.event === "payment.captured") {
             const payment = body.payload.payment.entity;
@@ -252,6 +259,7 @@ export default {
           });
         }
       }
+    }
 
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);

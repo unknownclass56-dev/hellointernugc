@@ -147,7 +147,7 @@ function RegisterPage() {
     }
 
     const options = {
-      key: "rzp_live_SWf4eSr5QxJyrn",
+      key: "rzp_live_SrD6N9ylebiBCT",
       amount: Math.round(regFee * 100), // Dynamic fee in paise
       currency: "INR",
       name: "TechLaunchpad",
@@ -330,12 +330,14 @@ function RegisterPage() {
         throw new Error("This Roll Number is already registered in the system. Please login.");
       }
 
-      // Check if lead already exists in our dedicated leads table
-      const { data: existingLead } = await supabase
+      // Check if lead already exists in our dedicated leads table (by either roll number or email to handle typo corrections)
+      const { data: existingLeads } = await supabase
         .from("leads")
         .select("id, is_claimed")
-        .eq("university_roll_number", leadData.university_roll_number)
-        .maybeSingle();
+        .or(`university_roll_number.eq.${leadData.university_roll_number},email.eq.${leadData.email}`)
+        .limit(1);
+
+      const existingLead = existingLeads?.[0];
 
       if (existingLead) {
         leadId = existingLead.id;

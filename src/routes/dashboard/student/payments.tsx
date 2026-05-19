@@ -73,7 +73,7 @@ function StudentPayments() {
     }
 
     const options = {
-      key: "rzp_live_SWf4eSr5QxJyrn",
+      key: "rzp_live_SrD6N9ylebiBCT",
       amount: Math.round(finalAmount * 100), // in paise
       currency: "INR",
       name: "TechLaunchpad",

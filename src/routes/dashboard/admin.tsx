@@ -269,7 +269,14 @@ function AdminDashboard() {
     const { data: s } = await supabase.from("profiles").select("*").eq("role", "student").order("created_at", { ascending: false });
     setStudents(s || []);
     const { data: p } = await supabase.from("pre_registrations").select("*").order("created_at", { ascending: false });
-    setPreRegList(p || []);
+    const { data: l } = await supabase.from("leads").select("*").order("created_at", { ascending: false });
+    
+    const combined = [
+      ...(p || []).map(x => ({ ...x, _source: 'pre_reg' })),
+      ...(l || []).map(x => ({ ...x, _source: 'lead' }))
+    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    
+    setPreRegList(combined);
     const { data: u } = await supabase.from("universities").select("*, colleges(*, academic_structures(*))").order("name");
     setUniversities(u || []);
     const { data: i } = await supabase.from("internships").select("*").order("created_at", { ascending: false });
@@ -562,7 +569,7 @@ function AdminDashboard() {
       {view === "pre-reg" && (
         <div className="space-y-4">
             <div className="bg-white p-5 rounded-2xl border shadow-sm flex flex-wrap items-center justify-between gap-4">
-               <h2 className="text-lg font-black text-navy-deep uppercase tracking-tight">Authorization Staging</h2>
+               <h2 className="text-lg font-black text-navy-deep uppercase tracking-tight">Student Leads & Staging</h2>
                <div className="flex flex-wrap gap-2">
                   <Button variant="outline" onClick={() => { const h = "full_name,gender,parent_name,contact_number,email,university_name,college_name,department,degree,university_roll_number,semester"; const b = new Blob([h], { type: "text/csv" }); const u = URL.createObjectURL(b); const a = document.createElement("a"); a.href = u; a.download = "format.csv"; a.click(); }} className="h-9 px-4 rounded-xl border border-gold text-navy font-black uppercase text-[9px] tracking-widest hover:bg-gold hover:text-white transition-all">
                      <Download size={14} className="mr-1"/> Format
@@ -594,7 +601,12 @@ function AdminDashboard() {
                   <TableBody>
                      {preRegList.map((p) => (
                         <TableRow key={p.id} className="hover:bg-secondary/5 h-12 text-xs group border-b last:border-0">
-                           <TableCell className="px-5 font-black text-navy-deep uppercase">{p.full_name}</TableCell>
+                           <TableCell className="px-5 font-black text-navy-deep uppercase">
+                              <div className="flex items-center gap-2">
+                                 {p.full_name}
+                                 {p._source === 'lead' && <span className="bg-purple-100 text-purple-700 text-[8px] px-1.5 py-0.5 rounded-sm tracking-widest border border-purple-200">WEB LEAD</span>}
+                              </div>
+                           </TableCell>
                            <TableCell className="font-mono text-gold font-bold">{p.university_roll_number}</TableCell>
                            <TableCell className="font-bold text-slate-500">{p.email || "—"}</TableCell>
                            <TableCell className="font-medium text-slate-600 max-w-[200px] truncate">
@@ -614,7 +626,7 @@ function AdminDashboard() {
                               <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100">
                                  <Button size="icon" variant="ghost" className="size-8 rounded-lg border" onClick={() => setViewingPreReg(p)}><Eye size={16}/></Button>
                                  <Button size="icon" variant="ghost" className="size-8 rounded-lg border" onClick={() => { setSelectedPreReg(p); setIsEditPreRegOpen(true); }}><Edit size={16}/></Button>
-                                 <Button size="icon" variant="ghost" className="size-8 rounded-lg border text-red-500" onClick={async () => { if(confirm("Delete record?")) { await supabase.from("pre_registrations").delete().eq("id", p.id); fetchData(); } }}><Trash2 size={16}/></Button>
+                                 <Button size="icon" variant="ghost" className="size-8 rounded-lg border text-red-500" onClick={async () => { if(confirm("Delete record?")) { await supabase.from(p._source === 'lead' ? 'leads' : 'pre_registrations').delete().eq("id", p.id); fetchData(); } }}><Trash2 size={16}/></Button>
                               </div>
                            </TableCell>
                         </TableRow>
@@ -1426,7 +1438,7 @@ function AdminDashboard() {
                e.preventDefault(); 
                const fd = new FormData(e.currentTarget); 
                const data = Object.fromEntries(fd);
-               await supabase.from("pre_registrations").upsert({ id: selectedPreReg?.id, ...data });
+               await supabase.from(selectedPreReg?._source === 'lead' ? 'leads' : 'pre_registrations').upsert({ id: selectedPreReg?.id, ...data });
                toast.success("Done!"); setIsAddPreRegOpen(false); setIsEditPreRegOpen(false); fetchData(); 
             }} className="grid gap-4 py-4 md:grid-cols-3">
                <div className="space-y-1"><Label className="text-[9px] uppercase">Full Name *</Label><Input name="full_name" defaultValue={selectedPreReg?.full_name} required className="h-9 rounded-xl text-xs" /></div>
