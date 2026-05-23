@@ -43,11 +43,13 @@ function RegisterPage() {
   const [paymentResult, setPaymentResult] = useState<any>(null);
   const [paying, setPaying] = useState(false);
 
+  const INDIAN_STATES = ["Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal"];
   const [unis, setUnis] = useState<any[]>([]);
   const [colleges, setColleges] = useState<any[]>([]);
   const [structures, setStructures] = useState<any[]>([]);
   const [dbInternships, setDbInternships] = useState<any[]>([]);
-  
+  const [selectedState, setSelectedState] = useState("");
+  const [portalSettings, setPortalSettings] = useState<any>(null);
   const [selectedUni, setSelectedUni] = useState("");
   const [selectedCol, setSelectedCol] = useState("");
   const [regFee, setRegFee] = useState(150);
@@ -64,10 +66,22 @@ function RegisterPage() {
   }, []);
 
   useEffect(() => {
+    supabase.from("portal_settings").select("university_states").maybeSingle().then(({ data }) => {
+      setPortalSettings(data);
+    });
+  }, []);
+
+  useEffect(() => {
     fetchStaticData();
   }, []);
 
-  async function fetchStaticData() {
+  useEffect(() => {
+  setSelectedUni("");
+  setSelectedCol("");
+  setStructures([]);
+}, [selectedState]);
+
+async function fetchStaticData() {
     const { data: u } = await supabase.from("universities").select("*").order("name");
     setUnis(u || []);
     const { data: i } = await supabase.from("internships").select("*").order("title");
@@ -623,16 +637,33 @@ function RegisterPage() {
                 <h3 className="text-white font-black uppercase tracking-widest text-[11px]">02 — Academic Details (शैक्षणिक विवरण)</h3>
               </div>
               <div className="p-8 grid md:grid-cols-2 lg:grid-cols-3 gap-6 border-b">
-                <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">University <span className="text-red-500">*</span></Label>
+                <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">State <span className="text-red-500">*</span></Label>
+                   <select value={selectedState} onChange={(e) => setSelectedState(e.target.value)} className="w-full h-11 border-2 rounded-lg px-3 text-[11px] font-bold bg-white" >
+                     <option value="">-- SELECT STATE --</option>
+                     {INDIAN_STATES.map(st => <option key={st} value={st}>{st}</option>)}
+                     </select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase text-slate-400">University <span className="text-red-500">*</span></Label>
                   <select value={selectedUni} onChange={(e) => handleUniChange(e.target.value)} required className="w-full h-11 border-2 rounded-lg px-3 text-[11px] font-bold bg-white">
                     <option value="">-- SELECT --</option>
-                    {unis.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    {(selectedState ? unis.filter(u => u.state === selectedState) : unis).map(u => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
                   </select>
                 </div>
-                <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">College <span className="text-red-500">*</span></Label>
-                  <select value={selectedCol} onChange={(e) => handleColChange(e.target.value)} disabled={!selectedUni} required className="w-full h-11 border-2 rounded-lg px-3 text-[11px] font-bold bg-white">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase text-slate-400">College <span className="text-red-500">*</span></Label>
+                  <select
+                    value={selectedCol}
+                    onChange={(e) => handleColChange(e.target.value)}
+                    required
+                    className="w-full h-11 border-2 rounded-lg px-3 text-[11px] font-bold bg-white"
+                  >
                     <option value="">-- SELECT --</option>
-                    {colleges.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {selectedUni ? colleges.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    )) : null}
                   </select>
                 </div>
                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Branch <span className="text-red-500">*</span></Label>

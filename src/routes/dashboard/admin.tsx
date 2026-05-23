@@ -36,6 +36,17 @@ export const Route = createFileRoute("/dashboard/admin")({
   },
 });
 
+const INDIAN_STATES = [
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand",
+  "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur",
+  "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab",
+  "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura",
+  "Uttar Pradesh", "Uttarakhand", "West Bengal",
+  "Andaman and Nicobar Islands", "Chandigarh", "Dadra & Nagar Haveli",
+  "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
+];
+
 function AdminDashboard() {
   const { view } = (Route as any).useSearch();
   const { user } = useAuth();
@@ -85,6 +96,12 @@ function AdminDashboard() {
   const [isAddPreRegOpen, setIsAddPreRegOpen] = useState(false);
   const [isAddUniOpen, setIsAddUniOpen] = useState(false);
   const [isAddCollegeOpen, setIsAddCollegeOpen] = useState(false);
+  // Bulk operation states
+  const [isBulkUniOpen, setIsBulkUniOpen] = useState(false);
+  const [isBulkCollegeOpen, setIsBulkCollegeOpen] = useState(false);
+  const [bulkCSV, setBulkCSV] = useState('');
+  const [bulkParseErrors, setBulkParseErrors] = useState<string[]>([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
   const [isAddCourseOpen, setIsAddCourseOpen] = useState(false);
   const [selectedUniForCollege, setSelectedUniForCollege] = useState<any>(null);
   const [selectedColForStructure, setSelectedColForStructure] = useState<any>(null);
@@ -110,6 +127,79 @@ function AdminDashboard() {
   const [colSearch, setColSearch] = useState("");
   const [isEditUniOpen, setIsEditUniOpen] = useState(false);
   const [isEditColOpen, setIsEditColOpen] = useState(false);
+
+  // State-wise University Filter
+  const [selectedStateFilter, setSelectedStateFilter] = useState("");
+  const [uniStateForDialog, setUniStateForDialog] = useState("");
+  const [studentStateFilter, setStudentStateFilter] = useState("");
+
+  // Helper to parse CSV
+  const parseCSV = (text: string, expectedCols: number): { rows: string[][]; errors: string[] } => {
+    const rows: string[][] = [];
+    const errors: string[] = [];
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    lines.forEach((line, idx) => {
+      const cols = line.split(',').map(c => c.trim());
+      if (cols.length !== expectedCols) {
+        errors.push(`Expected ${expectedCols} columns but got ${cols.length}`);
+      } else {
+        rows.push(cols);
+      }
+    });
+    return { rows, errors };
+  };
+
+  const handleBulkUniversitySubmit = async () => {
+    setBulkLoading(true);
+    // Expect at least name and state; city is optional
+    const { rows, errors } = parseCSV(bulkCSV, 2);
+    if (errors.length) {
+      setBulkParseErrors(errors);
+      setBulkLoading(false);
+      return;
+    }
+    // rows may have only 2 columns; ensure city is set to empty string if missing
+    const inserts = rows.map(r => ({
+      name: r[0],
+      state: r[1],
+      city: r[2] ?? ''
+    }));
+    const { error } = await supabase.from('universities').insert(inserts);
+    if (error) {
+      toast.error('Bulk insert failed: ' + error.message);
+    } else {
+      toast.success(`✅ ${inserts.length} universities added`);
+      fetchData();
+      setIsBulkUniOpen(false);
+      setBulkCSV('');
+    }
+    setBulkLoading(false);
+  };
+
+  const handleBulkCollegeSubmit = async () => {
+    if (!selectedUniForCollege) {
+      toast.error('Select a university before bulk adding colleges');
+      return;
+    }
+    setBulkLoading(true);
+    const { rows, errors } = parseCSV(bulkCSV, 2);
+    if (errors.length) {
+      setBulkParseErrors(errors);
+      setBulkLoading(false);
+      return;
+    }
+    const inserts = rows.map(r => ({ name: r[0], address: r[1], university_id: selectedUniForCollege.id }));
+    const { error } = await supabase.from('colleges').insert(inserts);
+    if (error) {
+      toast.error('Bulk insert failed: ' + error.message);
+    } else {
+      toast.success(`✅ ${inserts.length} colleges added`);
+      fetchData();
+      setIsBulkCollegeOpen(false);
+      setBulkCSV('');
+    }
+    setBulkLoading(false);
+  };
 
   // Cascading Selection State for Forms
   const [activeUni, setActiveUni] = useState("");
@@ -937,9 +1027,21 @@ function AdminDashboard() {
                      </>
                   )}
                </div>
-               <div className="flex gap-2">
-                  {!explorerUni && <Button className="h-9 px-5 bg-[#1e40af] text-white rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg" onClick={() => setIsAddUniOpen(true)}>Add University</Button>}
+               <div className="flex gap-2 items-center">
+                  {!explorerUni && (
+                    <select
+                      value={selectedStateFilter}
+                      onChange={(e) => setSelectedStateFilter(e.target.value)}
+                      className="h-9 px-3 rounded-xl border-2 font-bold text-[10px] bg-white outline-none focus:border-[#1e40af] text-slate-600"
+                    >
+                      <option value="">All States</option>
+                      {INDIAN_STATES.map(st => <option key={st} value={st}>{st}</option>)}
+                    </select>
+                  )}
+                  {!explorerUni && <Button className="h-9 px-5 bg-[#1e40af] text-white rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg" onClick={() => { setUniStateForDialog(""); setIsAddUniOpen(true); }}>Add University</Button>}
                   {explorerUni && !explorerCol && <Button className="h-9 px-5 bg-[#1e40af] text-white rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg" onClick={() => { setSelectedUniForCollege(explorerUni); setIsAddCollegeOpen(true); }}>Add College</Button>}
+                  {!explorerUni && <Button variant="outline" className="h-9 px-5 rounded-xl text-[9px] font-black uppercase" onClick={() => setIsBulkUniOpen(true)}>Bulk Uni</Button>}
+                  {explorerUni && !explorerCol && <Button variant="outline" className="h-9 px-5 rounded-xl text-[9px] font-black uppercase" onClick={() => setIsBulkCollegeOpen(true)}>Bulk Col</Button>}
                </div>
             </div>
 
@@ -1061,22 +1163,32 @@ function AdminDashboard() {
             <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
                {!explorerUni ? (
                   <div className="divide-y">
-                     {universities.filter(u => u.name.toLowerCase().includes(uniSearch.toLowerCase())).map(uni => (
-                        <div key={uni.id} className="group flex items-center justify-between p-4 hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => setExplorerUni(uni)}>
-                           <div className="flex items-center gap-4">
-                              <div className="size-10 rounded-xl bg-blue-50 text-[#1e40af] grid place-items-center"><School size={20}/></div>
-                              <div>
-                                 <div className="text-sm font-black text-slate-800 uppercase tracking-tight">{uni.name}</div>
-                                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{uni.colleges?.length || 0} Affiliated Colleges</div>
+                     {universities
+                        .filter(u => u.name.toLowerCase().includes(uniSearch.toLowerCase()))
+                        .filter(u => !selectedStateFilter || u.state === selectedStateFilter)
+                        .map(uni => (
+                            <div key={uni.id} className="group flex items-center justify-between p-4 hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => setExplorerUni(uni)}>
+                              <div className="flex items-center gap-4">
+                                <div className="size-10 rounded-xl bg-blue-50 text-[#1e40af] grid place-items-center"><School size={20}/></div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="text-sm font-black text-slate-800 uppercase tracking-tight">{uni.name}</div>
+                                    {uni.state && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-100 text-[#1e40af] border border-blue-200">
+                                        📍 {uni.state}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{uni.colleges?.length || 0} Affiliated Colleges</div>
+                                </div>
                               </div>
-                           </div>
-                           <div className="flex gap-2 opacity-0 group-hover:opacity-100" onClick={(e) => e.stopPropagation()}>
-                              <Button size="icon" variant="ghost" className="size-8 rounded-lg border" onClick={() => { setSelectedUniForCollege(uni); setIsEditUniOpen(true); }}><Edit size={16}/></Button>
-                              <Button size="icon" variant="ghost" className="size-8 rounded-lg border text-red-500" onClick={async () => { if(confirm("Delete University?")) { await supabase.from("universities").delete().eq("id", uni.id); fetchData(); } }}><Trash2 size={16}/></Button>
-                              <ChevronRight size={18} className="text-slate-300 ml-2" />
-                           </div>
-                        </div>
-                     ))}
+                              <div className="flex gap-2 opacity-0 group-hover:opacity-100" onClick={(e) => e.stopPropagation()}>
+                                <Button size="icon" variant="ghost" className="size-8 rounded-lg border" onClick={() => { setSelectedUniForCollege(uni); setUniStateForDialog(uni.state || ""); setIsEditUniOpen(true); }}><Edit size={16}/></Button>
+                                <Button size="icon" variant="ghost" className="size-8 rounded-lg border text-red-500" onClick={async () => { if(confirm("Delete University?")) { await supabase.from("universities").delete().eq("id", uni.id); fetchData(); } }}><Trash2 size={16}/></Button>
+                                <ChevronRight size={18} className="text-slate-300 ml-2" />
+                              </div>
+                            </div>
+                        ))}
                   </div>
                ) : !explorerCol ? (
                   <div className="divide-y">
@@ -1152,7 +1264,126 @@ function AdminDashboard() {
                </div>
             )}
          </div>
-      )}{/* COMPACT PORTFOLIO (INTERNSHIPS) */}
+      )}{/* Bulk University Dialog */}
+       <Dialog open={isBulkUniOpen} onOpenChange={setIsBulkUniOpen}>
+         <DialogContent className="max-w-lg bg-white rounded-3xl p-6 border-none shadow-2xl">
+           <DialogHeader>
+             <DialogTitle className="text-lg font-black text-[#1e40af] uppercase">Bulk Add Universities</DialogTitle>
+            <DialogDescription className="text-sm font-medium text-gray-600">
+              Paste CSV data (columns: name, state) – one university per line.
+            </DialogDescription>
+             <DialogDescription className="text-sm font-medium text-gray-600">
+               Paste CSV data (columns: name, state, city) – one university per line.
+             </DialogDescription>
+           </DialogHeader>
+           <Textarea
+             placeholder="University Name, State, City"
+             value={bulkCSV}
+             onChange={e => setBulkCSV(e.target.value)}
+             className="min-h-[150px] mt-4"
+           />
+           {bulkParseErrors.length > 0 && (
+             <div className="mt-2 text-red-600 text-sm">
+               <ul>
+                 {bulkParseErrors.map((err, i) => (
+                   <li key={i}>Row {i + 1}: {err}</li>
+                 ))}
+               </ul>
+             </div>
+           )}
+           <DialogFooter className="flex justify-end gap-3 mt-4">
+             <Button variant="ghost" onClick={() => setIsBulkUniOpen(false)} disabled={bulkLoading}>Cancel</Button>
+             <Button onClick={handleBulkUniversitySubmit} disabled={bulkLoading} className="bg-[#1e40af] text-white">
+               {bulkLoading ? <Loader2 className="animate-spin mr-2" /> : null} Submit
+             </Button>
+           </DialogFooter>
+         </DialogContent>
+       </Dialog>
+
+       {/* Bulk College Dialog */}
+       <Dialog open={isBulkCollegeOpen} onOpenChange={setIsBulkCollegeOpen}>
+  <DialogContent className="max-w-lg bg-white rounded-3xl p-6 border-none shadow-2xl">
+    <DialogHeader>
+      <DialogTitle className="text-lg font-black text-[#1e40af] uppercase">Bulk Add Colleges</DialogTitle>
+      <DialogDescription className="text-sm font-medium text-gray-600">
+        Select a university above, then paste CSV data (columns: name, address) – one college per line.
+      </DialogDescription>
+    </DialogHeader>
+    {/* University selector */}
+    <div className="my-4">
+      <Label htmlFor="bulk-college-university" className="text-sm font-medium">University</Label>
+      <Select
+        value={selectedUniForCollege?.id || ''}
+        onValueChange={(id) => {
+          const uni = universities.find((u) => u.id === id);
+          setSelectedUniForCollege(uni || null);
+        }}
+      >
+        <SelectTrigger id="bulk-college-university" className="w-full">
+          <SelectValue placeholder="Select a university…" />
+        </SelectTrigger>
+        <SelectContent>
+          {universities.map((u) => (
+            <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+    <Textarea
+      placeholder="College Name, Address"
+      value={bulkCSV}
+      onChange={e => setBulkCSV(e.target.value)}
+      className="min-h-[150px] mt-4"
+    />
+    {bulkParseErrors.length > 0 && (
+      <div className="mt-2 text-red-600 text-sm">
+        <ul>
+          {bulkParseErrors.map((err, i) => (
+            <li key={i}>Row {i + 1}: {err}</li>
+          ))}
+        </ul>
+      </div>
+    )}
+    <DialogFooter className="flex justify-end gap-3 mt-4">
+      <Button variant="ghost" onClick={() => setIsBulkCollegeOpen(false)} disabled={bulkLoading}>Cancel</Button>
+      <Button onClick={handleBulkCollegeSubmit} disabled={bulkLoading} className="bg-[#1e40af] text-white">
+        {bulkLoading ? <Loader2 className="animate-spin mr-2" /> : null} Submit
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+         <DialogContent className="max-w-lg bg-white rounded-3xl p-6 border-none shadow-2xl">
+           <DialogHeader>
+             <DialogTitle className="text-lg font-black text-[#1e40af] uppercase">Bulk Add Colleges</DialogTitle>
+             <DialogDescription className="text-sm font-medium text-gray-600">
+               Select a university above, then paste CSV data (columns: name, address) – one college per line.
+             </DialogDescription>
+           </DialogHeader>
+           <Textarea
+             placeholder="College Name, Address"
+             value={bulkCSV}
+             onChange={e => setBulkCSV(e.target.value)}
+             className="min-h-[150px] mt-4"
+           />
+           {bulkParseErrors.length > 0 && (
+             <div className="mt-2 text-red-600 text-sm">
+               <ul>
+                 {bulkParseErrors.map((err, i) => (
+                   <li key={i}>Row {i + 1}: {err}</li>
+                 ))}
+               </ul>
+             </div>
+           )}
+           <DialogFooter className="flex justify-end gap-3 mt-4">
+             <Button variant="ghost" onClick={() => setIsBulkCollegeOpen(false)} disabled={bulkLoading}>Cancel</Button>
+             <Button onClick={handleBulkCollegeSubmit} disabled={bulkLoading} className="bg-[#1e40af] text-white">
+               {bulkLoading ? <Loader2 className="animate-spin mr-2" /> : null} Submit
+             </Button>
+           </DialogFooter>
+         </DialogContent>
+       </Dialog>
+
+      {/* COMPACT PORTFOLIO (INTERNSHIPS) */}
       {view === "internships" && (
         <div className="space-y-6">
            <div className="bg-white p-5 rounded-2xl border shadow-sm flex flex-wrap items-center justify-between gap-4">
@@ -1589,496 +1820,6 @@ function AdminDashboard() {
          </div>
       )}
 
-      {view === "profile" && (
-         <div className="space-y-6 animate-in fade-in slide-in-from-bottom duration-300">
-            {profileLoading ? (
-               <div className="bg-white p-12 rounded-2xl border shadow-sm flex flex-col items-center justify-center space-y-4">
-                  <Loader2 className="size-8 text-gold animate-spin" />
-                  <p className="text-xs font-black text-navy uppercase tracking-widest">Loading Admin Profile...</p>
-               </div>
-            ) : (
-               <div className="grid md:grid-cols-2 gap-6">
-                  
-                  {/* Left Column: Admin Details */}
-                  <div className="space-y-6">
-                     <div className="bg-white p-6 rounded-2xl border shadow-sm flex flex-col justify-between h-full">
-                        <div>
-                           <div className="flex items-center gap-3 mb-6 border-b pb-4">
-                              <div className="size-10 rounded-xl bg-navy/5 text-navy grid place-items-center">
-                                 <User className="size-5" />
-                              </div>
-                              <div>
-                                 <h2 className="text-lg font-black text-navy-deep uppercase tracking-tighter">Admin Information</h2>
-                                 <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
-                                    Update your personal administrative account details
-                                 </p>
-                              </div>
-                           </div>
-
-                           <form onSubmit={handleUpdateProfile} className="space-y-4">
-                              <div className="space-y-1.5">
-                                 <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Full Name</Label>
-                                 <Input 
-                                    type="text" 
-                                    value={adminName} 
-                                    onChange={(e) => setAdminName(e.target.value)} 
-                                    required
-                                    placeholder="Enter full name"
-                                    className="font-bold text-sm rounded-xl border-2 h-11"
-                                 />
-                              </div>
-
-                              <div className="space-y-1.5">
-                                 <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Contact Number</Label>
-                                 <Input 
-                                    type="text" 
-                                    value={adminContact} 
-                                    onChange={(e) => setAdminContact(e.target.value)} 
-                                    placeholder="Enter contact number"
-                                    className="font-bold text-sm rounded-xl border-2 h-11"
-                                 />
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-4 pt-2">
-                                 <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-black text-navy uppercase tracking-wider">System Role</Label>
-                                    <div className="h-11 px-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center text-xs font-black text-slate-500 uppercase tracking-widest">
-                                       {adminProfile?.role || "ADMIN"}
-                                    </div>
-                                 </div>
-                                 <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Created At</Label>
-                                    <div className="h-11 px-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center text-xs font-black text-slate-500 uppercase tracking-widest">
-                                       {adminProfile?.created_at ? new Date(adminProfile.created_at).toLocaleDateString() : "-"}
-                                    </div>
-                                 </div>
-                              </div>
-
-                              <div className="pt-4">
-                                 <Button 
-                                    type="submit" 
-                                    disabled={updatingProfile} 
-                                    className="w-full bg-navy hover:bg-navy-deep text-white h-11 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-md flex items-center justify-center gap-2"
-                                 >
-                                    {updatingProfile ? <Loader2 className="animate-spin size-4" /> : <><CheckCircle2 size={16} /> Save Admin Details</>}
-                                 </Button>
-                              </div>
-                           </form>
-                        </div>
-                     </div>
-                  </div>
-
-                  {/* Right Column: Security (Email & Password) */}
-                  <div className="space-y-6">
-                     
-                     {/* Email Update Card */}
-                     <div className="bg-white p-6 rounded-2xl border shadow-sm">
-                        <div className="flex items-center gap-3 mb-6 border-b pb-4">
-                           <div className="size-10 rounded-xl bg-gold/10 text-gold grid place-items-center">
-                              <Mail className="size-5" />
-                           </div>
-                           <div>
-                              <h2 className="text-lg font-black text-navy-deep uppercase tracking-tighter">Change Email Address</h2>
-                              <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
-                                 Update your primary login email address
-                              </p>
-                           </div>
-                        </div>
-
-                        <form onSubmit={handleUpdateEmail} className="space-y-4">
-                           <div className="space-y-1.5">
-                              <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Current Email</Label>
-                              <div className="h-11 px-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center text-xs font-bold text-slate-500">
-                                 {adminEmail || "Loading..."}
-                              </div>
-                           </div>
-
-                           <div className="space-y-1.5">
-                              <Label className="text-[10px] font-black text-navy uppercase tracking-wider">New Email Address</Label>
-                              <Input 
-                                 type="email" 
-                                 value={newEmail} 
-                                 onChange={(e) => setNewEmail(e.target.value)} 
-                                 required
-                                 placeholder="Enter new email address"
-                                 className="font-bold text-sm rounded-xl border-2 h-11"
-                              />
-                           </div>
-
-                           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[10px] text-amber-700 leading-normal font-bold">
-                              <span className="uppercase text-amber-800 font-black">Note:</span> Changing your email requires verification. Supabase will send a confirmation link to both your current and new email addresses. The change will take effect only after both links are clicked.
-                           </div>
-
-                           <div className="pt-2">
-                              <Button 
-                                 type="submit" 
-                                 disabled={updatingEmail} 
-                                 className="w-full bg-gold hover:bg-gold-dark text-white h-11 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-md flex items-center justify-center gap-2"
-                              >
-                                 {updatingEmail ? <Loader2 className="animate-spin size-4" /> : <><RefreshCw size={16} /> Request Email Update</>}
-                              </Button>
-                           </div>
-                        </form>
-                     </div>
-
-                     {/* Password Update Card */}
-                     <div className="bg-white p-6 rounded-2xl border shadow-sm">
-                        <div className="flex items-center gap-3 mb-6 border-b pb-4">
-                           <div className="size-10 rounded-xl bg-navy/5 text-navy grid place-items-center">
-                              <Lock className="size-5" />
-                           </div>
-                           <div>
-                              <h2 className="text-lg font-black text-navy-deep uppercase tracking-tighter">Change Password</h2>
-                              <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
-                                 Set a secure new password for your login account
-                              </p>
-                           </div>
-                        </div>
-
-                        <form onSubmit={handleUpdatePassword} className="space-y-4">
-                           <div className="space-y-1.5">
-                              <Label className="text-[10px] font-black text-navy uppercase tracking-wider">New Password</Label>
-                              <Input 
-                                 type="password" 
-                                 value={newPassword} 
-                                 onChange={(e) => setNewPassword(e.target.value)} 
-                                 required
-                                 placeholder="At least 6 characters"
-                                 className="font-bold text-sm rounded-xl border-2 h-11"
-                              />
-                           </div>
-
-                           <div className="space-y-1.5">
-                              <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Confirm New Password</Label>
-                              <Input 
-                                 type="password" 
-                                 value={confirmPassword} 
-                                 onChange={(e) => setConfirmPassword(e.target.value)} 
-                                 required
-                                 placeholder="Re-enter new password"
-                                 className="font-bold text-sm rounded-xl border-2 h-11"
-                              />
-                           </div>
-
-                           <div className="pt-2">
-                              <Button 
-                                 type="submit" 
-                                 disabled={updatingPassword} 
-                                 className="w-full bg-navy hover:bg-navy-deep text-white h-11 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-md flex items-center justify-center gap-2"
-                              >
-                                 {updatingPassword ? <Loader2 className="animate-spin size-4" /> : <><CheckCircle2 size={16} /> Update Password</>}
-                              </Button>
-                           </div>
-                        </form>
-                     </div>
-
-                  </div>
-
-               </div>
-            )}
-         </div>
-      )}
-
-      {view === "lectures" && (
-         <div className="space-y-6 animate-in fade-in slide-in-from-bottom duration-300">
-             <div className="grid lg:grid-cols-3 gap-6">
-                
-                {/* Left Column: Form to Add Lecture */}
-                <div className="lg:col-span-1 space-y-6">
-                   <div className="bg-white p-6 rounded-2xl border shadow-sm">
-                      <div className="flex items-center gap-3 mb-6 border-b pb-4">
-                         <div className="size-10 rounded-xl bg-navy/5 text-navy grid place-items-center">
-                            <Video className="size-5" />
-                         </div>
-                         <div>
-                            <h2 className="text-lg font-black text-navy-deep uppercase tracking-tighter">Add Online Lecture</h2>
-                            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
-                               Create and dispatch a new video session to students
-                            </p>
-                         </div>
-                      </div>
-
-                      <form onSubmit={handleCreateLecture} className="space-y-4">
-                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Lecture Title</Label>
-                            <Input 
-                               type="text" 
-                               value={newLectureTitle} 
-                               onChange={(e) => setNewLectureTitle(e.target.value)} 
-                               required
-                               placeholder="e.g. Intro to React Hooks"
-                               className="font-bold text-sm rounded-xl border-2 h-11"
-                            />
-                         </div>
-
-                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Select Domain</Label>
-                            <select
-                               value={newLectureDomain}
-                               onChange={(e) => setNewLectureDomain(e.target.value)}
-                               required
-                               className="w-full font-bold text-sm rounded-xl border-2 h-11 px-3 bg-white focus:outline-none focus:ring-2 focus:ring-navy/20"
-                            >
-                               <option value="">-- Choose Internship Domain --</option>
-                               <option value="General">General / All Domains</option>
-                               {Array.from(new Set(internships.map(i => i.title).filter(Boolean))).map(domain => (
-                                 <option key={domain} value={domain}>{domain}</option>
-                               ))}
-                            </select>
-                         </div>
-
-                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Lecture Mode</Label>
-                            <select
-                               value={newLectureMode}
-                               onChange={(e) => setNewLectureMode(e.target.value)}
-                               required
-                               className="w-full font-bold text-sm rounded-xl border-2 h-11 px-3 bg-white focus:outline-none focus:ring-2 focus:ring-navy/20"
-                            >
-                               <option value="Google Meet">Google Meet</option>
-                               <option value="YouTube">YouTube</option>
-                               <option value="Other">Other</option>
-                            </select>
-                         </div>
-
-                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Lecture Link / Meeting URL</Label>
-                            <Input 
-                               type="url" 
-                               value={newLectureLink} 
-                               onChange={(e) => setNewLectureLink(e.target.value)} 
-                               required
-                               placeholder="e.g. https://meet.google.com/..."
-                               className="font-bold text-sm rounded-xl border-2 h-11"
-                            />
-                         </div>
-
-                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Description</Label>
-                            <Textarea 
-                               value={newLectureDesc} 
-                               onChange={(e) => setNewLectureDesc(e.target.value)} 
-                               placeholder="Enter session details, topics covered, or schedule..."
-                               rows={3}
-                               className="font-bold text-sm rounded-xl border-2 p-3 resize-none"
-                            />
-                         </div>
-
-                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Add Material (PDF)</Label>
-                            <Input 
-                               id="material_pdf_input"
-                               type="file" 
-                               accept="application/pdf"
-                               onChange={(e) => setNewLectureMaterialPdf(e.target.files?.[0] || null)}
-                               className="font-bold text-sm rounded-xl border-2 h-11 file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-navy/10 file:text-navy cursor-pointer"
-                            />
-                         </div>
-
-                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-black text-navy uppercase tracking-wider">Add Material (Link)</Label>
-                            <Input 
-                               type="url" 
-                               value={newLectureMaterialLink} 
-                               onChange={(e) => setNewLectureMaterialLink(e.target.value)} 
-                               placeholder="e.g. https://github.com/..."
-                               className="font-bold text-sm rounded-xl border-2 h-11"
-                            />
-                         </div>
-
-                         <div className="pt-2">
-                            <Button 
-                               type="submit" 
-                               disabled={savingLecture} 
-                               className="w-full bg-gold hover:bg-gold-dark text-white h-11 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-md flex items-center justify-center gap-2"
-                            >
-                               {savingLecture ? <Loader2 className="animate-spin size-4" /> : <><Video size={16} /> Add Lecture</>}
-                            </Button>
-                         </div>
-                      </form>
-                   </div>
-                </div>
-
-                {/* Right Column: Existing Lectures List */}
-                <div className="lg:col-span-2 space-y-6">
-                   <div className="bg-white p-6 rounded-2xl border shadow-sm min-h-[400px] flex flex-col">
-                      <div className="flex items-center justify-between border-b pb-4 mb-6">
-                         <div>
-                            <h2 className="text-lg font-black text-navy-deep uppercase tracking-tighter">Active Lectures</h2>
-                            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
-                               Monitor or delete scheduled and recorded online sessions
-                            </p>
-                         </div>
-                         <div className="bg-slate-100 px-3 py-1 rounded-lg text-[10px] font-black text-navy uppercase">
-                            Total: {lecturesList.length}
-                         </div>
-                      </div>
-
-                      {loadingLectures ? (
-                         <div className="flex-1 flex flex-col items-center justify-center py-12 space-y-4">
-                            <Loader2 className="size-8 text-gold animate-spin" />
-                            <p className="text-xs font-black text-navy uppercase tracking-widest">Loading Lectures...</p>
-                         </div>
-                      ) : lecturesList.length === 0 ? (
-                         <div className="flex-1 flex flex-col items-center justify-center py-12 text-center text-muted-foreground border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50">
-                            <Video className="size-12 opacity-20 mb-4" />
-                            <p className="text-sm font-bold">No lectures scheduled yet.</p>
-                            <p className="text-[10px] opacity-75">Use the form on the left to add a lecture.</p>
-                         </div>
-                      ) : (
-                         <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
-                            {lecturesList.map((lecture) => {
-                               let parsedDesc = lecture.description;
-                               let domainName = "General";
-                               let modeName = "Other";
-                               let pdfUrl = "";
-                               let linkUrl = "";
-                               try {
-                                  const parsed = JSON.parse(lecture.description);
-                                  parsedDesc = parsed.description || "";
-                                  domainName = parsed.domain || "General";
-                                  modeName = parsed.mode || "Other";
-                                  pdfUrl = parsed.material_pdf || "";
-                                  linkUrl = parsed.material_link || "";
-                               } catch (e) {
-                                  // Fallback for raw descriptions
-                               }
-
-                               return (
-                                  <div key={lecture.id} className="p-4 rounded-xl border-2 hover:border-slate-300 transition-colors flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/20">
-                                     <div className="space-y-1.5 flex-1">
-                                        <div className="flex flex-wrap gap-2 items-center">
-                                           <span className="text-[9px] font-black bg-gold/10 border border-gold/20 text-gold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                              {domainName}
-                                           </span>
-                                           <span className="text-[9px] font-black bg-navy/10 border border-navy/20 text-navy px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                              {modeName}
-                                           </span>
-                                        </div>
-                                        <h3 className="font-bold text-sm text-navy-deep leading-snug">{lecture.title}</h3>
-                                        {parsedDesc && <p className="text-xs text-muted-foreground line-clamp-2">{parsedDesc}</p>}
-                                        <div className="text-[10px] text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 pt-1 font-medium">
-                                           <span className="font-mono truncate max-w-[200px] md:max-w-xs block">
-                                              Link: <a href={lecture.link} target="_blank" rel="noreferrer" className="text-navy hover:underline font-bold">{lecture.link}</a>
-                                           </span>
-                                           {pdfUrl && (
-                                              <span className="text-emerald-700 font-bold">
-                                                 PDF: <a href={pdfUrl} target="_blank" rel="noreferrer" className="hover:underline">View File</a>
-                                              </span>
-                                           )}
-                                           {linkUrl && (
-                                              <span className="text-indigo-700 font-bold">
-                                                 Material: <a href={linkUrl} target="_blank" rel="noreferrer" className="hover:underline">View Link</a>
-                                              </span>
-                                           )}
-                                        </div>
-                                     </div>
-                                     <div className="flex items-center gap-2 self-stretch md:self-auto justify-end border-t md:border-none pt-2 md:pt-0">
-                                        <Button 
-                                           variant="destructive" 
-                                           size="icon" 
-                                           className="size-9 rounded-lg"
-                                           onClick={() => handleDeleteLecture(lecture.id)}
-                                        >
-                                           <Trash2 className="size-4" />
-                                        </Button>
-                                     </div>
-                                  </div>
-                               );
-                            })}
-                         </div>
-                      )}
-                   </div>
-                </div>
-
-             </div>
-         </div>
-      )}
-
-      {/* DIALOGS */}
-      {/* Attendance History Dialog */}
-      <Dialog open={!!viewingAttendance} onOpenChange={(o) => !o && setViewingAttendance(null)}>
-         <DialogContent className="max-w-3xl rounded-3xl p-0 overflow-hidden border-none shadow-2xl bg-white">
-            <div className="bg-navy p-6 text-white flex items-center justify-between">
-               <div>
-                  <h2 className="text-xl font-black uppercase tracking-tighter leading-none mb-1">Attendance History</h2>
-                  <p className="text-[10px] font-bold text-gold uppercase tracking-widest">{viewingAttendance?.student?.full_name} | {viewingAttendance?.student?.university_roll_number}</p>
-               </div>
-               <Button size="icon" variant="ghost" className="text-white/40 hover:text-white" onClick={() => setViewingAttendance(null)}>✕</Button>
-            </div>
-            <div className="p-0 max-h-[60vh] overflow-y-auto">
-               <Table>
-                  <TableHeader className="bg-secondary/10 sticky top-0 z-10">
-                     <TableRow>
-                        <TableHead className="px-6 py-3 font-black uppercase text-[9px] tracking-widest">Date</TableHead>
-                        <th className="px-6 py-3 font-black uppercase text-[9px] tracking-widest text-left">Status</th>
-                        <th className="px-6 py-3 font-black uppercase text-[9px] tracking-widest text-left">Verified At</th>
-                        <th className="px-6 py-3 font-black uppercase text-[9px] tracking-widest text-right">Action</th>
-                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                     {viewingAttendance?.records?.length === 0 ? (
-                        <TableRow><TableCell colSpan={4} className="text-center py-10 text-muted-foreground font-bold uppercase text-[10px]">No records found.</TableCell></TableRow>
-                     ) : viewingAttendance?.records?.map((r: any) => (
-                        <TableRow key={r.id} className="hover:bg-gold/5 transition-colors border-b">
-                           <TableCell className="px-6 py-4 font-bold text-navy-deep">{new Date(r.date).toLocaleDateString()}</TableCell>
-                           <TableCell className="px-6 py-4">
-                              <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${r.status === 'present' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
-                                 {r.status}
-                              </span>
-                           </TableCell>
-                           <TableCell className="px-6 py-4 text-[10px] font-bold text-navy/60">{new Date(r.created_at).toLocaleTimeString()}</TableCell>
-                           <TableCell className="px-6 py-4 text-right">
-                              <Button size="icon" variant="ghost" className="size-7 text-red-500 hover:bg-red-50" onClick={async () => {
-                                 if(confirm("Delete this log?")) {
-                                    await supabase.from("attendance").delete().eq("id", r.id);
-                                    const { data } = await supabase.from("attendance").select("*").eq("student_id", viewingAttendance.student.id).order("date", { ascending: false });
-                                    setViewingAttendance({ ...viewingAttendance, records: data || [] });
-                                 }
-                              }}><Trash2 size={14}/></Button>
-                           </TableCell>
-                        </TableRow>
-                     ))}
-                  </TableBody>
-               </Table>
-            </div>
-            <div className="p-6 bg-secondary/5 border-t space-y-4">
-               <div className="flex items-center gap-4 bg-white p-4 rounded-2xl border">
-                  <div className="flex-1">
-                     <div className="text-[8px] font-black uppercase opacity-40 mb-1">Add Manual Record</div>
-                     <form onSubmit={async (e) => {
-                        e.preventDefault();
-                        const fd = new FormData(e.currentTarget);
-                        const date = fd.get("date") as string;
-                        if(!date) return;
-                        
-                        const { error } = await supabase.from("attendance").insert({
-                           student_id: viewingAttendance.student.id,
-                           date,
-                           status: "present"
-                        });
-                        
-                        if(!error) {
-                           toast.success("Record Added!");
-                           const { data } = await supabase.from("attendance").select("*").eq("student_id", viewingAttendance.student.id).order("date", { ascending: false });
-                           setViewingAttendance({ ...viewingAttendance, records: data || [] });
-                           fetchData();
-                        } else {
-                           toast.error("Duplicate or Error: " + error.message);
-                        }
-                     }} className="flex gap-2">
-                        <Input name="date" type="date" className="h-9 rounded-xl text-xs font-bold" required />
-                        <Button type="submit" className="bg-gold text-navy-deep px-6 h-9 rounded-xl font-black text-[9px] uppercase tracking-widest">Add Present</Button>
-                     </form>
-                  </div>
-               </div>
-               <div className="flex justify-end gap-3">
-                  <Button onClick={() => setViewingAttendance(null)} className="bg-navy text-white px-10 h-10 rounded-xl font-black text-[10px] uppercase">Close Window</Button>
-               </div>
-            </div>
-         </DialogContent>
-      </Dialog>
-
       {/* Student Form Dialog */}
       <Dialog open={isAddDialogOpen || isEditDialogOpen} onOpenChange={(o) => { if(!o) { setIsAddDialogOpen(false); setIsEditDialogOpen(false); setSelectedStudent(null); } }}>
          <DialogContent className="max-w-5xl rounded-3xl p-0 border-none shadow-2xl overflow-hidden bg-white">
@@ -2096,7 +1837,19 @@ function AdminDashboard() {
                 <div className="space-y-1"><Label className="font-black text-[9px] uppercase">Contact *</Label><Input name="contact_number" defaultValue={selectedStudent?.contact_number} required className="h-10 rounded-xl font-bold bg-secondary/5 text-xs" /></div>
                 <div className="space-y-1"><Label className="font-black text-[9px] uppercase">Gender</Label><select name="gender" defaultValue={selectedStudent?.gender} className="w-full h-10 border rounded-xl px-3 font-bold text-xs bg-secondary/5"><option value="Male">MALE</option><option value="Female">FEMALE</option></select></div>
                 <div className="space-y-1"><Label className="font-black text-[9px] uppercase">Parent</Label><Input name="parent_name" defaultValue={selectedStudent?.parent_name} className="h-10 border rounded-xl font-bold bg-secondary/5 text-xs" /></div>
-                <div className="space-y-1"><Label className="font-black text-[9px] uppercase text-gold">University *</Label><select className="w-full h-10 border border-gold/20 rounded-xl px-3 font-black text-xs bg-gold/5" value={activeUni} onChange={(e) => handleUniSelect(e.target.value)} required><option value="">SELECT UNI</option>{universities.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></div>
+                <div className="space-y-1">
+                   <Label className="font-black text-[9px] uppercase text-slate-500">State (राज्य) *</Label>
+                   <select
+                     className="w-full h-10 border rounded-xl px-3 font-black text-xs bg-secondary/5"
+                     value={studentStateFilter}
+                     onChange={(e) => { setStudentStateFilter(e.target.value); setActiveUni(""); setActiveCol(""); setFilteredColleges([]); setActiveStructures([]); }}
+                     required
+                   >
+                     <option value="">SELECT STATE</option>
+                     {INDIAN_STATES.map(st => <option key={st} value={st}>{st}</option>)}
+                   </select>
+                 </div>
+                <div className="space-y-1"><Label className="font-black text-[9px] uppercase text-gold">University *</Label><select className="w-full h-10 border border-gold/20 rounded-xl px-3 font-black text-xs bg-gold/5" value={activeUni} onChange={(e) => handleUniSelect(e.target.value)} required disabled={!studentStateFilter}><option value="">SELECT UNI</option>{universities.filter(u => !studentStateFilter || u.state === studentStateFilter).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></div>
                 <div className="space-y-1"><Label className="font-black text-[9px] uppercase text-gold">College *</Label><select className="w-full h-10 border border-gold/20 rounded-xl px-3 font-black text-xs bg-gold/5" value={activeCol} disabled={!activeUni} onChange={(e) => handleColSelect(e.target.value)} required><option value="">SELECT COLLEGE</option>{filteredColleges.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
                 <div className="space-y-1"><Label className="font-black text-[9px] uppercase">Branch</Label><select name="department" defaultValue={selectedStudent?.department} className="w-full h-10 border rounded-xl px-3 font-black text-xs" disabled={!activeCol} required><option value="">BRANCH</option>{Array.from(new Set(activeStructures.map(s => s.department))).map(d => <option key={d} value={d}>{d}</option>)}</select></div>
                 <div className="space-y-1"><Label className="font-black text-[9px] uppercase">Degree</Label><select name="degree" defaultValue={selectedStudent?.degree} className="w-full h-10 border rounded-xl px-3 font-black text-xs" disabled={!activeCol} required>{Array.from(new Set(activeStructures.map(s => s.degree))).map(d => <option key={d} value={d}>{d}</option>)}</select></div>
@@ -2158,17 +1911,40 @@ function AdminDashboard() {
          </DialogContent>
       </Dialog>
 
-      <Dialog open={isAddUniOpen || isEditUniOpen} onOpenChange={(o) => { if(!o) { setIsAddUniOpen(false); setIsEditUniOpen(false); setSelectedUniForCollege(null); } }}>
+      <Dialog open={isAddUniOpen || isEditUniOpen} onOpenChange={(o) => { if(!o) { setIsAddUniOpen(false); setIsEditUniOpen(false); setSelectedUniForCollege(null); setUniStateForDialog(""); } }}>
          <DialogContent className="max-w-md rounded-2xl p-6">
             <DialogHeader><DialogTitle className="text-lg font-black text-[#1e40af] uppercase">{selectedUniForCollege ? "Edit University" : "Add University"}</DialogTitle></DialogHeader>
             <form onSubmit={async (e) => { 
                e.preventDefault(); 
-               const fd = new FormData(e.currentTarget); 
-               await supabase.from("universities").upsert({ id: selectedUniForCollege?.id, name: fd.get("name") }); 
-               toast.success("Success!"); setIsAddUniOpen(false); setIsEditUniOpen(false); fetchData(); 
+               const fd = new FormData(e.currentTarget);
+               const { error: uErr } = await supabase.from("universities").upsert({ 
+                 id: selectedUniForCollege?.id, 
+                 name: fd.get("name"),
+                 state: uniStateForDialog || null
+               });
+               if (uErr) { toast.error("Error: " + uErr.message); return; }
+               toast.success("University saved!"); setIsAddUniOpen(false); setIsEditUniOpen(false); setSelectedUniForCollege(null); setUniStateForDialog(""); fetchData(); 
             }} className="space-y-4 py-4">
-               <div className="space-y-1"><Label className="text-[9px] uppercase">University Name</Label><Input name="name" defaultValue={selectedUniForCollege?.name} required className="h-10 rounded-xl text-xs" /></div>
-               <div className="flex justify-end gap-3 pt-4"><Button type="button" variant="ghost" onClick={() => { setIsAddUniOpen(false); setIsEditUniOpen(false); }}>Cancel</Button><Button type="submit" className="bg-[#1e40af] text-white px-8 h-10 rounded-xl font-black text-[10px] uppercase tracking-widest">SAVE</Button></div>
+               <div className="space-y-1">
+                 <Label className="text-[9px] uppercase">University Name</Label>
+                 <Input name="name" defaultValue={selectedUniForCollege?.name} required className="h-10 rounded-xl text-xs" />
+               </div>
+               <div className="space-y-1">
+                 <Label className="text-[9px] uppercase font-black text-[#1e40af]">State (राज्य) *</Label>
+                 <select
+                   value={uniStateForDialog}
+                   onChange={(e) => setUniStateForDialog(e.target.value)}
+                   required
+                   className="w-full h-10 border-2 border-[#1e40af]/20 rounded-xl px-3 font-bold text-xs bg-blue-50/50 outline-none focus:border-[#1e40af]"
+                 >
+                   <option value="">-- SELECT STATE --</option>
+                   {INDIAN_STATES.map(st => <option key={st} value={st}>{st}</option>)}
+                 </select>
+               </div>
+               <div className="flex justify-end gap-3 pt-4">
+                 <Button type="button" variant="ghost" onClick={() => { setIsAddUniOpen(false); setIsEditUniOpen(false); setUniStateForDialog(""); }}>Cancel</Button>
+                 <Button type="submit" className="bg-[#1e40af] text-white px-8 h-10 rounded-xl font-black text-[10px] uppercase tracking-widest">SAVE</Button>
+               </div>
             </form>
          </DialogContent>
       </Dialog>
