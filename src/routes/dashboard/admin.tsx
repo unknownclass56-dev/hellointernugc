@@ -1352,36 +1352,6 @@ function AdminDashboard() {
     </DialogFooter>
   </DialogContent>
 </Dialog>
-         <DialogContent className="max-w-lg bg-white rounded-3xl p-6 border-none shadow-2xl">
-           <DialogHeader>
-             <DialogTitle className="text-lg font-black text-[#1e40af] uppercase">Bulk Add Colleges</DialogTitle>
-             <DialogDescription className="text-sm font-medium text-gray-600">
-               Select a university above, then paste CSV data (columns: name, address) – one college per line.
-             </DialogDescription>
-           </DialogHeader>
-           <Textarea
-             placeholder="College Name, Address"
-             value={bulkCSV}
-             onChange={e => setBulkCSV(e.target.value)}
-             className="min-h-[150px] mt-4"
-           />
-           {bulkParseErrors.length > 0 && (
-             <div className="mt-2 text-red-600 text-sm">
-               <ul>
-                 {bulkParseErrors.map((err, i) => (
-                   <li key={i}>Row {i + 1}: {err}</li>
-                 ))}
-               </ul>
-             </div>
-           )}
-           <DialogFooter className="flex justify-end gap-3 mt-4">
-             <Button variant="ghost" onClick={() => setIsBulkCollegeOpen(false)} disabled={bulkLoading}>Cancel</Button>
-             <Button onClick={handleBulkCollegeSubmit} disabled={bulkLoading} className="bg-[#1e40af] text-white">
-               {bulkLoading ? <Loader2 className="animate-spin mr-2" /> : null} Submit
-             </Button>
-           </DialogFooter>
-         </DialogContent>
-       </Dialog>
 
       {/* COMPACT PORTFOLIO (INTERNSHIPS) */}
       {view === "internships" && (
