@@ -67,6 +67,7 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 }
 
 import { createClient } from "@supabase/supabase-js";
+import nodemailer from "nodemailer";
 
 const supabaseUrl = "https://prnrdlmmplmxrptdhmfj.supabase.co";
 const supabaseAnonKey = "sb_publishable_wqG_8g8c8qIwUPDJDNVx8A_Wi2cA1Hh";
@@ -76,6 +77,78 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const url = new URL(request.url);
+      
+      if (url.pathname === "/api/send-email") {
+        if (request.method === "OPTIONS") {
+          return new Response(null, {
+            status: 204,
+            headers: {
+              "Access-Control-Allow-Origin": "*",
+              "Access-Control-Allow-Headers": "Content-Type",
+              "Access-Control-Allow-Methods": "POST, OPTIONS"
+            }
+          });
+        }
+        
+        if (request.method !== "POST") {
+          return new Response(JSON.stringify({ error: "Only POST requests are allowed" }), {
+            status: 405,
+            headers: { 
+              "content-type": "application/json",
+              "Access-Control-Allow-Origin": "*"
+            }
+          });
+        }
+        
+        try {
+          const body: any = await request.json();
+          const { to, subject, html } = body;
+          
+          if (!to || !subject || !html) {
+            return new Response(JSON.stringify({ error: "Missing required fields: to, subject, html" }), {
+              status: 400,
+              headers: { 
+                "content-type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+              }
+            });
+          }
+
+          const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+              user: "email-techlaunchpad01@gmail.com",
+              pass: "oahjqhatwddgeiig"
+            }
+          });
+
+          const info = await transporter.sendMail({
+            from: '"TechLaunchpad" <email-techlaunchpad01@gmail.com>',
+            to,
+            subject,
+            html
+          });
+
+          console.log(`Email successfully sent to ${to}: ${info.messageId}`);
+          return new Response(JSON.stringify({ success: true, messageId: info.messageId }), {
+            status: 200,
+            headers: { 
+              "content-type": "application/json",
+              "Access-Control-Allow-Origin": "*"
+            }
+          });
+        } catch (err: any) {
+          console.error("Failed to send email:", err);
+          return new Response(JSON.stringify({ error: err.message || "Failed to send email" }), {
+            status: 500,
+            headers: { 
+              "content-type": "application/json",
+              "Access-Control-Allow-Origin": "*"
+            }
+          });
+        }
+      }
+
       if (url.pathname === "/api/webhook") {
         if (request.method === "GET") {
           return new Response("Webhook receiver is active. Send POST request with JSON payload.", {

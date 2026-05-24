@@ -73,10 +73,188 @@ function AdminDashboard() {
   const [newLectureTitle, setNewLectureTitle] = useState("");
   const [newLectureDomain, setNewLectureDomain] = useState("");
   const [newLectureMode, setNewLectureMode] = useState("Google Meet");
+  const [newLectureModeCustom, setNewLectureModeCustom] = useState("");
   const [newLectureLink, setNewLectureLink] = useState("");
   const [newLectureDesc, setNewLectureDesc] = useState("");
   const [newLectureMaterialPdf, setNewLectureMaterialPdf] = useState<File | null>(null);
   const [newLectureMaterialLink, setNewLectureMaterialLink] = useState("");
+
+  // Edit Lecture States
+  const [isAddLectureOpen, setIsAddLectureOpen] = useState(false);
+  const [isEditLectureOpen, setIsEditLectureOpen] = useState(false);
+  const [selectedLecture, setSelectedLecture] = useState<any | null>(null);
+  const [editLectureTitle, setEditLectureTitle] = useState("");
+  const [editLectureDomain, setEditLectureDomain] = useState("");
+  const [editLectureMode, setEditLectureMode] = useState("Google Meet");
+  const [editLectureModeCustom, setEditLectureModeCustom] = useState("");
+  const [editLectureLink, setEditLectureLink] = useState("");
+  const [editLectureDesc, setEditLectureDesc] = useState("");
+  const [editLectureMaterialPdf, setEditLectureMaterialPdf] = useState<File | null>(null);
+  const [editLectureMaterialLink, setEditLectureMaterialLink] = useState("");
+  const [editLectureExistingPdfUrl, setEditLectureExistingPdfUrl] = useState("");
+
+  // YouTube ID helper
+  function getYouTubeId(url: string): string | null {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  }
+
+  // Marketing Mail States & Helpers
+  const [mailSubject, setMailSubject] = useState("");
+  const [mailTemplate, setMailTemplate] = useState("");
+  const [csvData, setCsvData] = useState<any[]>([]);
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const [queueStatus, setQueueStatus] = useState<"idle" | "sending" | "paused" | "completed">("idle");
+  const [queueResults, setQueueResults] = useState<any[]>([]);
+  const [queueIndex, setQueueIndex] = useState(0);
+
+  function parseMarketingCSV(text: string) {
+    const lines = text.split(/\r?\n/);
+    if (lines.length === 0) return { headers: [], data: [] };
+    
+    const parseLine = (line: string) => {
+      const result = [];
+      let current = "";
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          result.push(current.trim());
+          current = "";
+        } else {
+          current += char;
+        }
+      }
+      result.push(current.trim());
+      return result;
+    };
+
+    const rawHeaders = parseLine(lines[0]);
+    const headers = rawHeaders.map(h => h.replace(/^["']|["']$/g, "").trim()).filter(Boolean);
+    
+    const data: any[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      const values = parseLine(line);
+      const rowObject: any = {};
+      headers.forEach((header, index) => {
+        const val = (values[index] || "").replace(/^["']|["']$/g, "").trim();
+        rowObject[header] = val;
+      });
+      if (Object.keys(rowObject).length > 0) {
+        data.push(rowObject);
+      }
+    }
+    
+    return { headers, data };
+  }
+
+  function compileTemplate(template: string, data: any) {
+    let compiled = template;
+    Object.keys(data).forEach(key => {
+      const value = data[key] || "";
+      const regex = new RegExp(`\\{\\s*${key.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}\\s*\\}`, 'gi');
+      compiled = compiled.replace(regex, value);
+    });
+    return compiled;
+  }
+
+  useEffect(() => {
+    if (queueStatus !== "sending") return;
+    if (queueIndex >= csvData.length) {
+      setQueueStatus("completed");
+      toast.success("Mailing campaign completed successfully!");
+      return;
+    }
+
+    let active = true;
+    const sendNextEmail = async () => {
+      const recipient = csvData[queueIndex];
+      const emailKey = Object.keys(recipient).find(k => k.toLowerCase() === "email");
+      const toEmail = emailKey ? recipient[emailKey] : null;
+
+      if (!toEmail) {
+        if (active) {
+          setQueueResults(prev => [
+            ...prev,
+            { to: "Unknown", status: "failed", error: "Missing email column in CSV row", info: recipient }
+          ]);
+          setQueueIndex(prev => prev + 1);
+        }
+        return;
+      }
+
+      const subject = compileTemplate(mailSubject, recipient);
+      const plainBody = compileTemplate(mailTemplate, recipient);
+      const htmlBody = plainBody.replace(/\n/g, "<br/>");
+      const html = `
+        <div style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f3f4f6; padding: 40px 20px; color: #1f2937;">
+          <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); border: 1px solid #e5e7eb;">
+            <div style="background-color: #0a192f; padding: 30px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px; text-transform: uppercase;">TechLaunchpad</h1>
+              <p style="color: #fbbf24; margin: 5px 0 0 0; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;">Official Communication</p>
+            </div>
+            <div style="padding: 40px 30px; line-height: 1.6; font-size: 15px;">
+              ${htmlBody}
+            </div>
+            <div style="background-color: #f9fafb; padding: 20px 30px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6;">
+              <p style="margin: 0 0 5px 0;">This email was sent by TechLaunchpad Admin Portal.</p>
+              <p style="margin: 0;">&copy; ${new Date().getFullYear()} TechLaunchpad. All rights reserved.</p>
+            </div>
+          </div>
+        </div>
+      `;
+
+      try {
+        const res = await fetch("/api/send-email", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ to: toEmail, subject, html })
+        });
+        
+        const data = await res.json();
+        
+        if (active) {
+          if (res.ok && data.success) {
+            setQueueResults(prev => [
+              ...prev,
+              { to: toEmail, status: "success", info: recipient }
+            ]);
+          } else {
+            setQueueResults(prev => [
+              ...prev,
+              { to: toEmail, status: "failed", error: data.error || "Failed to send email", info: recipient }
+            ]);
+          }
+          setTimeout(() => {
+            if (active) setQueueIndex(prev => prev + 1);
+          }, 500);
+        }
+      } catch (err: any) {
+        if (active) {
+          setQueueResults(prev => [
+            ...prev,
+            { to: toEmail, status: "failed", error: err.message || "Network connection error", info: recipient }
+          ]);
+          setTimeout(() => {
+            if (active) setQueueIndex(prev => prev + 1);
+          }, 500);
+        }
+      }
+    };
+
+    sendNextEmail();
+
+    return () => {
+      active = false;
+    };
+  }, [queueStatus, queueIndex, csvData, mailSubject, mailTemplate]);
 
   const [students, setStudents] = useState<any[]>([]);
   const [preRegList, setPreRegList] = useState<any[]>([]);
@@ -88,6 +266,9 @@ function AdminDashboard() {
   const [settings, setSettings] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [leads, setLeads] = useState<any[]>([]);
+  const [leadsSearch, setLeadsSearch] = useState("");
+  const [leadsStatusFilter, setLeadsStatusFilter] = useState("all");
   const [internshipSearch, setInternshipSearch] = useState("");
   const [assignmentSearch, setAssignmentSearch] = useState("");
   const [minAttendancePercent, setMinAttendancePercent] = useState(75);
@@ -548,6 +729,11 @@ function AdminDashboard() {
       return;
     }
 
+    if (newLectureMaterialPdf && newLectureMaterialPdf.size > 80 * 1024 * 1024) {
+      toast.error("PDF file size must not exceed 80MB.");
+      return;
+    }
+
     setSavingLecture(true);
     try {
       let pdfUrl = "";
@@ -569,10 +755,12 @@ function AdminDashboard() {
         pdfUrl = publicUrl;
       }
 
+      const finalMode = newLectureMode === "Other" ? newLectureModeCustom.trim() : newLectureMode;
+
       const descPayload = {
         description: newLectureDesc,
         domain: newLectureDomain,
-        mode: newLectureMode,
+        mode: finalMode,
         material_pdf: pdfUrl,
         material_link: newLectureMaterialLink
       };
@@ -592,10 +780,12 @@ function AdminDashboard() {
       setNewLectureTitle("");
       setNewLectureDomain("");
       setNewLectureMode("Google Meet");
+      setNewLectureModeCustom("");
       setNewLectureLink("");
       setNewLectureDesc("");
       setNewLectureMaterialPdf(null);
       setNewLectureMaterialLink("");
+      setIsAddLectureOpen(false);
       
       const fileInput = document.getElementById("material_pdf_input") as HTMLInputElement;
       if (fileInput) fileInput.value = "";
@@ -603,6 +793,81 @@ function AdminDashboard() {
       fetchLectures();
     } catch (err: any) {
       toast.error(err.message || "Failed to add lecture.");
+    } finally {
+      setSavingLecture(false);
+    }
+  }
+
+  async function handleUpdateLecture(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedLecture) return;
+    if (!editLectureTitle.trim()) {
+      toast.error("Please enter a lecture title.");
+      return;
+    }
+    if (!editLectureDomain) {
+      toast.error("Please select a domain.");
+      return;
+    }
+    if (!editLectureLink.trim()) {
+      toast.error("Please enter a lecture link.");
+      return;
+    }
+
+    if (editLectureMaterialPdf && editLectureMaterialPdf.size > 80 * 1024 * 1024) {
+      toast.error("PDF file size must not exceed 80MB.");
+      return;
+    }
+
+    setSavingLecture(true);
+    try {
+      let pdfUrl = editLectureExistingPdfUrl;
+      if (editLectureMaterialPdf) {
+        const path = `materials/${Date.now()}-${editLectureMaterialPdf.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("resumes")
+          .upload(path, editLectureMaterialPdf);
+        
+        if (uploadError) {
+          throw new Error("Failed to upload material PDF: " + uploadError.message);
+        }
+        const { data: { publicUrl } } = supabase.storage
+          .from("resumes")
+          .getPublicUrl(path);
+        pdfUrl = publicUrl;
+      }
+
+      const finalMode = editLectureMode === "Other" ? editLectureModeCustom.trim() : editLectureMode;
+
+      const descPayload = {
+        description: editLectureDesc,
+        domain: editLectureDomain,
+        mode: finalMode,
+        material_pdf: pdfUrl,
+        material_link: editLectureMaterialLink
+      };
+
+      const { error } = await supabase
+        .from("lectures")
+        .update({
+          title: editLectureTitle.trim(),
+          link: editLectureLink.trim(),
+          description: JSON.stringify(descPayload)
+        })
+        .eq("id", selectedLecture.id);
+
+      if (error) throw error;
+
+      toast.success("Lecture updated successfully!");
+      setIsEditLectureOpen(false);
+      setSelectedLecture(null);
+      
+      const fileInput = document.getElementById("edit_material_pdf_input") as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
+
+      fetchLectures();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update lecture.");
     } finally {
       setSavingLecture(false);
     }
@@ -641,6 +906,7 @@ function AdminDashboard() {
     ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     
     setPreRegList(combined);
+    setLeads(l || []);
     const { data: u } = await supabase.from("universities").select("*, colleges(*, academic_structures(*))").order("name");
     setUniversities(u || []);
     const { data: i } = await supabase.from("internships").select("*").order("created_at", { ascending: false });
@@ -826,6 +1092,8 @@ function AdminDashboard() {
                {view === "settings" && "Portal Configuration"}
                {view === "profile" && "Admin Profile"}
                {view === "lectures" && "Lecture Control Hub"}
+               {view === "leads" && "Student Leads"}
+               {view === "marketing" && "Marketing Mailer"}
             </h1>
          </div>
          <div className="flex gap-2">
@@ -1790,6 +2058,825 @@ function AdminDashboard() {
          </div>
       )}
 
+      {/* ONLINE LECTURES PANEL */}
+      {/* ============ STUDENT LEADS VIEW ============ */}
+      {view === "leads" && (() => {
+        const filteredLeads = leads.filter(lead => {
+          const q = leadsSearch.toLowerCase();
+          const matchSearch = !q ||
+            (lead.full_name||"").toLowerCase().includes(q) ||
+            (lead.email||"").toLowerCase().includes(q) ||
+            (lead.university_roll_number||"").toLowerCase().includes(q) ||
+            (lead.college_name||"").toLowerCase().includes(q) ||
+            (lead.program||"").toLowerCase().includes(q);
+          
+          let matchStatus = true;
+          if (leadsStatusFilter === "paid") matchStatus = !!lead.is_claimed;
+          else if (leadsStatusFilter === "pending") matchStatus = !lead.is_claimed;
+
+          return matchSearch && matchStatus;
+        });
+
+        const totalLeads = leads.length;
+        const paidLeads = leads.filter(l => l.is_claimed).length;
+        const pendingLeads = leads.filter(l => !l.is_claimed).length;
+        const paymentsForLeads = payments.filter(p => p.status === "Paid").length;
+
+        return (
+          <div className="space-y-5">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { label: "Total Leads", value: totalLeads, color: "bg-[#1e40af]", icon: Users },
+                { label: "Paid & Registered", value: paidLeads, color: "bg-green-600", icon: CheckCircle2 },
+                { label: "Pending Payment", value: pendingLeads, color: "bg-amber-500", icon: Clock },
+                { label: "Total Payments", value: paymentsForLeads, color: "bg-navy", icon: CreditCard },
+              ].map(card => (
+                <div key={card.label} className="bg-white p-5 rounded-2xl border shadow-sm flex items-center gap-4">
+                  <div className={`size-12 rounded-xl ${card.color} text-white grid place-items-center shadow-lg flex-shrink-0`}>
+                    <card.icon size={22} />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-black text-navy-deep leading-none">{card.value}</div>
+                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{card.label}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Toolbar */}
+            <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-base font-black text-navy-deep uppercase tracking-tight">All Registration Leads</h2>
+              <div className="flex flex-wrap gap-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+                  <input
+                    placeholder="Search by name, email, roll no..."
+                    className="h-9 pl-9 pr-4 w-56 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:border-[#1e40af]"
+                    value={leadsSearch}
+                    onChange={e => setLeadsSearch(e.target.value)}
+                  />
+                </div>
+                <select
+                  value={leadsStatusFilter}
+                  onChange={e => setLeadsStatusFilter(e.target.value)}
+                  className="h-9 px-3 border-2 rounded-xl text-[10px] font-black bg-white outline-none focus:border-[#1e40af] text-slate-600"
+                >
+                  <option value="all">All Status</option>
+                  <option value="paid">Paid & Registered</option>
+                  <option value="pending">Pending Payment</option>
+                </select>
+                <Button
+                  variant="outline"
+                  className="h-9 px-4 rounded-xl border text-[9px] font-black uppercase tracking-widest"
+                  onClick={() => {
+                    const headers = "Name,Email,Roll Number,College,University,Degree,Branch,Semester,Program,Status,Registered On";
+                    const rows = filteredLeads.map(l =>
+                      [
+                        l.full_name||"",
+                        l.email||"",
+                        l.university_roll_number||"",
+                        l.college_name||"",
+                        l.university_name||"",
+                        l.degree||"",
+                        l.department||"",
+                        l.semester||"",
+                        l.program||"",
+                        l.is_claimed ? "Paid & Registered" : "Pending Payment",
+                        new Date(l.created_at).toLocaleDateString()
+                      ].join(",")
+                    ).join("\n");
+                    const blob = new Blob([headers + "\n" + rows], { type: "text/csv" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url; a.download = "leads_export.csv"; a.click();
+                  }}
+                >
+                  <Download size={14} className="mr-1" /> Export CSV
+                </Button>
+              </div>
+            </div>
+
+            {/* Leads Table */}
+            <div className="bg-white rounded-2xl border shadow-sm overflow-hidden overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-slate-50">
+                  <TableRow>
+                    <TableHead className="px-5 font-black uppercase text-[9px] tracking-widest">#</TableHead>
+                    <TableHead className="font-black uppercase text-[9px] tracking-widest">Student Name</TableHead>
+                    <TableHead className="font-black uppercase text-[9px] tracking-widest">Contact Info</TableHead>
+                    <TableHead className="font-black uppercase text-[9px] tracking-widest">Roll Number</TableHead>
+                    <TableHead className="font-black uppercase text-[9px] tracking-widest">Institution</TableHead>
+                    <TableHead className="font-black uppercase text-[9px] tracking-widest">Program</TableHead>
+                    <TableHead className="font-black uppercase text-[9px] tracking-widest">Payment Status</TableHead>
+                    <TableHead className="font-black uppercase text-[9px] tracking-widest">Registered On</TableHead>
+                    <TableHead className="text-right px-5 font-black uppercase text-[9px] tracking-widest">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredLeads.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center py-16">
+                        <div className="flex flex-col items-center gap-3 text-slate-400">
+                          <Users size={36} className="opacity-30" />
+                          <div className="text-xs font-bold uppercase tracking-widest">No leads found</div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {filteredLeads.map((lead, idx) => {
+                    const isPaid = !!lead.is_claimed;
+                    const studentPayment = payments.find(p =>
+                      p.profiles?.email === lead.email ||
+                      p.profiles?.university_roll_number === lead.university_roll_number
+                    );
+                    return (
+                      <TableRow key={lead.id} className="hover:bg-slate-50/80 h-14 text-xs border-b last:border-0 group">
+                        <TableCell className="px-5 font-mono text-slate-400 font-bold">{idx + 1}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="size-8 rounded-lg bg-[#1e40af]/10 text-[#1e40af] grid place-items-center font-black text-xs uppercase flex-shrink-0">
+                              {(lead.full_name||"").charAt(0)}
+                            </div>
+                            <div>
+                              <div className="font-black text-navy-deep uppercase text-[10px]">{lead.full_name}</div>
+                              <div className="text-[9px] text-slate-400 font-bold">{lead.gender || ""}</div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-[10px] font-bold text-slate-600">{lead.email || "—"}</div>
+                          <div className="text-[9px] text-slate-400 font-mono">{lead.contact_number || ""}</div>
+                        </TableCell>
+                        <TableCell className="font-mono font-bold text-gold text-[10px]">{lead.university_roll_number || "—"}</TableCell>
+                        <TableCell>
+                          <div className="text-[10px] font-bold text-slate-700 max-w-[160px] truncate">{lead.college_name || "—"}</div>
+                          <div className="text-[9px] text-slate-400 uppercase tracking-tight">{lead.university_name || ""}</div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="bg-navy/10 text-navy px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest">
+                            {lead.program || "Not Selected"}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {isPaid ? (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-black uppercase bg-green-100 text-green-700 w-fit">
+                                <CheckCircle2 size={10} /> Paid & Registered
+                              </span>
+                              {studentPayment && (
+                                <span className="text-[8px] text-slate-400 font-bold pl-0.5">₹{studentPayment.amount}</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-black uppercase bg-amber-100 text-amber-700">
+                              <Clock size={10} /> Pending Payment
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-[10px] font-bold text-slate-500">
+                          {new Date(lead.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                        </TableCell>
+                        <TableCell className="text-right px-5">
+                          <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {studentPayment?.slip_url && (
+                              <a
+                                href={studentPayment.slip_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="View Payment Slip"
+                              >
+                                <Button size="icon" variant="ghost" className="size-8 rounded-lg border text-green-600">
+                                  <CreditCard size={14} />
+                                </Button>
+                              </a>
+                            )}
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="size-8 rounded-lg border text-red-500"
+                              title="Delete Lead"
+                              onClick={async () => {
+                                if (confirm("Delete this lead record permanently?")) {
+                                  await supabase.from("leads").delete().eq("id", lead.id);
+                                  fetchData();
+                                }
+                              }}
+                            >
+                              <Trash2 size={14} />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Footer Count */}
+            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
+              Showing {filteredLeads.length} of {totalLeads} lead records
+            </div>
+          </div>
+        );
+      {view === "marketing" && (
+        <div className="space-y-6">
+          {/* Main Layout Grid */}
+          <div className="grid md:grid-cols-2 gap-6">
+            
+            {/* LEFT COLUMN: DRAFT TEMPLATE */}
+            <div className="bg-white p-6 rounded-2xl border shadow-sm space-y-4">
+              <div>
+                <h2 className="text-lg font-black text-navy-deep uppercase tracking-tight flex items-center gap-2">
+                  <Mail className="size-5 text-gold" /> Compose Template
+                </h2>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
+                  Draft your email campaign with dynamic variable support
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="font-black text-[9px] uppercase tracking-widest">Email Subject *</Label>
+                <Input
+                  value={mailSubject}
+                  onChange={(e) => setMailSubject(e.target.value)}
+                  placeholder="e.g. Important Update for {Name}!"
+                  className="h-10 rounded-xl font-bold bg-secondary/5 text-xs focus:ring-gold/30 focus:border-gold"
+                  disabled={queueStatus === "sending"}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="font-black text-[9px] uppercase tracking-widest">Message Body (Plain Text or HTML) *</Label>
+                <Textarea
+                  value={mailTemplate}
+                  onChange={(e) => setMailTemplate(e.target.value)}
+                  placeholder={`Hello {Name},\n\nWe are pleased to inform you that your university roll number {Roll Number} has been successfully registered for the {Program} internship domain.\n\nBest regards,\nTechLaunchpad Team`}
+                  className="h-60 rounded-xl font-medium text-xs bg-secondary/5 focus:ring-gold/30 focus:border-gold p-3 resize-y"
+                  disabled={queueStatus === "sending"}
+                />
+              </div>
+
+              {/* Variable Placeholders Helper Box */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-dashed">
+                <h3 className="text-[9.5px] font-black text-navy uppercase mb-2 flex items-center gap-1.5">
+                  <Zap className="size-3 text-gold animate-pulse" /> Dynamic Placeholders
+                </h3>
+                {csvHeaders.length > 0 ? (
+                  <div className="space-y-2">
+                    <p className="text-[10px] text-slate-500">
+                      Click any variable below to insert it into your message:
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {csvHeaders.map((header) => (
+                        <button
+                          key={header}
+                          type="button"
+                          onClick={() => {
+                            if (queueStatus === "sending") return;
+                            setMailTemplate(prev => prev + `{${header}}`);
+                          }}
+                          className="px-2 py-1 bg-white border border-slate-200 hover:border-gold text-[10px] font-mono font-bold text-navy-deep rounded-md transition-all active:scale-95 shadow-sm"
+                        >
+                          {`{${header}}`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-400 italic">
+                    Upload a CSV file in the right panel to automatically extract variable placeholders.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* RIGHT COLUMN: RECIPIENTS & PREVIEW */}
+            <div className="space-y-6">
+              
+              {/* CSV Upload Card */}
+              <div className="bg-white p-6 rounded-2xl border shadow-sm space-y-4">
+                <div>
+                  <h2 className="text-lg font-black text-navy-deep uppercase tracking-tight flex items-center gap-2">
+                    <FileUp className="size-5 text-gold" /> Upload Recipient List (CSV)
+                  </h2>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
+                    Upload a CSV containing your subscribers' details
+                  </p>
+                </div>
+
+                <div className="relative border-2 border-dashed border-slate-200 rounded-2xl hover:border-gold transition-all duration-300 group">
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        const text = ev.target?.result as string;
+                        const { headers, data } = parseCSV(text);
+                        if (headers.length === 0 || data.length === 0) {
+                          toast.error("Invalid or empty CSV file!");
+                          return;
+                        }
+                        const hasEmail = headers.some(h => h.toLowerCase() === "email");
+                        if (!hasEmail) {
+                          toast.warning("Warning: We couldn't find an 'Email' column in this CSV file. Please make sure one exists.");
+                        }
+                        setCsvHeaders(headers);
+                        setCsvData(data);
+                        setPreviewIndex(0);
+                        setQueueIndex(0);
+                        setQueueResults([]);
+                        setQueueStatus("idle");
+                        toast.success(`Successfully loaded ${data.length} recipients!`);
+                      };
+                      reader.readAsText(file);
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    disabled={queueStatus === "sending"}
+                  />
+                  <div className="p-8 text-center space-y-2">
+                    <FileUp className="size-10 text-slate-300 group-hover:text-gold mx-auto transition-colors duration-300" />
+                    <div>
+                      <p className="text-xs font-bold text-navy-deep uppercase">Click to browse or drag CSV file</p>
+                      <p className="text-[9px] text-slate-400 mt-1 uppercase tracking-wider">Supports any headers (Name, Roll, College, Email, etc.)</p>
+                    </div>
+                  </div>
+                </div>
+
+                {csvData.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t border-slate-100">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black text-navy uppercase tracking-widest">
+                        Parsed Recipients ({csvData.length})
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 text-[9px] font-black text-red-500 hover:bg-red-50 rounded-lg"
+                        onClick={() => {
+                          setCsvData([]);
+                          setCsvHeaders([]);
+                          setPreviewIndex(0);
+                          setQueueIndex(0);
+                          setQueueResults([]);
+                          setQueueStatus("idle");
+                        }}
+                        disabled={queueStatus === "sending"}
+                      >
+                        Clear List
+                      </Button>
+                    </div>
+                    
+                    <div className="border rounded-xl overflow-hidden max-h-32 overflow-y-auto">
+                      <Table>
+                        <TableHeader className="bg-slate-50 sticky top-0 z-20">
+                          <TableRow>
+                            {csvHeaders.slice(0, 4).map(h => (
+                              <TableHead key={h} className="h-7 text-[8px] font-black uppercase text-navy-deep">
+                                {h}
+                              </TableHead>
+                            ))}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {csvData.slice(0, 10).map((row, idx) => (
+                            <TableRow key={idx} className="h-7">
+                              {csvHeaders.slice(0, 4).map(h => (
+                                <TableCell key={h} className="p-1.5 px-3 text-[9.5px] font-medium text-slate-600 truncate max-w-[120px]">
+                                  {row[h] || "—"}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    {csvData.length > 10 && (
+                      <p className="text-[9.5px] text-slate-400 italic text-right">
+                        Showing first 10 of {csvData.length} recipients.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Template Live Preview Card */}
+              {csvData.length > 0 && (
+                <div className="bg-white p-6 rounded-2xl border shadow-sm space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-lg font-black text-navy-deep uppercase tracking-tight flex items-center gap-2">
+                        <Eye className="size-5 text-gold" /> Live Preview
+                      </h2>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
+                        Preview personalized email compilation
+                      </p>
+                    </div>
+                    
+                    {/* Navigation Controls */}
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="size-7 rounded-lg border-2"
+                        onClick={() => setPreviewIndex(prev => Math.max(0, prev - 1))}
+                        disabled={previewIndex === 0}
+                      >
+                        ◀
+                      </Button>
+                      <span className="text-[10px] font-black text-navy-deep font-mono px-2">
+                        {previewIndex + 1} / {csvData.length}
+                      </span>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="size-7 rounded-lg border-2"
+                        onClick={() => setPreviewIndex(prev => Math.min(csvData.length - 1, prev + 1))}
+                        disabled={previewIndex === csvData.length - 1}
+                      >
+                        ▶
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 border rounded-2xl overflow-hidden shadow-inner">
+                    {/* Simulated Header */}
+                    <div className="bg-navy-deep p-4 text-white border-b border-slate-100 flex items-center justify-between">
+                      <div className="space-y-1">
+                        <div className="text-[9px] font-black text-gold uppercase tracking-[0.2em]">To Recipient</div>
+                        <div className="text-[11px] font-mono truncate max-w-[200px] text-slate-200">
+                          {(() => {
+                            const recipient = csvData[previewIndex];
+                            const emailKey = Object.keys(recipient).find(k => k.toLowerCase() === "email");
+                            return emailKey ? recipient[emailKey] : "no-email-found";
+                          })()}
+                        </div>
+                      </div>
+                      <span className="bg-gold px-2 py-0.5 rounded text-[8px] font-black text-navy-deep uppercase tracking-widest">
+                        Preview Mode
+                      </span>
+                    </div>
+
+                    <div className="p-5 space-y-4">
+                      {/* Subject Preview */}
+                      <div className="space-y-0.5 border-b pb-3 border-slate-200/50">
+                        <span className="text-[8px] font-black uppercase text-slate-400">Subject:</span>
+                        <h4 className="text-xs font-black text-navy-deep">
+                          {compileTemplate(mailSubject, csvData[previewIndex]) || "(Enter a subject)"}
+                        </h4>
+                      </div>
+
+                      {/* Body Preview */}
+                      <div className="space-y-1 min-h-[140px] text-xs text-slate-700 leading-relaxed font-medium whitespace-pre-line">
+                        {compileTemplate(mailTemplate, csvData[previewIndex]) || "(Enter a message template)"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* FULL-WIDTH BOTTOM CARD: CAMPAIGN LAUNCHPAD & REPORT */}
+          {csvData.length > 0 && (
+            <div className="bg-white p-6 rounded-2xl border shadow-sm space-y-6">
+              
+              {/* Campaign Controls */}
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-5 border-slate-100">
+                <div className="space-y-1">
+                  <h3 className="text-base font-black text-navy-deep uppercase tracking-tight flex items-center gap-2">
+                    <Activity className="size-5 text-gold" /> Campaign Launchpad
+                  </h3>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                    Coordinate bulk email distribution
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {queueStatus === "idle" && (
+                    <Button
+                      onClick={() => {
+                        if (!mailSubject.trim() || !mailTemplate.trim()) {
+                          toast.error("Subject and Template are required before launching campaign!");
+                          return;
+                        }
+                        setQueueStatus("sending");
+                        toast.info("Starting mailing campaign...");
+                      }}
+                      className="h-10 px-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg flex items-center gap-2"
+                    >
+                      🚀 Start Campaign
+                    </Button>
+                  )}
+
+                  {queueStatus === "sending" && (
+                    <Button
+                      onClick={() => {
+                        setQueueStatus("paused");
+                        toast.warning("Campaign paused.");
+                      }}
+                      className="h-10 px-8 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg flex items-center gap-2"
+                    >
+                      ⏸ Pause Campaign
+                    </Button>
+                  )}
+
+                  {queueStatus === "paused" && (
+                    <Button
+                      onClick={() => {
+                        setQueueStatus("sending");
+                        toast.info("Resuming campaign...");
+                      }}
+                      className="h-10 px-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg flex items-center gap-2"
+                    >
+                      ▶ Resume Campaign
+                    </Button>
+                  )}
+
+                  {(queueStatus === "sending" || queueStatus === "paused" || queueStatus === "completed") && (
+                    <Button
+                      onClick={() => {
+                        if (confirm("Reset sending queue? This will stop the current progress and clear the delivery logs.")) {
+                          setQueueStatus("idle");
+                          setQueueIndex(0);
+                          setQueueResults([]);
+                        }
+                      }}
+                      variant="outline"
+                      className="h-10 px-6 border-2 rounded-xl text-navy hover:bg-gold/10 font-black uppercase text-[10px] tracking-widest"
+                    >
+                      🔄 Reset Queue
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Progress Panel */}
+              <div className="grid md:grid-cols-4 gap-6">
+                
+                {/* Stats Counters */}
+                <div className="md:col-span-1 grid grid-cols-3 gap-2">
+                  <div className="bg-slate-50 border p-3 rounded-xl text-center">
+                    <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Pending</div>
+                    <div className="text-lg font-black text-navy-deep mt-1 font-mono">
+                      {Math.max(0, csvData.length - queueIndex)}
+                    </div>
+                  </div>
+                  <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-xl text-center">
+                    <div className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">Sent</div>
+                    <div className="text-lg font-black text-emerald-700 mt-1 font-mono">
+                      {queueResults.filter(r => r.status === "success").length}
+                    </div>
+                  </div>
+                  <div className="bg-red-50 border border-red-100 p-3 rounded-xl text-center">
+                    <div className="text-[8px] font-black text-red-600 uppercase tracking-widest">Failed</div>
+                    <div className="text-lg font-black text-red-700 mt-1 font-mono">
+                      {queueResults.filter(r => r.status === "failed").length}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="md:col-span-3 space-y-2 flex flex-col justify-center">
+                  <div className="flex justify-between items-center text-[10px] font-black text-navy-deep uppercase tracking-widest">
+                    <span>Sending Progress</span>
+                    <span className="font-mono">
+                      {csvData.length > 0 ? Math.round((queueIndex / csvData.length) * 100) : 0}% ({queueIndex} / {csvData.length})
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden border shadow-inner">
+                    <div
+                      className="bg-gradient-to-r from-gold via-yellow-500 to-emerald-500 h-full transition-all duration-300 ease-out"
+                      style={{ width: `${csvData.length > 0 ? (queueIndex / csvData.length) * 100 : 0}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Delivery Logs */}
+              {queueResults.length > 0 && (
+                <div className="space-y-3 pt-3 border-t">
+                  <h4 className="text-[10px] font-black text-navy uppercase tracking-widest">Delivery Reports</h4>
+                  <div className="border rounded-2xl overflow-hidden max-h-60 overflow-y-auto">
+                    <Table>
+                      <TableHeader className="bg-slate-50 sticky top-0 z-20">
+                        <TableRow>
+                          <TableHead className="h-9 text-[8px] font-black uppercase text-navy-deep">#</TableHead>
+                          <TableHead className="h-9 text-[8px] font-black uppercase text-navy-deep">Recipient Email</TableHead>
+                          <TableHead className="h-9 text-[8px] font-black uppercase text-navy-deep">Status</TableHead>
+                          <TableHead className="h-9 text-[8px] font-black uppercase text-navy-deep">Details / Errors</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {queueResults.map((result, idx) => (
+                          <TableRow key={idx} className="h-9">
+                            <TableCell className="py-2 text-[10px] font-black text-slate-400 font-mono">
+                              {idx + 1}
+                            </TableCell>
+                            <TableCell className="py-2 text-[10.5px] font-bold text-navy-deep">
+                              {result.to}
+                            </TableCell>
+                            <TableCell className="py-2">
+                              {result.status === "success" ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[8.5px] font-black bg-emerald-50 text-emerald-700 uppercase tracking-widest border border-emerald-100">
+                                  <CheckCircle2 className="size-3 text-emerald-600" /> SUCCESS
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[8.5px] font-black bg-red-50 text-red-700 uppercase tracking-widest border border-red-100">
+                                  <XCircle className="size-3 text-red-600" /> FAILED
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-2 text-[10px] font-medium text-slate-500">
+                              {result.status === "success" ? (
+                                <span className="text-slate-400 font-bold uppercase text-[9px]">Delivered successfully</span>
+                              ) : (
+                                <span className="text-red-500 font-bold">{result.error}</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {view === "lectures" && (
+         <div className="space-y-6">
+            <div className="bg-white p-5 rounded-2xl border shadow-sm flex flex-wrap items-center justify-between gap-4">
+               <div>
+                  <h2 className="text-lg font-black text-navy-deep uppercase tracking-tight">Active Online Lectures</h2>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Manage virtual training classes, video recordings, and study sheets</p>
+               </div>
+               <Button className="h-10 px-6 bg-navy text-white rounded-xl font-bold uppercase text-[10px] tracking-widest shadow-lg flex items-center gap-1.5" onClick={() => {
+                  setNewLectureTitle("");
+                  setNewLectureDomain("");
+                  setNewLectureMode("Google Meet");
+                  setNewLectureModeCustom("");
+                  setNewLectureLink("");
+                  setNewLectureDesc("");
+                  setNewLectureMaterialPdf(null);
+                  setNewLectureMaterialLink("");
+                  setIsAddLectureOpen(true);
+               }}>
+                  <Plus size={16} /> New Lecture
+               </Button>
+            </div>
+
+            {loadingLectures ? (
+               <div className="text-center py-20 bg-white rounded-2xl border shadow-sm">
+                  <Loader2 className="animate-spin size-8 text-gold mx-auto mb-2" />
+                  <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Syncing lectures with server...</p>
+               </div>
+            ) : lecturesList.length === 0 ? (
+               <div className="bg-white rounded-2xl border border-dashed p-16 text-center text-muted-foreground shadow-sm">
+                  <Video className="mx-auto size-12 opacity-20 mb-4" />
+                  <p className="font-bold text-sm text-navy-deep uppercase mb-1">No online lectures scheduled</p>
+                  <p className="text-xs">Use the button above to publish your first lecture recording or live link.</p>
+               </div>
+            ) : (
+               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {lecturesList.map((l) => {
+                     let descText = l.description;
+                     let domainName = "";
+                     let modeName = "";
+                     let pdfUrl = "";
+                     let materialLink = "";
+                     try {
+                        const parsed = JSON.parse(l.description);
+                        descText = parsed.description || "";
+                        domainName = parsed.domain || "";
+                        modeName = parsed.mode || "";
+                        pdfUrl = parsed.material_pdf || "";
+                        materialLink = parsed.material_link || "";
+                     } catch (e) {
+                        // Fallback for raw string description
+                     }
+
+                     const ytVideoId = getYouTubeId(l.link);
+
+                     return (
+                        <div key={l.id} className="group overflow-hidden rounded-2xl border bg-white shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-full">
+                           <div>
+                              <div className="relative aspect-video bg-navy-deep/10 flex items-center justify-center overflow-hidden border-b">
+                                 {ytVideoId ? (
+                                    <>
+                                       <img src={`https://img.youtube.com/vi/${ytVideoId}/hqdefault.jpg`} alt={l.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                       <div className="absolute inset-0 bg-black/20 flex items-center justify-center group-hover:bg-black/35 transition-all">
+                                          <div className="size-11 rounded-full bg-red-600/90 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300">
+                                             <Video className="size-5" />
+                                          </div>
+                                       </div>
+                                    </>
+                                 ) : (
+                                    <div className="text-center p-6 space-y-2">
+                                       <Video className="size-10 text-navy-deep/40 mx-auto" />
+                                       <span className="text-[10px] font-mono text-muted-foreground block truncate max-w-[200px]">{l.link}</span>
+                                    </div>
+                                 )}
+
+                                 {modeName && (
+                                    <div className="absolute top-3 right-3 rounded-md bg-navy/80 px-2 py-0.5 text-[9px] font-bold text-white uppercase tracking-wider">
+                                       {modeName}
+                                    </div>
+                                 )}
+
+                                 {domainName && (
+                                    <div className="absolute bottom-3 left-3 rounded-md bg-gold px-2 py-0.5 text-[9px] font-black text-navy-deep uppercase tracking-wider">
+                                       {domainName}
+                                    </div>
+                                 )}
+                              </div>
+
+                              <div className="p-5 space-y-2">
+                                 <h3 className="font-display font-black text-navy-deep text-sm line-clamp-1 uppercase tracking-tight">{l.title}</h3>
+                                 <p className="text-xs text-slate-500 line-clamp-3 leading-relaxed">{descText || "No description provided."}</p>
+                              </div>
+                           </div>
+
+                           <div className="p-5 pt-0 mt-2 space-y-4">
+                              {(pdfUrl || materialLink) && (
+                                 <div className="flex flex-wrap gap-2 border-t pt-3 border-slate-50">
+                                    {pdfUrl && (
+                                       <Button size="sm" variant="outline" className="h-7 text-[9px] font-black bg-emerald-55 bg-opacity-10 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 border-emerald-200/50 px-2.5 rounded-lg flex items-center gap-1" onClick={() => window.open(pdfUrl, '_blank')}>
+                                          PDF MATERIAL
+                                       </Button>
+                                    )}
+                                    {materialLink && (
+                                       <Button size="sm" variant="outline" className="h-7 text-[9px] font-black bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800 border-indigo-200/50 px-2.5 rounded-lg flex items-center gap-1" onClick={() => window.open(materialLink, '_blank')}>
+                                          RESOURCES
+                                       </Button>
+                                    )}
+                                 </div>
+                              )}
+
+                              <div className="flex items-center justify-between border-t pt-3 border-slate-100">
+                                 <div className="text-[9px] font-bold text-slate-400">
+                                    {new Date(l.created_at).toLocaleDateString()}
+                                 </div>
+                                 <div className="flex gap-1.5">
+                                    <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold border-2 rounded-xl text-navy hover:bg-gold/10" onClick={() => {
+                                       let descText = l.description;
+                                       let domainName = "";
+                                       let modeName = "Google Meet";
+                                       let pdfUrl = "";
+                                       let materialLink = "";
+                                       try {
+                                          const parsed = JSON.parse(l.description);
+                                          descText = parsed.description || "";
+                                          domainName = parsed.domain || "";
+                                          modeName = parsed.mode || "Google Meet";
+                                          pdfUrl = parsed.material_pdf || "";
+                                          materialLink = parsed.material_link || "";
+                                       } catch (e) {
+                                          // fallback
+                                       }
+
+                                       setSelectedLecture(l);
+                                       setEditLectureTitle(l.title || "");
+                                       setEditLectureDomain(domainName);
+                                       setEditLectureDesc(descText);
+                                       setEditLectureLink(l.link || "");
+                                       setEditLectureExistingPdfUrl(pdfUrl);
+                                       setEditLectureMaterialLink(materialLink);
+                                       setEditLectureMaterialPdf(null);
+
+                                       const standardModes = ["Online", "YouTube", "Google Meet"];
+                                       if (standardModes.includes(modeName)) {
+                                          setEditLectureMode(modeName);
+                                          setEditLectureModeCustom("");
+                                       } else {
+                                          setEditLectureMode("Other");
+                                          setEditLectureModeCustom(modeName);
+                                       }
+
+                                       setIsEditLectureOpen(true);
+                                    }}>
+                                       Edit
+                                    </Button>
+                                    <Button size="sm" variant="ghost" className="h-8 text-[10px] font-bold text-red-600 hover:bg-red-50 hover:text-red-700 rounded-xl" onClick={() => handleDeleteLecture(l.id)}>
+                                       Delete
+                                    </Button>
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+                     );
+                  })}
+               </div>
+            )}
+         </div>
+      )}
+
       {/* Student Form Dialog */}
       <Dialog open={isAddDialogOpen || isEditDialogOpen} onOpenChange={(o) => { if(!o) { setIsAddDialogOpen(false); setIsEditDialogOpen(false); setSelectedStudent(null); } }}>
          <DialogContent className="max-w-5xl rounded-3xl p-0 border-none shadow-2xl overflow-hidden bg-white">
@@ -2415,6 +3502,290 @@ function AdminDashboard() {
                   <Button type="button" variant="ghost" onClick={() => setIsAssignmentDialogOpen(false)} className="px-10 h-12 rounded-xl font-black uppercase text-[10px]">Cancel</Button>
                   <Button type="submit" disabled={busy} className="bg-navy text-white px-12 h-12 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-2">
                      {busy ? <Loader2 className="animate-spin" /> : <><CheckCircle2 size={18} /> {selectedAssignment ? "Update Task" : "Deploy Task"}</>}
+                  </Button>
+               </div>
+            </form>
+         </DialogContent>
+      </Dialog>
+
+      {/* Add Lecture Dialog */}
+      <Dialog open={isAddLectureOpen} onOpenChange={(o) => !o && setIsAddLectureOpen(false)}>
+         <DialogContent className="max-w-xl rounded-3xl p-0 overflow-hidden border-none shadow-2xl bg-white">
+            <div className="bg-navy p-6 text-white">
+               <h2 className="text-xl font-black uppercase tracking-tighter leading-none mb-1">Create Lecture</h2>
+               <p className="text-[9px] font-bold text-gold uppercase tracking-widest opacity-80">Publish video classes and study materials to students</p>
+            </div>
+            
+            <form onSubmit={handleCreateLecture} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+               <div className="space-y-1.5">
+                  <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">1. Select Internship Domain *</Label>
+                  <select
+                     value={newLectureDomain}
+                     onChange={(e) => setNewLectureDomain(e.target.value)}
+                     className="w-full h-10 border-2 rounded-xl px-3 font-bold text-xs bg-slate-50 outline-none focus:border-gold"
+                     required
+                  >
+                     <option value="">-- SELECT DOMAIN --</option>
+                     <option value="General">General (All Students)</option>
+                     {internships.map(i => (
+                        <option key={i.id} value={i.title}>{i.title}</option>
+                     ))}
+                  </select>
+               </div>
+
+               <div className="space-y-1.5">
+                  <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">2. Lecture Title *</Label>
+                  <Input 
+                     value={newLectureTitle}
+                     onChange={(e) => setNewLectureTitle(e.target.value)}
+                     placeholder="e.g. Introduction to Git & GitHub"
+                     required 
+                     className="h-10 rounded-xl font-bold text-xs border-2"
+                  />
+               </div>
+
+               <div className="space-y-1.5">
+                  <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">3. Description / Topic Outline</Label>
+                  <textarea 
+                     value={newLectureDesc}
+                     onChange={(e) => setNewLectureDesc(e.target.value)}
+                     placeholder="Outline the main keypoints covered in this lecture..." 
+                     className="w-full h-24 border-2 rounded-xl p-3 text-xs font-bold outline-none focus:border-gold"
+                  />
+               </div>
+
+               <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                     <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">4. Lecture Type *</Label>
+                     <select
+                        value={newLectureMode}
+                        onChange={(e) => setNewLectureMode(e.target.value)}
+                        className="w-full h-10 border-2 rounded-xl px-3 font-bold text-xs bg-slate-50 outline-none focus:border-gold"
+                        required
+                     >
+                        <option value="Google Meet">Google Meet</option>
+                        <option value="YouTube">YouTube</option>
+                        <option value="Online">Zoom/Online</option>
+                        <option value="Other">Other (Custom)</option>
+                     </select>
+                  </div>
+
+                  {newLectureMode === "Other" && (
+                     <div className="space-y-1.5">
+                        <Label className="font-black text-[9px] uppercase tracking-wider text-[#1e40af]">Custom Type Name *</Label>
+                        <Input
+                           value={newLectureModeCustom}
+                           onChange={(e) => setNewLectureModeCustom(e.target.value)}
+                           placeholder="e.g. Teams, Webinar"
+                           required
+                           className="h-10 rounded-xl font-bold text-xs border-2 border-[#1e40af]/30"
+                        />
+                     </div>
+                  )}
+               </div>
+
+               <div className="space-y-1.5">
+                  <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">5. Lecture / Stream Link *</Label>
+                  <Input 
+                     value={newLectureLink}
+                     onChange={(e) => setNewLectureLink(e.target.value)}
+                     placeholder="Paste YouTube, Google Meet, or Zoom URL..."
+                     required 
+                     className="h-10 rounded-xl font-bold text-xs border-2"
+                  />
+
+                  {/* YouTube Thumbnail Preview */}
+                  {getYouTubeId(newLectureLink) && (
+                     <div className="mt-2 p-2 bg-slate-100 rounded-xl border border-dashed text-center">
+                        <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">Instant YouTube Thumbnail Preview</div>
+                        <img 
+                           src={`https://img.youtube.com/vi/${getYouTubeId(newLectureLink)}/hqdefault.jpg`} 
+                           alt="Thumbnail Preview" 
+                           className="h-28 mx-auto object-cover rounded-lg border shadow-sm aspect-video" 
+                        />
+                     </div>
+                  )}
+               </div>
+
+               <div className="space-y-1.5 border-t pt-3">
+                  <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">6. Upload Study Material PDF (Max 80MB)</Label>
+                  <input 
+                     id="material_pdf_input" 
+                     type="file" 
+                     accept="application/pdf"
+                     onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        if (file && file.size > 80 * 1024 * 1024) {
+                           toast.error("PDF size exceeds 80MB limit.");
+                           e.target.value = "";
+                           setNewLectureMaterialPdf(null);
+                        } else {
+                           setNewLectureMaterialPdf(file);
+                        }
+                     }}
+                     className="w-full text-xs font-bold bg-slate-50 p-2 border-2 border-dashed rounded-xl cursor-pointer"
+                  />
+               </div>
+
+               <div className="space-y-1.5">
+                  <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">7. Additional Reference Link (Optional)</Label>
+                  <Input 
+                     value={newLectureMaterialLink}
+                     onChange={(e) => setNewLectureMaterialLink(e.target.value)}
+                     placeholder="e.g. GitHub Repository, Documentation Link"
+                     className="h-10 rounded-xl font-bold text-xs border-2"
+                  />
+               </div>
+
+               <div className="flex justify-end gap-3 pt-4 border-t">
+                  <Button type="button" variant="ghost" onClick={() => setIsAddLectureOpen(false)} className="px-6 h-10 rounded-xl font-black text-[9px] uppercase">Cancel</Button>
+                  <Button type="submit" disabled={savingLecture} className="bg-navy text-white px-10 h-10 rounded-xl font-black text-[9px] uppercase tracking-widest shadow-xl">
+                     {savingLecture ? <Loader2 className="animate-spin" /> : "PUBLISH LECTURE"}
+                  </Button>
+               </div>
+            </form>
+         </DialogContent>
+      </Dialog>
+
+      {/* Edit Lecture Dialog */}
+      <Dialog open={isEditLectureOpen} onOpenChange={(o) => !o && setIsEditLectureOpen(false)}>
+         <DialogContent className="max-w-xl rounded-3xl p-0 overflow-hidden border-none shadow-2xl bg-white">
+            <div className="bg-navy p-6 text-white">
+               <h2 className="text-xl font-black uppercase tracking-tighter leading-none mb-1">Modify Lecture Details</h2>
+               <p className="text-[9px] font-bold text-gold uppercase tracking-widest opacity-80">Edit the video stream details or replace attachments</p>
+            </div>
+            
+            <form onSubmit={handleUpdateLecture} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+               <div className="space-y-1.5">
+                  <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">1. Select Internship Domain *</Label>
+                  <select
+                     value={editLectureDomain}
+                     onChange={(e) => setEditLectureDomain(e.target.value)}
+                     className="w-full h-10 border-2 rounded-xl px-3 font-bold text-xs bg-slate-50 outline-none focus:border-gold"
+                     required
+                  >
+                     <option value="">-- SELECT DOMAIN --</option>
+                     <option value="General">General (All Students)</option>
+                     {internships.map(i => (
+                        <option key={i.id} value={i.title}>{i.title}</option>
+                     ))}
+                  </select>
+               </div>
+
+               <div className="space-y-1.5">
+                  <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">2. Lecture Title *</Label>
+                  <Input 
+                     value={editLectureTitle}
+                     onChange={(e) => setEditLectureTitle(e.target.value)}
+                     placeholder="e.g. Introduction to Git & GitHub"
+                     required 
+                     className="h-10 rounded-xl font-bold text-xs border-2"
+                  />
+               </div>
+
+               <div className="space-y-1.5">
+                  <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">3. Description / Topic Outline</Label>
+                  <textarea 
+                     value={editLectureDesc}
+                     onChange={(e) => setEditLectureDesc(e.target.value)}
+                     placeholder="Outline the main keypoints covered in this lecture..." 
+                     className="w-full h-24 border-2 rounded-xl p-3 text-xs font-bold outline-none focus:border-gold"
+                  />
+               </div>
+
+               <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                     <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">4. Lecture Type *</Label>
+                     <select
+                        value={editLectureMode}
+                        onChange={(e) => setEditLectureMode(e.target.value)}
+                        className="w-full h-10 border-2 rounded-xl px-3 font-bold text-xs bg-slate-50 outline-none focus:border-gold"
+                        required
+                     >
+                        <option value="Google Meet">Google Meet</option>
+                        <option value="YouTube">YouTube</option>
+                        <option value="Online">Zoom/Online</option>
+                        <option value="Other">Other (Custom)</option>
+                     </select>
+                  </div>
+
+                  {editLectureMode === "Other" && (
+                     <div className="space-y-1.5">
+                        <Label className="font-black text-[9px] uppercase tracking-wider text-[#1e40af]">Custom Type Name *</Label>
+                        <Input
+                           value={editLectureModeCustom}
+                           onChange={(e) => setEditLectureModeCustom(e.target.value)}
+                           placeholder="e.g. Teams, Webinar"
+                           required
+                           className="h-10 rounded-xl font-bold text-xs border-2 border-[#1e40af]/30"
+                        />
+                     </div>
+                  )}
+               </div>
+
+               <div className="space-y-1.5">
+                  <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">5. Lecture / Stream Link *</Label>
+                  <Input 
+                     value={editLectureLink}
+                     onChange={(e) => setEditLectureLink(e.target.value)}
+                     placeholder="Paste YouTube, Google Meet, or Zoom URL..."
+                     required 
+                     className="h-10 rounded-xl font-bold text-xs border-2"
+                  />
+
+                  {/* YouTube Thumbnail Preview */}
+                  {getYouTubeId(editLectureLink) && (
+                     <div className="mt-2 p-2 bg-slate-100 rounded-xl border border-dashed text-center">
+                        <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">Instant YouTube Thumbnail Preview</div>
+                        <img 
+                           src={`https://img.youtube.com/vi/${getYouTubeId(editLectureLink)}/hqdefault.jpg`} 
+                           alt="Thumbnail Preview" 
+                           className="h-28 mx-auto object-cover rounded-lg border shadow-sm aspect-video" 
+                        />
+                     </div>
+                  )}
+               </div>
+
+               <div className="space-y-1.5 border-t pt-3">
+                  <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">6. Replace Study Material PDF (Max 80MB)</Label>
+                  {editLectureExistingPdfUrl && (
+                     <div className="text-[10px] text-emerald-700 bg-emerald-50 bg-opacity-10 border border-emerald-100 p-2 rounded-lg flex items-center justify-between mb-2">
+                        <span className="font-bold">✓ Existing material uploaded</span>
+                        <a href={editLectureExistingPdfUrl} target="_blank" className="font-black underline hover:text-emerald-800">VIEW PDF</a>
+                     </div>
+                  )}
+                  <input 
+                     id="edit_material_pdf_input" 
+                     type="file" 
+                     accept="application/pdf"
+                     onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        if (file && file.size > 80 * 1024 * 1024) {
+                           toast.error("PDF size exceeds 80MB limit.");
+                           e.target.value = "";
+                           setEditLectureMaterialPdf(null);
+                        } else {
+                           setEditLectureMaterialPdf(file);
+                        }
+                     }}
+                     className="w-full text-xs font-bold bg-slate-50 p-2 border-2 border-dashed rounded-xl cursor-pointer"
+                  />
+               </div>
+
+               <div className="space-y-1.5">
+                  <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">7. Additional Reference Link (Optional)</Label>
+                  <Input 
+                     value={editLectureMaterialLink}
+                     onChange={(e) => setEditLectureMaterialLink(e.target.value)}
+                     placeholder="e.g. GitHub Repository, Documentation Link"
+                     className="h-10 rounded-xl font-bold text-xs border-2"
+                  />
+               </div>
+
+               <div className="flex justify-end gap-3 pt-4 border-t">
+                  <Button type="button" variant="ghost" onClick={() => setIsEditLectureOpen(false)} className="px-6 h-10 rounded-xl font-black text-[9px] uppercase">Cancel</Button>
+                  <Button type="submit" disabled={savingLecture} className="bg-navy text-white px-10 h-10 rounded-xl font-black text-[9px] uppercase tracking-widest shadow-xl">
+                     {savingLecture ? <Loader2 className="animate-spin" /> : "SAVE CHANGES"}
                   </Button>
                </div>
             </form>
