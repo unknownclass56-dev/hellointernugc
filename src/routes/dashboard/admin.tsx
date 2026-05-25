@@ -2280,6 +2280,8 @@ function AdminDashboard() {
             </div>
           </div>
         );
+      })()}
+
       {view === "marketing" && (
         <div className="space-y-6">
           {/* Main Layout Grid */}
@@ -2376,7 +2378,7 @@ function AdminDashboard() {
                       const reader = new FileReader();
                       reader.onload = (ev) => {
                         const text = ev.target?.result as string;
-                        const { headers, data } = parseCSV(text);
+                        const { headers, data } = parseMarketingCSV(text);
                         if (headers.length === 0 || data.length === 0) {
                           toast.error("Invalid or empty CSV file!");
                           return;
