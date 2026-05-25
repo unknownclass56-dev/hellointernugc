@@ -199,6 +199,15 @@ function Home() {
                  <Link to="/internships">Explore All</Link>
               </Button>
            </div>
+           
+           <div className="mt-10 pt-8 border-t border-white/10 flex flex-col items-center justify-center gap-1.5 relative z-10">
+              <div className="text-[10px] font-black uppercase tracking-widest text-gold flex items-center gap-1.5">
+                 <Sparkles className="size-3" /> 24/7 Help & Support
+              </div>
+              <p className="text-sm font-medium text-ivory/80">
+                For immediate assistance and replies, email us at: <a href="mailto:techlaunchpad01@gmail.com" className="text-white font-bold hover:text-gold transition-colors underline underline-offset-4">techlaunchpad01@gmail.com</a>
+              </p>
+           </div>
         </div>
       </section>
     </PageShell>
