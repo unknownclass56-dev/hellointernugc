@@ -4076,6 +4076,146 @@ function AdminDashboard() {
             </form>
          </DialogContent>
       </Dialog>
+      {/* --- TRAINING MANAGEMENT DIALOGS --- */}
+      <Dialog open={isAddTrainingOpen || isEditTrainingOpen} onOpenChange={(o) => { if(!o) { setIsAddTrainingOpen(false); setIsEditTrainingOpen(false); setSelectedTraining(null); } }}>
+         <DialogContent className="max-w-xl rounded-3xl p-0 overflow-hidden border-none shadow-2xl bg-white">
+            <DialogHeader className="bg-navy p-6 pb-8">
+               <DialogTitle className="text-xl font-black text-white uppercase tracking-tighter">
+                  {selectedTraining ? "Edit Training Program" : "New Training Program"}
+               </DialogTitle>
+               <DialogDescription className="text-gold font-bold text-xs uppercase tracking-widest">
+                  Set program details, timeline, and cover image.
+               </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={onSaveTraining} className="p-6 -mt-4 bg-white rounded-t-3xl space-y-4">
+               <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase text-slate-500">Program Name *</Label>
+                  <Input required value={tName} onChange={e => setTName(e.target.value)} placeholder="e.g. Masterclass on AI" className="h-10 rounded-xl font-bold text-xs border-2"/>
+               </div>
+               <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                     <Label className="text-[10px] font-black uppercase text-slate-500">Type *</Label>
+                     <select className="flex h-10 w-full items-center justify-between rounded-xl border-2 border-slate-200 bg-white px-3 py-2 text-xs font-bold ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-navy focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" value={tType} onChange={e => setTType(e.target.value)}>
+                        <option value="online">Online</option>
+                        <option value="offline">Offline</option>
+                        <option value="hybrid">Hybrid</option>
+                     </select>
+                  </div>
+                  <div className="space-y-1">
+                     <Label className="text-[10px] font-black uppercase text-slate-500">Duration (Days) *</Label>
+                     <Input type="number" min="1" required value={tDuration} onChange={e => setTDuration(parseInt(e.target.value))} className="h-10 rounded-xl font-bold text-xs border-2"/>
+                  </div>
+               </div>
+               <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                     <Label className="text-[10px] font-black uppercase text-slate-500">Start Date</Label>
+                     <Input type="datetime-local" value={tStartDate} onChange={e => setTStartDate(e.target.value)} className="h-10 rounded-xl font-bold text-xs border-2"/>
+                  </div>
+                  <div className="space-y-1">
+                     <Label className="text-[10px] font-black uppercase text-slate-500">End Date</Label>
+                     <Input type="datetime-local" value={tEndDate} onChange={e => setTEndDate(e.target.value)} className="h-10 rounded-xl font-bold text-xs border-2"/>
+                  </div>
+               </div>
+               <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase text-slate-500">Thumbnail URL</Label>
+                  <Input value={tThumbnail} onChange={e => setTThumbnail(e.target.value)} placeholder="https://..." className="h-10 rounded-xl font-bold text-xs border-2"/>
+               </div>
+               <div className="flex justify-end gap-3 pt-4 border-t">
+                  <Button type="button" variant="ghost" onClick={() => {setIsAddTrainingOpen(false); setIsEditTrainingOpen(false);}} className="px-6 h-10 rounded-xl font-black text-[9px] uppercase">Cancel</Button>
+                  <Button type="submit" disabled={savingTraining} className="bg-navy text-white px-10 h-10 rounded-xl font-black text-[9px] uppercase tracking-widest shadow-xl">
+                     {savingTraining ? <Loader2 className="animate-spin" /> : "SAVE PROGRAM"}
+                  </Button>
+               </div>
+            </form>
+         </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!viewingTraining} onOpenChange={(o) => !o && setViewingTraining(null)}>
+         <DialogContent className="max-w-4xl rounded-3xl p-0 overflow-hidden border-none shadow-2xl bg-white">
+            <DialogHeader className="bg-navy p-6 pb-8 flex flex-row items-center justify-between">
+               <div>
+                  <DialogTitle className="text-xl font-black text-white uppercase tracking-tighter">
+                     {viewingTraining?.name} - Sessions
+                  </DialogTitle>
+                  <DialogDescription className="text-gold font-bold text-xs uppercase tracking-widest">
+                     Manage video sessions and live classes
+                  </DialogDescription>
+               </div>
+               <Button className="h-9 px-4 bg-white text-navy rounded-xl font-bold uppercase text-[9px] tracking-widest shadow-lg flex items-center gap-1.5" onClick={() => {
+                  setTlTitle(""); setTlDesc(""); setTlStartTime(""); setTlLink("");
+                  setIsAddTrainingLectureOpen(true);
+               }}>
+                  <Plus size={14} /> Add Session
+               </Button>
+            </DialogHeader>
+            <div className="p-6 -mt-4 bg-slate-50 rounded-t-3xl min-h-[300px] max-h-[60vh] overflow-y-auto">
+               <div className="grid gap-4">
+                  {(trainingLecturesMap[viewingTraining?.id] || []).length === 0 ? (
+                     <div className="text-center py-12 text-slate-400">
+                        <Video className="mx-auto size-12 opacity-20 mb-2" />
+                        <p className="font-bold text-sm uppercase">No Sessions Yet</p>
+                     </div>
+                  ) : (
+                     (trainingLecturesMap[viewingTraining?.id] || []).map((lec: any, idx: number) => (
+                        <div key={lec.id} className="bg-white p-4 rounded-2xl border shadow-sm flex items-center justify-between">
+                           <div>
+                              <p className="text-[10px] font-black text-gold uppercase tracking-widest mb-1">Session {idx + 1}</p>
+                              <h4 className="font-black text-navy-deep text-sm uppercase">{lec.title}</h4>
+                              <p className="text-xs text-slate-500 mt-1 line-clamp-1">{lec.description}</p>
+                              <div className="flex gap-4 mt-2">
+                                 {lec.start_time && <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><Calendar size={12}/> {new Date(lec.start_time).toLocaleString()}</span>}
+                                 {lec.link && <a href={lec.link} target="_blank" rel="noreferrer" className="text-[10px] font-bold text-blue-500 hover:underline">Watch Link</a>}
+                              </div>
+                           </div>
+                           <div className="flex gap-2">
+                              <Button size="icon" variant="outline" className="size-8" onClick={() => {
+                                 setSelectedTrainingLecture(lec);
+                                 setTlTitle(lec.title); setTlDesc(lec.description || ""); setTlStartTime(lec.start_time ? lec.start_time.substring(0,16) : ""); setTlLink(lec.link || "");
+                                 setIsEditTrainingLectureOpen(true);
+                              }}><Edit size={14}/></Button>
+                              <Button size="icon" variant="outline" className="size-8 text-red-500" onClick={() => onDeleteTrainingLecture(lec.id)}><Trash2 size={14}/></Button>
+                           </div>
+                        </div>
+                     ))
+                  )}
+               </div>
+            </div>
+         </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAddTrainingLectureOpen || isEditTrainingLectureOpen} onOpenChange={(o) => { if(!o) { setIsAddTrainingLectureOpen(false); setIsEditTrainingLectureOpen(false); setSelectedTrainingLecture(null); } }}>
+         <DialogContent className="max-w-xl rounded-3xl p-0 overflow-hidden border-none shadow-2xl bg-white">
+            <DialogHeader className="bg-navy-deep p-6 pb-8">
+               <DialogTitle className="text-xl font-black text-white uppercase tracking-tighter">
+                  {selectedTrainingLecture ? "Edit Session" : "New Session"}
+               </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={onSaveTrainingLecture} className="p-6 -mt-4 bg-white rounded-t-3xl space-y-4">
+               <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase text-slate-500">Session Title *</Label>
+                  <Input required value={tlTitle} onChange={e => setTlTitle(e.target.value)} placeholder="e.g. Introduction to React" className="h-10 rounded-xl font-bold text-xs border-2"/>
+               </div>
+               <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase text-slate-500">Description</Label>
+                  <Textarea value={tlDesc} onChange={e => setTlDesc(e.target.value)} rows={3} className="rounded-xl font-bold text-xs border-2 resize-none"/>
+               </div>
+               <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase text-slate-500">Start Time</Label>
+                  <Input type="datetime-local" value={tlStartTime} onChange={e => setTlStartTime(e.target.value)} className="h-10 rounded-xl font-bold text-xs border-2"/>
+               </div>
+               <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase text-slate-500">Video / Meet Link</Label>
+                  <Input value={tlLink} onChange={e => setTlLink(e.target.value)} placeholder="https://..." className="h-10 rounded-xl font-bold text-xs border-2"/>
+               </div>
+               <div className="flex justify-end gap-3 pt-4 border-t">
+                  <Button type="button" variant="ghost" onClick={() => {setIsAddTrainingLectureOpen(false); setIsEditTrainingLectureOpen(false);}} className="px-6 h-10 rounded-xl font-black text-[9px] uppercase">Cancel</Button>
+                  <Button type="submit" disabled={savingTraining} className="bg-navy text-white px-10 h-10 rounded-xl font-black text-[9px] uppercase tracking-widest shadow-xl">
+                     {savingTraining ? <Loader2 className="animate-spin" /> : "SAVE SESSION"}
+                  </Button>
+               </div>
+            </form>
+         </DialogContent>
+      </Dialog>
 
     </div>
   );
