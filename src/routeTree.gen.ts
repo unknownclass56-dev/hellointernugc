@@ -22,8 +22,10 @@ import { Route as ContactRouteImport } from './routes/contact'
 import { Route as BlogRouteImport } from './routes/blog'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TrainingsIndexRouteImport } from './routes/trainings/index'
 import { Route as ProgramsIndexRouteImport } from './routes/programs/index'
 import { Route as InternshipsIndexRouteImport } from './routes/internships/index'
+import { Route as TrainingsIdRouteImport } from './routes/trainings/$id'
 import { Route as ProgramsSlugRouteImport } from './routes/programs/$slug'
 import { Route as InternshipsIdRouteImport } from './routes/internships/$id'
 import { Route as DashboardInboxRouteImport } from './routes/dashboard/inbox'
@@ -108,6 +110,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TrainingsIndexRoute = TrainingsIndexRouteImport.update({
+  id: '/trainings/',
+  path: '/trainings/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProgramsIndexRoute = ProgramsIndexRouteImport.update({
   id: '/programs/',
   path: '/programs/',
@@ -116,6 +123,11 @@ const ProgramsIndexRoute = ProgramsIndexRouteImport.update({
 const InternshipsIndexRoute = InternshipsIndexRouteImport.update({
   id: '/internships/',
   path: '/internships/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TrainingsIdRoute = TrainingsIdRouteImport.update({
+  id: '/trainings/$id',
+  path: '/trainings/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProgramsSlugRoute = ProgramsSlugRouteImport.update({
@@ -239,8 +251,10 @@ export interface FileRoutesByFullPath {
   '/dashboard/inbox': typeof DashboardInboxRoute
   '/internships/$id': typeof InternshipsIdRoute
   '/programs/$slug': typeof ProgramsSlugRoute
+  '/trainings/$id': typeof TrainingsIdRoute
   '/internships/': typeof InternshipsIndexRoute
   '/programs/': typeof ProgramsIndexRoute
+  '/trainings/': typeof TrainingsIndexRoute
   '/dashboard/student/assignments': typeof DashboardStudentAssignmentsRoute
   '/dashboard/student/attendance': typeof DashboardStudentAttendanceRoute
   '/dashboard/student/certificate': typeof DashboardStudentCertificateRoute
@@ -274,8 +288,10 @@ export interface FileRoutesByTo {
   '/dashboard/inbox': typeof DashboardInboxRoute
   '/internships/$id': typeof InternshipsIdRoute
   '/programs/$slug': typeof ProgramsSlugRoute
+  '/trainings/$id': typeof TrainingsIdRoute
   '/internships': typeof InternshipsIndexRoute
   '/programs': typeof ProgramsIndexRoute
+  '/trainings': typeof TrainingsIndexRoute
   '/dashboard/student/assignments': typeof DashboardStudentAssignmentsRoute
   '/dashboard/student/attendance': typeof DashboardStudentAttendanceRoute
   '/dashboard/student/certificate': typeof DashboardStudentCertificateRoute
@@ -310,8 +326,10 @@ export interface FileRoutesById {
   '/dashboard/inbox': typeof DashboardInboxRoute
   '/internships/$id': typeof InternshipsIdRoute
   '/programs/$slug': typeof ProgramsSlugRoute
+  '/trainings/$id': typeof TrainingsIdRoute
   '/internships/': typeof InternshipsIndexRoute
   '/programs/': typeof ProgramsIndexRoute
+  '/trainings/': typeof TrainingsIndexRoute
   '/dashboard/student/assignments': typeof DashboardStudentAssignmentsRoute
   '/dashboard/student/attendance': typeof DashboardStudentAttendanceRoute
   '/dashboard/student/certificate': typeof DashboardStudentCertificateRoute
@@ -347,8 +365,10 @@ export interface FileRouteTypes {
     | '/dashboard/inbox'
     | '/internships/$id'
     | '/programs/$slug'
+    | '/trainings/$id'
     | '/internships/'
     | '/programs/'
+    | '/trainings/'
     | '/dashboard/student/assignments'
     | '/dashboard/student/attendance'
     | '/dashboard/student/certificate'
@@ -382,8 +402,10 @@ export interface FileRouteTypes {
     | '/dashboard/inbox'
     | '/internships/$id'
     | '/programs/$slug'
+    | '/trainings/$id'
     | '/internships'
     | '/programs'
+    | '/trainings'
     | '/dashboard/student/assignments'
     | '/dashboard/student/attendance'
     | '/dashboard/student/certificate'
@@ -417,8 +439,10 @@ export interface FileRouteTypes {
     | '/dashboard/inbox'
     | '/internships/$id'
     | '/programs/$slug'
+    | '/trainings/$id'
     | '/internships/'
     | '/programs/'
+    | '/trainings/'
     | '/dashboard/student/assignments'
     | '/dashboard/student/attendance'
     | '/dashboard/student/certificate'
@@ -449,8 +473,10 @@ export interface RootRouteChildren {
   ApplyIdRoute: typeof ApplyIdRoute
   InternshipsIdRoute: typeof InternshipsIdRoute
   ProgramsSlugRoute: typeof ProgramsSlugRoute
+  TrainingsIdRoute: typeof TrainingsIdRoute
   InternshipsIndexRoute: typeof InternshipsIndexRoute
   ProgramsIndexRoute: typeof ProgramsIndexRoute
+  TrainingsIndexRoute: typeof TrainingsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -546,6 +572,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/trainings/': {
+      id: '/trainings/'
+      path: '/trainings'
+      fullPath: '/trainings/'
+      preLoaderRoute: typeof TrainingsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/programs/': {
       id: '/programs/'
       path: '/programs'
@@ -558,6 +591,13 @@ declare module '@tanstack/react-router' {
       path: '/internships'
       fullPath: '/internships/'
       preLoaderRoute: typeof InternshipsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trainings/$id': {
+      id: '/trainings/$id'
+      path: '/trainings/$id'
+      fullPath: '/trainings/$id'
+      preLoaderRoute: typeof TrainingsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/programs/$slug': {
@@ -754,8 +794,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApplyIdRoute: ApplyIdRoute,
   InternshipsIdRoute: InternshipsIdRoute,
   ProgramsSlugRoute: ProgramsSlugRoute,
+  TrainingsIdRoute: TrainingsIdRoute,
   InternshipsIndexRoute: InternshipsIndexRoute,
   ProgramsIndexRoute: ProgramsIndexRoute,
+  TrainingsIndexRoute: TrainingsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
