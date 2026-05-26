@@ -35,6 +35,8 @@ import { Route as BlogSlugRouteImport } from './routes/blog/$slug'
 import { Route as ApplyIdRouteImport } from './routes/apply/$id'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as DashboardStudentIndexRouteImport } from './routes/dashboard/student/index'
+import { Route as TrainingsIdRegisterRouteImport } from './routes/trainings/$id/register'
+import { Route as DashboardStudentTrainingsRouteImport } from './routes/dashboard/student/trainings'
 import { Route as DashboardStudentProfileRouteImport } from './routes/dashboard/student/profile'
 import { Route as DashboardStudentPaymentsRouteImport } from './routes/dashboard/student/payments'
 import { Route as DashboardStudentOfferLetterRouteImport } from './routes/dashboard/student/offer-letter'
@@ -175,6 +177,17 @@ const DashboardStudentIndexRoute = DashboardStudentIndexRouteImport.update({
   path: '/student/',
   getParentRoute: () => DashboardRoute,
 } as any)
+const TrainingsIdRegisterRoute = TrainingsIdRegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => TrainingsIdRoute,
+} as any)
+const DashboardStudentTrainingsRoute =
+  DashboardStudentTrainingsRouteImport.update({
+    id: '/student/trainings',
+    path: '/student/trainings',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardStudentProfileRoute = DashboardStudentProfileRouteImport.update({
   id: '/student/profile',
   path: '/student/profile',
@@ -251,7 +264,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/inbox': typeof DashboardInboxRoute
   '/internships/$id': typeof InternshipsIdRoute
   '/programs/$slug': typeof ProgramsSlugRoute
-  '/trainings/$id': typeof TrainingsIdRoute
+  '/trainings/$id': typeof TrainingsIdRouteWithChildren
   '/internships/': typeof InternshipsIndexRoute
   '/programs/': typeof ProgramsIndexRoute
   '/trainings/': typeof TrainingsIndexRoute
@@ -263,6 +276,8 @@ export interface FileRoutesByFullPath {
   '/dashboard/student/offer-letter': typeof DashboardStudentOfferLetterRoute
   '/dashboard/student/payments': typeof DashboardStudentPaymentsRoute
   '/dashboard/student/profile': typeof DashboardStudentProfileRoute
+  '/dashboard/student/trainings': typeof DashboardStudentTrainingsRoute
+  '/trainings/$id/register': typeof TrainingsIdRegisterRoute
   '/dashboard/student/': typeof DashboardStudentIndexRoute
   '/dashboard/student/secure-assignment/$id': typeof DashboardStudentSecureAssignmentIdRoute
 }
@@ -288,7 +303,7 @@ export interface FileRoutesByTo {
   '/dashboard/inbox': typeof DashboardInboxRoute
   '/internships/$id': typeof InternshipsIdRoute
   '/programs/$slug': typeof ProgramsSlugRoute
-  '/trainings/$id': typeof TrainingsIdRoute
+  '/trainings/$id': typeof TrainingsIdRouteWithChildren
   '/internships': typeof InternshipsIndexRoute
   '/programs': typeof ProgramsIndexRoute
   '/trainings': typeof TrainingsIndexRoute
@@ -300,6 +315,8 @@ export interface FileRoutesByTo {
   '/dashboard/student/offer-letter': typeof DashboardStudentOfferLetterRoute
   '/dashboard/student/payments': typeof DashboardStudentPaymentsRoute
   '/dashboard/student/profile': typeof DashboardStudentProfileRoute
+  '/dashboard/student/trainings': typeof DashboardStudentTrainingsRoute
+  '/trainings/$id/register': typeof TrainingsIdRegisterRoute
   '/dashboard/student': typeof DashboardStudentIndexRoute
   '/dashboard/student/secure-assignment/$id': typeof DashboardStudentSecureAssignmentIdRoute
 }
@@ -326,7 +343,7 @@ export interface FileRoutesById {
   '/dashboard/inbox': typeof DashboardInboxRoute
   '/internships/$id': typeof InternshipsIdRoute
   '/programs/$slug': typeof ProgramsSlugRoute
-  '/trainings/$id': typeof TrainingsIdRoute
+  '/trainings/$id': typeof TrainingsIdRouteWithChildren
   '/internships/': typeof InternshipsIndexRoute
   '/programs/': typeof ProgramsIndexRoute
   '/trainings/': typeof TrainingsIndexRoute
@@ -338,6 +355,8 @@ export interface FileRoutesById {
   '/dashboard/student/offer-letter': typeof DashboardStudentOfferLetterRoute
   '/dashboard/student/payments': typeof DashboardStudentPaymentsRoute
   '/dashboard/student/profile': typeof DashboardStudentProfileRoute
+  '/dashboard/student/trainings': typeof DashboardStudentTrainingsRoute
+  '/trainings/$id/register': typeof TrainingsIdRegisterRoute
   '/dashboard/student/': typeof DashboardStudentIndexRoute
   '/dashboard/student/secure-assignment/$id': typeof DashboardStudentSecureAssignmentIdRoute
 }
@@ -377,6 +396,8 @@ export interface FileRouteTypes {
     | '/dashboard/student/offer-letter'
     | '/dashboard/student/payments'
     | '/dashboard/student/profile'
+    | '/dashboard/student/trainings'
+    | '/trainings/$id/register'
     | '/dashboard/student/'
     | '/dashboard/student/secure-assignment/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -414,6 +435,8 @@ export interface FileRouteTypes {
     | '/dashboard/student/offer-letter'
     | '/dashboard/student/payments'
     | '/dashboard/student/profile'
+    | '/dashboard/student/trainings'
+    | '/trainings/$id/register'
     | '/dashboard/student'
     | '/dashboard/student/secure-assignment/$id'
   id:
@@ -451,6 +474,8 @@ export interface FileRouteTypes {
     | '/dashboard/student/offer-letter'
     | '/dashboard/student/payments'
     | '/dashboard/student/profile'
+    | '/dashboard/student/trainings'
+    | '/trainings/$id/register'
     | '/dashboard/student/'
     | '/dashboard/student/secure-assignment/$id'
   fileRoutesById: FileRoutesById
@@ -473,7 +498,7 @@ export interface RootRouteChildren {
   ApplyIdRoute: typeof ApplyIdRoute
   InternshipsIdRoute: typeof InternshipsIdRoute
   ProgramsSlugRoute: typeof ProgramsSlugRoute
-  TrainingsIdRoute: typeof TrainingsIdRoute
+  TrainingsIdRoute: typeof TrainingsIdRouteWithChildren
   InternshipsIndexRoute: typeof InternshipsIndexRoute
   ProgramsIndexRoute: typeof ProgramsIndexRoute
   TrainingsIndexRoute: typeof TrainingsIndexRoute
@@ -663,6 +688,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardStudentIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/trainings/$id/register': {
+      id: '/trainings/$id/register'
+      path: '/register'
+      fullPath: '/trainings/$id/register'
+      preLoaderRoute: typeof TrainingsIdRegisterRouteImport
+      parentRoute: typeof TrainingsIdRoute
+    }
+    '/dashboard/student/trainings': {
+      id: '/dashboard/student/trainings'
+      path: '/student/trainings'
+      fullPath: '/dashboard/student/trainings'
+      preLoaderRoute: typeof DashboardStudentTrainingsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/student/profile': {
       id: '/dashboard/student/profile'
       path: '/student/profile'
@@ -751,6 +790,7 @@ interface DashboardRouteChildren {
   DashboardStudentOfferLetterRoute: typeof DashboardStudentOfferLetterRoute
   DashboardStudentPaymentsRoute: typeof DashboardStudentPaymentsRoute
   DashboardStudentProfileRoute: typeof DashboardStudentProfileRoute
+  DashboardStudentTrainingsRoute: typeof DashboardStudentTrainingsRoute
   DashboardStudentIndexRoute: typeof DashboardStudentIndexRoute
   DashboardStudentSecureAssignmentIdRoute: typeof DashboardStudentSecureAssignmentIdRoute
 }
@@ -767,6 +807,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardStudentOfferLetterRoute: DashboardStudentOfferLetterRoute,
   DashboardStudentPaymentsRoute: DashboardStudentPaymentsRoute,
   DashboardStudentProfileRoute: DashboardStudentProfileRoute,
+  DashboardStudentTrainingsRoute: DashboardStudentTrainingsRoute,
   DashboardStudentIndexRoute: DashboardStudentIndexRoute,
   DashboardStudentSecureAssignmentIdRoute:
     DashboardStudentSecureAssignmentIdRoute,
@@ -774,6 +815,18 @@ const DashboardRouteChildren: DashboardRouteChildren = {
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
   DashboardRouteChildren,
+)
+
+interface TrainingsIdRouteChildren {
+  TrainingsIdRegisterRoute: typeof TrainingsIdRegisterRoute
+}
+
+const TrainingsIdRouteChildren: TrainingsIdRouteChildren = {
+  TrainingsIdRegisterRoute: TrainingsIdRegisterRoute,
+}
+
+const TrainingsIdRouteWithChildren = TrainingsIdRoute._addFileChildren(
+  TrainingsIdRouteChildren,
 )
 
 const rootRouteChildren: RootRouteChildren = {
@@ -794,7 +847,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApplyIdRoute: ApplyIdRoute,
   InternshipsIdRoute: InternshipsIdRoute,
   ProgramsSlugRoute: ProgramsSlugRoute,
-  TrainingsIdRoute: TrainingsIdRoute,
+  TrainingsIdRoute: TrainingsIdRouteWithChildren,
   InternshipsIndexRoute: InternshipsIndexRoute,
   ProgramsIndexRoute: ProgramsIndexRoute,
   TrainingsIndexRoute: TrainingsIndexRoute,

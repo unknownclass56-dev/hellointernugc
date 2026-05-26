@@ -111,6 +111,38 @@ function AdminDashboard() {
   const [queueResults, setQueueResults] = useState<any[]>([]);
   const [queueIndex, setQueueIndex] = useState(0);
 
+  // ---- TRAINING MANAGEMENT STATES ----
+  const [trainings, setTrainings] = useState<any[]>([]);
+  const [trainingLeads, setTrainingLeads] = useState<any[]>([]);
+  const [trainingEnrollments, setTrainingEnrollments] = useState<any[]>([]);
+  const [trainingTransactions, setTrainingTransactions] = useState<any[]>([]);
+  const [loadingTrainings, setLoadingTrainings] = useState(false);
+  const [trainingTab, setTrainingTab] = useState<"list" | "leads" | "enrolled" | "transactions">("list");
+  const [selectedTraining, setSelectedTraining] = useState<any>(null);
+  const [trainingLecturesMap, setTrainingLecturesMap] = useState<Record<string, any[]>>({});
+  const [viewingTraining, setViewingTraining] = useState<any>(null);
+  const [isAddTrainingOpen, setIsAddTrainingOpen] = useState(false);
+  const [isEditTrainingOpen, setIsEditTrainingOpen] = useState(false);
+  const [isAddTrainingLectureOpen, setIsAddTrainingLectureOpen] = useState(false);
+  const [isEditTrainingLectureOpen, setIsEditTrainingLectureOpen] = useState(false);
+  const [selectedTrainingLecture, setSelectedTrainingLecture] = useState<any>(null);
+  const [savingTraining, setSavingTraining] = useState(false);
+  const [trainingSearch, setTrainingSearch] = useState("");
+
+  // Training form states
+  const [tName, setTName] = useState("");
+  const [tType, setTType] = useState("online");
+  const [tDuration, setTDuration] = useState(5);
+  const [tStartDate, setTStartDate] = useState("");
+  const [tEndDate, setTEndDate] = useState("");
+  const [tThumbnail, setTThumbnail] = useState("");
+
+  // Training lecture form
+  const [tlTitle, setTlTitle] = useState("");
+  const [tlDesc, setTlDesc] = useState("");
+  const [tlStartTime, setTlStartTime] = useState("");
+  const [tlLink, setTlLink] = useState("");
+
   function parseMarketingCSV(text: string) {
     const lines = text.split(/\r?\n/);
     if (lines.length === 0) return { headers: [], data: [] };
@@ -923,8 +955,115 @@ function AdminDashboard() {
     if (view === "lectures") {
       fetchLectures();
     }
+    if (view === "trainings") {
+      fetchTrainingsData();
+    }
     
     setLoading(false);
+  }
+
+  // --- TRAINING CRUD HANDLERS ---
+  async function fetchTrainingsData() {
+    setLoadingTrainings(true);
+    const { data: tList } = await supabase.from("trainings").select("*").order("created_at", { ascending: false });
+    const { data: lList } = await supabase.from("training_leads").select("*").order("created_at", { ascending: false });
+    const { data: eList } = await supabase.from("training_enrollments").select("*, profiles(*), trainings(name)").order("created_at", { ascending: false });
+    const { data: trxList } = await supabase.from("training_transactions").select("*, training_enrollments(*, profiles(*), trainings(name))").order("created_at", { ascending: false });
+    
+    setTrainings(tList || []);
+    setTrainingLeads(lList || []);
+    setTrainingEnrollments(eList || []);
+    setTrainingTransactions(trxList || []);
+    setLoadingTrainings(false);
+  }
+
+  async function fetchTrainingLecturesForAdmin(trainingId: string) {
+    const { data } = await supabase.from("training_lectures").select("*").eq("training_id", trainingId).order("created_at", { ascending: true });
+    setTrainingLecturesMap(prev => ({ ...prev, [trainingId]: data || [] }));
+  }
+
+  async function onSaveTraining(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingTraining(true);
+    try {
+      const payload = {
+        name: tName,
+        type: tType,
+        duration_days: tDuration,
+        start_date: tStartDate || null,
+        end_date: tEndDate || null,
+        thumbnail_url: tThumbnail
+      };
+      
+      let error;
+      if (selectedTraining) {
+        const res = await supabase.from("trainings").update(payload).eq("id", selectedTraining.id);
+        error = res.error;
+      } else {
+        const res = await supabase.from("trainings").insert([payload]);
+        error = res.error;
+      }
+      
+      if (error) throw error;
+      toast.success(selectedTraining ? "Training Updated" : "Training Created");
+      setIsAddTrainingOpen(false);
+      setIsEditTrainingOpen(false);
+      setSelectedTraining(null);
+      fetchTrainingsData();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save training");
+    } finally {
+      setSavingTraining(false);
+    }
+  }
+
+  async function onDeleteTraining(id: string) {
+    if (!confirm("Are you sure you want to delete this training? This will delete all lectures and enrollments associated with it.")) return;
+    const { error } = await supabase.from("trainings").delete().eq("id", id);
+    if (error) toast.error("Error deleting training: " + error.message);
+    else { toast.success("Training deleted"); fetchTrainingsData(); }
+  }
+
+  async function onSaveTrainingLecture(e: React.FormEvent) {
+    e.preventDefault();
+    if (!viewingTraining) return;
+    setSavingTraining(true);
+    try {
+      const payload = {
+        training_id: viewingTraining.id,
+        title: tlTitle,
+        description: tlDesc,
+        start_time: tlStartTime || null,
+        link: tlLink
+      };
+      
+      let error;
+      if (selectedTrainingLecture) {
+        const res = await supabase.from("training_lectures").update(payload).eq("id", selectedTrainingLecture.id);
+        error = res.error;
+      } else {
+        const res = await supabase.from("training_lectures").insert([payload]);
+        error = res.error;
+      }
+      
+      if (error) throw error;
+      toast.success(selectedTrainingLecture ? "Lecture Updated" : "Lecture Added");
+      setIsAddTrainingLectureOpen(false);
+      setIsEditTrainingLectureOpen(false);
+      setSelectedTrainingLecture(null);
+      fetchTrainingLecturesForAdmin(viewingTraining.id);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save lecture");
+    } finally {
+      setSavingTraining(false);
+    }
+  }
+
+  async function onDeleteTrainingLecture(id: string) {
+    if (!confirm("Are you sure you want to delete this lecture?")) return;
+    const { error } = await supabase.from("training_lectures").delete().eq("id", id);
+    if (error) toast.error("Error deleting lecture: " + error.message);
+    else { toast.success("Lecture deleted"); if (viewingTraining) fetchTrainingLecturesForAdmin(viewingTraining.id); }
   }
 
   // --- CSV Handlers ---
@@ -1094,6 +1233,7 @@ function AdminDashboard() {
                {view === "lectures" && "Lecture Control Hub"}
                {view === "leads" && "Student Leads"}
                {view === "marketing" && "Marketing Mailer"}
+               {view === "trainings" && "Training Management"}
             </h1>
          </div>
          <div className="flex gap-2">
@@ -2710,6 +2850,149 @@ function AdminDashboard() {
             </div>
           )}
         </div>
+      )}
+      {view === "trainings" && (
+         <div className="space-y-6">
+            <div className="bg-white p-5 rounded-2xl border shadow-sm flex flex-wrap items-center justify-between gap-4">
+               <div>
+                  <h2 className="text-lg font-black text-navy-deep uppercase tracking-tight">Training Programs</h2>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Manage bootcamps, courses, and student enrollments</p>
+               </div>
+               <div className="flex gap-2">
+                  <div className="flex bg-slate-100 p-1 rounded-xl">
+                     <button onClick={() => setTrainingTab("list")} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${trainingTab === "list" ? "bg-white text-navy shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>Programs</button>
+                     <button onClick={() => setTrainingTab("leads")} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${trainingTab === "leads" ? "bg-white text-navy shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>Leads ({trainingLeads.length})</button>
+                     <button onClick={() => setTrainingTab("enrolled")} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${trainingTab === "enrolled" ? "bg-white text-navy shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>Enrolled ({trainingEnrollments.length})</button>
+                     <button onClick={() => setTrainingTab("transactions")} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${trainingTab === "transactions" ? "bg-white text-navy shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>Payments</button>
+                  </div>
+                  <Button className="h-10 px-6 bg-navy text-white rounded-xl font-bold uppercase text-[10px] tracking-widest shadow-lg flex items-center gap-1.5" onClick={() => {
+                     setTName(""); setTType("online"); setTDuration(5); setTStartDate(""); setTEndDate(""); setTThumbnail("");
+                     setIsAddTrainingOpen(true);
+                  }}>
+                     <Plus size={16} /> New Training
+                  </Button>
+               </div>
+            </div>
+
+            {loadingTrainings ? (
+               <div className="text-center py-20 bg-white rounded-2xl border shadow-sm">
+                  <Loader2 className="animate-spin size-8 text-gold mx-auto mb-2" />
+                  <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Syncing training data...</p>
+               </div>
+            ) : trainingTab === "list" ? (
+               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {trainings.map(t => (
+                     <div key={t.id} className="group overflow-hidden rounded-2xl border bg-white shadow-sm hover:shadow-md transition-all flex flex-col h-full">
+                        <div className="relative aspect-video bg-navy/5 flex items-center justify-center overflow-hidden border-b">
+                           {t.thumbnail_url ? (
+                              <img src={t.thumbnail_url} alt={t.name} className="absolute inset-0 w-full h-full object-cover" />
+                           ) : (
+                              <BookOpen className="size-10 text-navy/20" />
+                           )}
+                           <div className="absolute top-3 right-3 rounded-md bg-navy/80 px-2 py-0.5 text-[9px] font-bold text-white uppercase tracking-wider">
+                              {t.type} | {t.duration_days} Days
+                           </div>
+                        </div>
+                        <div className="p-5 flex-1 flex flex-col">
+                           <h3 className="font-display font-black text-navy-deep text-sm uppercase tracking-tight mb-2">{t.name}</h3>
+                           <div className="text-[10px] font-bold text-slate-400 mb-4 flex items-center gap-1"><Calendar className="size-3"/> {t.start_date ? new Date(t.start_date).toLocaleDateString() : 'TBA'} - {t.end_date ? new Date(t.end_date).toLocaleDateString() : 'TBA'}</div>
+                           
+                           <div className="mt-auto pt-4 border-t flex items-center justify-between">
+                              <Button size="sm" variant="outline" className="h-8 text-[9px] font-black uppercase tracking-widest" onClick={() => { setViewingTraining(t); fetchTrainingLecturesForAdmin(t.id); }}>
+                                 Sessions
+                              </Button>
+                              <div className="flex gap-1">
+                                 <Button size="icon" variant="ghost" className="size-8" onClick={() => {
+                                    setSelectedTraining(t);
+                                    setTName(t.name); setTType(t.type); setTDuration(t.duration_days); setTStartDate(t.start_date ? t.start_date.substring(0,16) : ""); setTEndDate(t.end_date ? t.end_date.substring(0,16) : ""); setTThumbnail(t.thumbnail_url || "");
+                                    setIsEditTrainingOpen(true);
+                                 }}><Edit size={14}/></Button>
+                                 <Button size="icon" variant="ghost" className="size-8 text-red-500" onClick={() => onDeleteTraining(t.id)}><Trash2 size={14}/></Button>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  ))}
+               </div>
+            ) : trainingTab === "leads" ? (
+               <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+                  <Table>
+                     <TableHeader className="bg-slate-50"><TableRow>
+                        <TableHead className="font-black text-[9px] uppercase">Name</TableHead>
+                        <TableHead className="font-black text-[9px] uppercase">Contact</TableHead>
+                        <TableHead className="font-black text-[9px] uppercase">Institution</TableHead>
+                        <TableHead className="font-black text-[9px] uppercase">Status</TableHead>
+                     </TableRow></TableHeader>
+                     <TableBody>
+                        {trainingLeads.map(l => (
+                           <TableRow key={l.id} className="text-xs font-bold">
+                              <TableCell className="text-navy">{l.name}</TableCell>
+                              <TableCell className="text-slate-500">{l.email}<br/><span className="text-[9px]">{l.phone}</span></TableCell>
+                              <TableCell className="text-slate-500">{l.college}<br/><span className="text-[9px]">{l.university}</span></TableCell>
+                              <TableCell>
+                                 <span className={`px-2 py-0.5 rounded-full text-[8px] uppercase tracking-widest ${l.status === 'claimed' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{l.status.replace('_',' ')}</span>
+                              </TableCell>
+                           </TableRow>
+                        ))}
+                     </TableBody>
+                  </Table>
+               </div>
+            ) : trainingTab === "enrolled" ? (
+               <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+                  <Table>
+                     <TableHeader className="bg-slate-50"><TableRow>
+                        <TableHead className="font-black text-[9px] uppercase">Student</TableHead>
+                        <TableHead className="font-black text-[9px] uppercase">Program</TableHead>
+                        <TableHead className="font-black text-[9px] uppercase">Status</TableHead>
+                        <TableHead className="text-right font-black text-[9px] uppercase">Action</TableHead>
+                     </TableRow></TableHeader>
+                     <TableBody>
+                        {trainingEnrollments.map(e => (
+                           <TableRow key={e.id} className="text-xs font-bold">
+                              <TableCell className="text-navy">{e.profiles?.full_name}<br/><span className="text-[9px] text-slate-400">{e.profiles?.email}</span></TableCell>
+                              <TableCell className="text-slate-500">{e.trainings?.name}</TableCell>
+                              <TableCell>
+                                 <span className={`px-2 py-0.5 rounded-full text-[8px] uppercase tracking-widest ${e.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{e.status}</span>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                 <Button size="sm" variant="outline" className="h-7 text-[9px] uppercase" onClick={async () => {
+                                    const newStat = e.status === 'completed' ? 'enrolled' : 'completed';
+                                    await supabase.from("training_enrollments").update({ status: newStat }).eq("id", e.id);
+                                    fetchTrainingsData();
+                                 }}>Toggle Status</Button>
+                              </TableCell>
+                           </TableRow>
+                        ))}
+                     </TableBody>
+                  </Table>
+               </div>
+            ) : (
+               <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+                  <Table>
+                     <TableHeader className="bg-slate-50"><TableRow>
+                        <TableHead className="font-black text-[9px] uppercase">Txn ID</TableHead>
+                        <TableHead className="font-black text-[9px] uppercase">Student</TableHead>
+                        <TableHead className="font-black text-[9px] uppercase">Program</TableHead>
+                        <TableHead className="font-black text-[9px] uppercase">Amount</TableHead>
+                        <TableHead className="font-black text-[9px] uppercase">Status</TableHead>
+                     </TableRow></TableHeader>
+                     <TableBody>
+                        {trainingTransactions.map(tx => (
+                           <TableRow key={tx.id} className="text-xs font-bold">
+                              <TableCell className="font-mono text-[10px] text-slate-500">{tx.transaction_id || 'Manual'}</TableCell>
+                              <TableCell className="text-navy">{tx.training_enrollments?.profiles?.full_name}</TableCell>
+                              <TableCell className="text-slate-500">{tx.training_enrollments?.trainings?.name}</TableCell>
+                              <TableCell className="text-green-600">₹{tx.amount}</TableCell>
+                              <TableCell>
+                                 <span className="px-2 py-0.5 rounded-full text-[8px] uppercase tracking-widest bg-green-100 text-green-700">{tx.status}</span>
+                              </TableCell>
+                           </TableRow>
+                        ))}
+                     </TableBody>
+                  </Table>
+               </div>
+            )}
+         </div>
       )}
 
       {view === "lectures" && (

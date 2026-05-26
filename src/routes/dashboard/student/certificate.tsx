@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { ShieldCheck, Printer, ArrowLeft, Award, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/techlaunchpad-logo.png";
+import { TrainingCertificate } from "@/components/TrainingCertificate";
 
 export const Route = createFileRoute("/dashboard/student/certificate")({
   component: CertificatePage,
@@ -15,9 +16,12 @@ function CertificatePage() {
   const [student, setStudent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  const [completedTrainings, setCompletedTrainings] = useState<any[]>([]);
+
   useEffect(() => {
     if (user?.id) {
       fetchStudentData();
+      fetchTrainingData();
     }
   }, [user]);
 
@@ -39,6 +43,21 @@ function CertificatePage() {
     }
   }
 
+  async function fetchTrainingData() {
+    try {
+      const { data } = await supabase
+        .from("training_enrollments")
+        .select("*, trainings(*)")
+        .eq("student_id", user?.id)
+        .eq("status", "completed");
+      if (data) {
+        setCompletedTrainings(data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -56,7 +75,7 @@ function CertificatePage() {
   const durationStr = student?.internship_duration || "8 Weeks";
   const certId = `TL/OFFER/${student?.university_roll_number?.slice(-4) || "0000"}/${new Date(student?.created_at || Date.now()).getFullYear()}`;
 
-  if (student && !student.certificate_generated) {
+  if (student && !student.certificate_generated && completedTrainings.length === 0) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 space-y-4">
         <Award size={64} className="text-slate-300" />
@@ -78,15 +97,12 @@ function CertificatePage() {
             </Link>
           </Button>
         </div>
-        <div className="flex gap-3">
-          <Button onClick={() => window.print()} className="bg-navy hover:bg-navy-deep text-white font-black text-xs uppercase tracking-widest h-11 px-6 rounded-xl gap-2 shadow-lg shadow-navy/20">
-            <Printer size={16} /> Print Certificate
-          </Button>
-        </div>
       </div>
 
-      {/* LANDSCAPE CERTIFICATE CONTAINER */}
-      <div className="flex justify-center items-center w-full overflow-x-auto py-6 print:py-0 print:bg-white">
+      {student?.certificate_generated && (
+        <>
+          {/* LANDSCAPE CERTIFICATE CONTAINER */}
+          <div className="flex justify-center items-center w-full overflow-x-auto py-6 print:py-0 print:bg-white">
         <div 
           id="certificate-container" 
           className="w-[1050px] h-[740px] bg-white p-12 shadow-2xl relative border-[12px] border-double border-navy flex flex-col justify-between items-center text-center select-none print:shadow-none print:m-0 print:w-full print:h-[720px] print:border-[10px]"
@@ -192,6 +208,26 @@ function CertificatePage() {
           </div>
         </div>
       </div>
+      </>)}
+
+      {/* TRAINING CERTIFICATES */}
+      {completedTrainings.map(enr => (
+        <div key={enr.id} className="mt-12 pt-8 border-t-4 border-dashed border-slate-200">
+           <h3 className="text-center font-black text-navy-deep uppercase tracking-widest text-lg mb-8">
+              Training Program Certificate
+           </h3>
+           <TrainingCertificate 
+             studentName={student?.full_name || "Student Name"}
+             collegeName={student?.college_name || "College Name"}
+             universityName={student?.university_name || "University Name"}
+             trainingName={enr.trainings?.name || "Training Name"}
+             durationDays={enr.trainings?.duration_days || 5}
+             startDate={enr.trainings?.start_date}
+             endDate={enr.trainings?.end_date}
+             certificateNumber={`TL/TRG/${student?.university_roll_number?.slice(-4) || "0000"}/${new Date(enr.created_at).getFullYear()}`}
+           />
+        </div>
+      ))}
 
       {/* PRINT-ONLY CSS OVERRIDES */}
       <style>{`
