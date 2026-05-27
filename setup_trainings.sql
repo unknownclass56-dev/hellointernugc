@@ -35,7 +35,9 @@ CREATE TABLE IF NOT EXISTS public.training_leads (
     state TEXT,
     university TEXT,
     college TEXT,
-    status TEXT NOT NULL DEFAULT 'registration_failed', -- 'registration_failed', 'payment_failed'
+    roll_number TEXT,
+    subject TEXT,
+    status TEXT NOT NULL DEFAULT 'registration_failed', -- 'registration_failed', 'payment_failed', 'claimed'
     raw_password TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );

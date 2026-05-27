@@ -192,13 +192,12 @@ function TrainingCard({ training, formatDate }: { training: any; formatDate: (d:
             <ArrowRight className="size-3.5 group-hover/btn:translate-x-1 transition-transform" />
           </Link>
           {!hasEnded && (
-            <Link
-              to="/trainings/$id/register"
-              params={{ id: training.id }}
+            <a
+              href={`/trainings/${training.id}/register`}
               className="h-11 px-5 flex items-center justify-center bg-[#fbbf24] hover:bg-amber-400 text-[#0a192f] rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-lg"
             >
               Enroll
-            </Link>
+            </a>
           )}
         </div>
       </div>

@@ -35,7 +35,7 @@ import { Route as BlogSlugRouteImport } from './routes/blog/$slug'
 import { Route as ApplyIdRouteImport } from './routes/apply/$id'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as DashboardStudentIndexRouteImport } from './routes/dashboard/student/index'
-import { Route as TrainingsIdRegisterRouteImport } from './routes/trainings/$id/register'
+import { Route as TrainingsIdRegisterRouteImport } from './routes/trainings_.$id.register'
 import { Route as DashboardStudentTrainingsRouteImport } from './routes/dashboard/student/trainings'
 import { Route as DashboardStudentProfileRouteImport } from './routes/dashboard/student/profile'
 import { Route as DashboardStudentPaymentsRouteImport } from './routes/dashboard/student/payments'
@@ -178,9 +178,9 @@ const DashboardStudentIndexRoute = DashboardStudentIndexRouteImport.update({
   getParentRoute: () => DashboardRoute,
 } as any)
 const TrainingsIdRegisterRoute = TrainingsIdRegisterRouteImport.update({
-  id: '/register',
-  path: '/register',
-  getParentRoute: () => TrainingsIdRoute,
+  id: '/trainings_/$id/register',
+  path: '/trainings/$id/register',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardStudentTrainingsRoute =
   DashboardStudentTrainingsRouteImport.update({
@@ -264,7 +264,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/inbox': typeof DashboardInboxRoute
   '/internships/$id': typeof InternshipsIdRoute
   '/programs/$slug': typeof ProgramsSlugRoute
-  '/trainings/$id': typeof TrainingsIdRouteWithChildren
+  '/trainings/$id': typeof TrainingsIdRoute
   '/internships/': typeof InternshipsIndexRoute
   '/programs/': typeof ProgramsIndexRoute
   '/trainings/': typeof TrainingsIndexRoute
@@ -303,7 +303,7 @@ export interface FileRoutesByTo {
   '/dashboard/inbox': typeof DashboardInboxRoute
   '/internships/$id': typeof InternshipsIdRoute
   '/programs/$slug': typeof ProgramsSlugRoute
-  '/trainings/$id': typeof TrainingsIdRouteWithChildren
+  '/trainings/$id': typeof TrainingsIdRoute
   '/internships': typeof InternshipsIndexRoute
   '/programs': typeof ProgramsIndexRoute
   '/trainings': typeof TrainingsIndexRoute
@@ -343,7 +343,7 @@ export interface FileRoutesById {
   '/dashboard/inbox': typeof DashboardInboxRoute
   '/internships/$id': typeof InternshipsIdRoute
   '/programs/$slug': typeof ProgramsSlugRoute
-  '/trainings/$id': typeof TrainingsIdRouteWithChildren
+  '/trainings/$id': typeof TrainingsIdRoute
   '/internships/': typeof InternshipsIndexRoute
   '/programs/': typeof ProgramsIndexRoute
   '/trainings/': typeof TrainingsIndexRoute
@@ -356,7 +356,7 @@ export interface FileRoutesById {
   '/dashboard/student/payments': typeof DashboardStudentPaymentsRoute
   '/dashboard/student/profile': typeof DashboardStudentProfileRoute
   '/dashboard/student/trainings': typeof DashboardStudentTrainingsRoute
-  '/trainings/$id/register': typeof TrainingsIdRegisterRoute
+  '/trainings_/$id/register': typeof TrainingsIdRegisterRoute
   '/dashboard/student/': typeof DashboardStudentIndexRoute
   '/dashboard/student/secure-assignment/$id': typeof DashboardStudentSecureAssignmentIdRoute
 }
@@ -475,7 +475,7 @@ export interface FileRouteTypes {
     | '/dashboard/student/payments'
     | '/dashboard/student/profile'
     | '/dashboard/student/trainings'
-    | '/trainings/$id/register'
+    | '/trainings_/$id/register'
     | '/dashboard/student/'
     | '/dashboard/student/secure-assignment/$id'
   fileRoutesById: FileRoutesById
@@ -498,10 +498,11 @@ export interface RootRouteChildren {
   ApplyIdRoute: typeof ApplyIdRoute
   InternshipsIdRoute: typeof InternshipsIdRoute
   ProgramsSlugRoute: typeof ProgramsSlugRoute
-  TrainingsIdRoute: typeof TrainingsIdRouteWithChildren
+  TrainingsIdRoute: typeof TrainingsIdRoute
   InternshipsIndexRoute: typeof InternshipsIndexRoute
   ProgramsIndexRoute: typeof ProgramsIndexRoute
   TrainingsIndexRoute: typeof TrainingsIndexRoute
+  TrainingsIdRegisterRoute: typeof TrainingsIdRegisterRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -688,12 +689,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardStudentIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/trainings/$id/register': {
-      id: '/trainings/$id/register'
-      path: '/register'
+    '/trainings_/$id/register': {
+      id: '/trainings_/$id/register'
+      path: '/trainings/$id/register'
       fullPath: '/trainings/$id/register'
       preLoaderRoute: typeof TrainingsIdRegisterRouteImport
-      parentRoute: typeof TrainingsIdRoute
+      parentRoute: typeof rootRouteImport
     }
     '/dashboard/student/trainings': {
       id: '/dashboard/student/trainings'
@@ -817,18 +818,6 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
   DashboardRouteChildren,
 )
 
-interface TrainingsIdRouteChildren {
-  TrainingsIdRegisterRoute: typeof TrainingsIdRegisterRoute
-}
-
-const TrainingsIdRouteChildren: TrainingsIdRouteChildren = {
-  TrainingsIdRegisterRoute: TrainingsIdRegisterRoute,
-}
-
-const TrainingsIdRouteWithChildren = TrainingsIdRoute._addFileChildren(
-  TrainingsIdRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
@@ -847,10 +836,11 @@ const rootRouteChildren: RootRouteChildren = {
   ApplyIdRoute: ApplyIdRoute,
   InternshipsIdRoute: InternshipsIdRoute,
   ProgramsSlugRoute: ProgramsSlugRoute,
-  TrainingsIdRoute: TrainingsIdRouteWithChildren,
+  TrainingsIdRoute: TrainingsIdRoute,
   InternshipsIndexRoute: InternshipsIndexRoute,
   ProgramsIndexRoute: ProgramsIndexRoute,
   TrainingsIndexRoute: TrainingsIndexRoute,
+  TrainingsIdRegisterRoute: TrainingsIdRegisterRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

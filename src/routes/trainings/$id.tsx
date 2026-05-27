@@ -109,14 +109,13 @@ function TrainingDetailPage() {
                 </div>
               </div>
               {!hasEnded ? (
-                <Link
-                  to="/trainings/$id/register"
-                  params={{ id: training.id }}
-                  className="inline-flex items-center gap-2 h-14 px-8 bg-[#fbbf24] hover:bg-amber-400 text-[#0a192f] rounded-2xl text-sm font-black uppercase tracking-widest transition-all shadow-xl hover:shadow-2xl group"
-                >
-                  Enroll Now
-                  <ArrowRight className="size-4 group-hover:translate-x-1 transition-transform" />
-                </Link>
+              <a
+                href={`/trainings/${training.id}/register`}
+                className="inline-flex items-center gap-2 h-14 px-8 bg-[#fbbf24] hover:bg-amber-400 text-[#0a192f] rounded-2xl text-sm font-black uppercase tracking-widest transition-all shadow-xl hover:shadow-2xl group"
+              >
+                Enroll Now
+                <ArrowRight className="size-4 group-hover:translate-x-1 transition-transform" />
+              </a>
               ) : (
                 <div className="inline-flex items-center gap-2 h-12 px-6 bg-white/10 text-white/50 rounded-2xl text-sm font-black uppercase tracking-widest border border-white/10">
                   Registration Closed
@@ -178,13 +177,12 @@ function TrainingDetailPage() {
           <div className="mt-12 bg-gradient-to-r from-[#0a192f] to-[#1e40af] rounded-3xl p-10 text-center">
             <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-3">Ready to Join?</h2>
             <p className="text-white/60 text-sm mb-6">Enroll now and get your MSME Approved certificate on completion.</p>
-            <Link
-              to="/trainings/$id/register"
-              params={{ id: training.id }}
+            <a
+              href={`/trainings/${training.id}/register`}
               className="inline-flex items-center gap-2 h-12 px-8 bg-[#fbbf24] text-[#0a192f] rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-amber-400 transition-all shadow-xl group"
             >
               Register Now <ArrowRight className="size-4 group-hover:translate-x-1 transition-transform" />
-            </Link>
+            </a>
           </div>
         )}
       </div>

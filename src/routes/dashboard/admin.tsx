@@ -2921,6 +2921,7 @@ function AdminDashboard() {
                         <TableHead className="font-black text-[9px] uppercase">Name</TableHead>
                         <TableHead className="font-black text-[9px] uppercase">Contact</TableHead>
                         <TableHead className="font-black text-[9px] uppercase">Institution</TableHead>
+                        <TableHead className="font-black text-[9px] uppercase">Program Details</TableHead>
                         <TableHead className="font-black text-[9px] uppercase">Status</TableHead>
                      </TableRow></TableHeader>
                      <TableBody>
@@ -2929,6 +2930,7 @@ function AdminDashboard() {
                               <TableCell className="text-navy">{l.name}</TableCell>
                               <TableCell className="text-slate-500">{l.email}<br/><span className="text-[9px]">{l.phone}</span></TableCell>
                               <TableCell className="text-slate-500">{l.college}<br/><span className="text-[9px]">{l.university}</span></TableCell>
+                              <TableCell className="text-slate-500">{l.subject || 'N/A'}<br/><span className="text-[9px]">{l.roll_number || 'N/A'}</span></TableCell>
                               <TableCell>
                                  <span className={`px-2 py-0.5 rounded-full text-[8px] uppercase tracking-widest ${l.status === 'claimed' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{l.status.replace('_',' ')}</span>
                               </TableCell>

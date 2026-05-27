@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/trainings/$id/register")({
+export const Route = createFileRoute("/trainings_/$id/register")({
   component: TrainingRegisterPage,
 });
 
@@ -36,7 +36,9 @@ function TrainingRegisterPage() {
 
   const [form, setForm] = useState({
     name: "", email: "", phone: "", state: "",
-    university: "", universityId: "", college: "", collegeId: "", password: ""
+    university: "", universityId: "", college: "", collegeId: "",
+    roll_number: "", subject: "",
+    password: "", agreed: false
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -67,7 +69,10 @@ function TrainingRegisterPage() {
     if (!form.state) e.state = "State is required";
     if (!form.university) e.university = "University is required";
     if (!form.college) e.college = "College is required";
+    if (!form.roll_number) e.roll_number = "Roll Number is required";
+    if (!form.subject) e.subject = "Subject/Branch is required";
     if (!form.password || form.password.length < 6) e.password = "Password must be at least 6 characters";
+    if (!form.agreed) e.agreed = "You must agree to the Terms & Conditions";
     return e;
   }
 
@@ -88,6 +93,8 @@ function TrainingRegisterPage() {
         state: form.state,
         university: form.university,
         college: form.college,
+        roll_number: form.roll_number,
+        subject: form.subject,
         status: "registration_failed",
         raw_password: form.password
       }]).select().single();
@@ -166,6 +173,8 @@ function TrainingRegisterPage() {
             contact_number: form.phone,
             university_name: form.university,
             college_name: form.college,
+            university_roll_number: form.roll_number,
+            department: form.subject,
             role: "student",
             raw_password: form.password,
             created_at: new Date().toISOString()
@@ -262,7 +271,7 @@ function TrainingRegisterPage() {
             <ChevronLeft className="size-4" /> Back
           </Link>
           <h1 className="text-3xl font-black text-white uppercase tracking-tight">
-            Register for <span className="text-[#fbbf24]">{training?.name}</span>
+            Registration Form for <span className="text-[#fbbf24]">{training?.name}</span>
           </h1>
           <p className="text-white/50 text-sm mt-2 font-medium">Fill in your details to enroll in this training program</p>
         </div>
@@ -362,12 +371,14 @@ function TrainingRegisterPage() {
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">University *</label>
                 <div className="relative">
                   <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-                  <input
-                    value={form.university}
-                    onChange={e => setForm(f => ({ ...f, university: e.target.value }))}
-                    placeholder="Enter your university name"
-                    className={`w-full h-12 pl-11 pr-4 rounded-xl border-2 font-medium text-sm outline-none focus:border-[#0a192f] transition-colors ${errors.university ? "border-red-300 bg-red-50" : "border-slate-200 bg-slate-50"}`}
-                  />
+                  <select
+                    value={form.universityId}
+                    onChange={e => handleUniChange(e.target.value)}
+                    className={`w-full h-12 pl-11 pr-4 rounded-xl border-2 font-medium text-sm outline-none focus:border-[#0a192f] transition-colors appearance-none ${errors.university ? "border-red-300 bg-red-50" : "border-slate-200 bg-slate-50"}`}
+                  >
+                    <option value="">Select your university</option>
+                    {universities.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  </select>
                 </div>
                 {errors.university && <p className="text-red-500 text-xs font-bold">{errors.university}</p>}
               </div>
@@ -377,14 +388,50 @@ function TrainingRegisterPage() {
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">College *</label>
                 <div className="relative">
                   <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-                  <input
-                    value={form.college}
-                    onChange={e => setForm(f => ({ ...f, college: e.target.value }))}
-                    placeholder="Enter your college name"
-                    className={`w-full h-12 pl-11 pr-4 rounded-xl border-2 font-medium text-sm outline-none focus:border-[#0a192f] transition-colors ${errors.college ? "border-red-300 bg-red-50" : "border-slate-200 bg-slate-50"}`}
-                  />
+                  <select
+                    value={form.collegeId}
+                    onChange={e => {
+                      const col = colleges.find(c => c.id === e.target.value);
+                      setForm(f => ({ ...f, collegeId: e.target.value, college: col?.name || "" }));
+                    }}
+                    disabled={!form.universityId}
+                    className={`w-full h-12 pl-11 pr-4 rounded-xl border-2 font-medium text-sm outline-none focus:border-[#0a192f] transition-colors appearance-none disabled:opacity-50 ${errors.college ? "border-red-300 bg-red-50" : "border-slate-200 bg-slate-50"}`}
+                  >
+                    <option value="">{form.universityId ? "Select your college" : "Select university first"}</option>
+                    {colleges.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
                 </div>
                 {errors.college && <p className="text-red-500 text-xs font-bold">{errors.college}</p>}
+              </div>
+
+              {/* Roll Number */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Roll Number *</label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+                  <input
+                    value={form.roll_number}
+                    onChange={e => setForm(f => ({ ...f, roll_number: e.target.value }))}
+                    placeholder="Enter your roll number"
+                    className={`w-full h-12 pl-11 pr-4 rounded-xl border-2 font-medium text-sm outline-none focus:border-[#0a192f] transition-colors ${errors.roll_number ? "border-red-300 bg-red-50" : "border-slate-200 bg-slate-50"}`}
+                  />
+                </div>
+                {errors.roll_number && <p className="text-red-500 text-xs font-bold">{errors.roll_number}</p>}
+              </div>
+
+              {/* Subject */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Subject / Branch *</label>
+                <div className="relative">
+                  <BookOpen className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+                  <input
+                    value={form.subject}
+                    onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
+                    placeholder="Enter your subject or branch"
+                    className={`w-full h-12 pl-11 pr-4 rounded-xl border-2 font-medium text-sm outline-none focus:border-[#0a192f] transition-colors ${errors.subject ? "border-red-300 bg-red-50" : "border-slate-200 bg-slate-50"}`}
+                  />
+                </div>
+                {errors.subject && <p className="text-red-500 text-xs font-bold">{errors.subject}</p>}
               </div>
 
               {/* Password */}
@@ -406,6 +453,20 @@ function TrainingRegisterPage() {
                 {errors.password && <p className="text-red-500 text-xs font-bold">{errors.password}</p>}
               </div>
 
+              <div className="flex items-start gap-3 mt-4">
+                <input
+                  type="checkbox"
+                  id="agreed"
+                  checked={form.agreed}
+                  onChange={e => setForm(f => ({ ...f, agreed: e.target.checked }))}
+                  className="mt-1 size-4 rounded text-[#0a192f] focus:ring-[#0a192f]"
+                />
+                <label htmlFor="agreed" className="text-xs text-slate-500 font-medium leading-relaxed">
+                  I agree to the <Link to="/terms" className="text-[#0a192f] font-bold underline">Terms & Conditions</Link> and acknowledge that I have read the privacy policy.
+                </label>
+              </div>
+              {errors.agreed && <p className="text-red-500 text-xs font-bold">{errors.agreed}</p>}
+
               <button
                 type="submit"
                 disabled={submitting}
@@ -418,11 +479,6 @@ function TrainingRegisterPage() {
                   </>
                 )}
               </button>
-
-              <p className="text-center text-xs text-slate-400 font-medium">
-                By registering you agree to our{" "}
-                <Link to="/terms" className="text-[#0a192f] font-bold underline">Terms of Service</Link>
-              </p>
             </form>
           </div>
         </div>
