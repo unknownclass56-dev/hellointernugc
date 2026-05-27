@@ -89,169 +89,157 @@ function CertificatePage() {
   }
 
   return (
-    <div className="space-y-6 pb-12 print:p-0 print:m-0">
-      {/* ACTION BAR */}
-      <div className="flex items-center justify-between gap-4 border-b pb-4 print:hidden">
-        <div className="flex items-center gap-2">
-          <Button asChild variant="ghost" size="sm" className="h-9 rounded-xl font-bold gap-2 text-muted-foreground hover:text-navy">
-            <Link to="/dashboard/student">
-              <ArrowLeft size={16} /> Back to Dashboard
-            </Link>
-          </Button>
-        </div>
+    <div className="space-y-6 pb-12">
+      {/* ACTION BAR — hidden on print */}
+      <div className="no-print flex items-center justify-between gap-4 border-b pb-4">
+        <Button asChild variant="ghost" size="sm" className="h-9 rounded-xl font-bold gap-2 text-muted-foreground hover:text-navy">
+          <Link to="/dashboard/student">
+            <ArrowLeft size={16} /> Back to Dashboard
+          </Link>
+        </Button>
       </div>
 
       {student?.certificate_generated && (
         <>
-          {/* LANDSCAPE CERTIFICATE CONTAINER */}
-          <div className="flex justify-center items-center w-full overflow-x-auto py-6 print:py-0 print:bg-white">
-        <div 
-          id="certificate-container" 
-          className="w-[1050px] h-[740px] bg-white p-12 shadow-2xl relative border-[12px] border-double border-navy flex flex-col justify-between items-center text-center select-none print:shadow-none print:m-0 print:w-full print:h-[720px] print:border-[10px]"
-          style={{ boxSizing: "border-box" }}
-        >
-          {/* WATERMARK BACKGROUND */}
-          <div className="absolute inset-0 opacity-[0.02] flex items-center justify-center pointer-events-none z-0">
-            <img src={logo} alt="Watermark" className="w-[450px] grayscale object-contain" />
+          {/* Print button — internship cert */}
+          <div className="no-print flex justify-end mb-2">
+            <button
+              onClick={() => {
+                // Mark only the internship cert for printing
+                const all = document.querySelectorAll('.print-cert');
+                all.forEach(el => el.classList.remove('print-cert'));
+                document.getElementById('certificate-container')?.classList.add('print-cert');
+                window.print();
+                document.getElementById('certificate-container')?.classList.remove('print-cert');
+              }}
+              className="inline-flex items-center gap-2 h-10 px-5 bg-[#0a192f] text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[#1e40af] transition-all shadow-lg"
+            >
+              <Printer size={16} /> Print / Save PDF (Internship)
+            </button>
           </div>
 
-          {/* INNER BORDER */}
-          <div className="absolute inset-2 border-2 border-gold/40 pointer-events-none z-10"></div>
+          {/* LANDSCAPE INTERNSHIP CERTIFICATE */}
+          <div className="flex justify-center items-center w-full overflow-x-auto py-6">
+            <div
+              id="certificate-container"
+              className="w-[1050px] h-[740px] bg-white p-12 shadow-2xl relative border-[12px] border-double border-navy flex flex-col justify-between items-center text-center select-none"
+              style={{ boxSizing: "border-box" }}
+            >
+              {/* WATERMARK */}
+              <div className="absolute inset-0 opacity-[0.02] flex items-center justify-center pointer-events-none z-0">
+                <img src={logo} alt="Watermark" className="w-[450px] grayscale object-contain" />
+              </div>
+              <div className="absolute inset-2 border-2 border-gold/40 pointer-events-none z-10"></div>
 
-          {/* TOP HEADER */}
-          <div className="w-full flex justify-between items-center relative z-20">
-            {/* Left Logo: TechLaunchpad */}
-            <div className="flex items-center gap-2.5 text-left">
-              <img src={logo} alt="TechLaunchpad Logo" className="h-11 w-11 object-contain" />
-              <div>
-                <span className="text-[8px] font-black text-gold uppercase tracking-[0.15em] block">Certified Partner</span>
-                <span className="text-xs font-black text-navy-deep uppercase tracking-wider block">TechLaunchpad</span>
+              {/* TOP HEADER */}
+              <div className="w-full flex justify-between items-center relative z-20">
+                <div className="flex items-center gap-2.5 text-left">
+                  <img src={logo} alt="TechLaunchpad Logo" className="h-11 w-11 object-contain" />
+                  <div>
+                    <span className="text-[8px] font-black text-gold uppercase tracking-[0.15em] block">Certified Partner</span>
+                    <span className="text-xs font-black text-navy-deep uppercase tracking-wider block">TechLaunchpad</span>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <span className="text-[8px] font-black text-gold uppercase tracking-[0.2em] block mb-0.5">Aligned Verification ID</span>
+                  <span className="font-mono text-xs font-bold text-navy-deep bg-slate-100 px-3 py-0.5 rounded-md border border-slate-200 block">{certId}</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-right">
+                  <div className="text-right">
+                    <span className="text-[8px] font-black text-gold uppercase tracking-[0.15em] block">Recognized By</span>
+                    <span className="text-xs font-black text-navy-deep uppercase tracking-wider block font-sans">AICTE APPROVED</span>
+                  </div>
+                  <img src={aicteLogo} alt="AICTE Logo" className="h-11 object-contain" />
+                </div>
+              </div>
+
+              {/* MAIN CONTENT */}
+              <div className="space-y-4 max-w-4xl relative z-20 mt-4">
+                <div className="flex justify-center mb-1">
+                  <Award className="text-gold size-14" />
+                </div>
+                <h1 className="font-display text-4xl font-black text-navy-deep uppercase tracking-[0.15em]">Certificate of Completion</h1>
+                <div className="h-0.5 w-60 bg-gold mx-auto my-3 relative">
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2">
+                    <BadgeCheck className="text-gold size-5" />
+                  </div>
+                </div>
+                <p className="text-sm font-medium text-slate-500 italic uppercase tracking-[0.1em] mt-2">This is proudly presented to</p>
+                <h2 className="text-4xl md:text-5xl font-black font-display text-navy-deep underline decoration-gold/40 underline-offset-8 decoration-2 capitalize tracking-wide py-2">
+                  {student?.full_name || "STUDENT NAME"}
+                </h2>
+                <div className="text-sm text-slate-700 leading-relaxed max-w-3xl mx-auto space-y-3 font-medium px-4 mt-4">
+                  <p>for successfully completing a structured technical internship program in the domain of{" "}
+                    <span className="font-black text-navy-deep text-base underline decoration-gold/60">{student?.program || student?.department || "Software Engineering"}</span>.
+                  </p>
+                  <p className="text-slate-600 text-xs">
+                    Institution: <span className="font-bold text-navy-deep">{student?.college_name || "COLLEGE NAME"}</span>
+                    <span className="mx-2 text-slate-300">|</span>
+                    University: <span className="font-bold text-navy-deep">{student?.university_name || "UNIVERSITY NAME"}</span>
+                  </p>
+                  <p className="text-slate-600 text-xs">
+                    Department: <span className="font-bold text-navy-deep">{student?.department || "BRANCH"}</span>
+                    <span className="mx-2 text-slate-300">|</span>
+                    Degree: <span className="font-bold text-navy-deep">{student?.degree || "DEGREE"}</span>
+                    <span className="mx-2 text-slate-300">|</span>
+                    Roll No: <span className="font-mono font-bold text-gold">{student?.university_roll_number || "ROLL NUMBER"}</span>
+                  </p>
+                  <p className="text-slate-600 text-xs">
+                    Duration: <span className="font-bold text-navy-deep bg-slate-100 px-2 py-0.5 rounded">{durationStr}</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* BOTTOM SIGNATURES */}
+              <div className="w-full grid grid-cols-3 items-end mt-8 relative z-20">
+                <div className="flex flex-col items-center">
+                  <div className="text-xs font-black text-navy-deep font-mono mb-1">TECHLAUNCHPAD</div>
+                  <div className="h-px w-36 bg-slate-300 my-1"></div>
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Director, TechLaunchpad</span>
+                </div>
+                <div className="flex flex-col items-center justify-center">
+                  <img src={officialSeal} alt="Official Seal" className="w-20 h-20 object-contain drop-shadow-md block" />
+                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider mt-2">Issued: {today}</span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <div className="text-xs font-black text-navy-deep font-mono mb-1">BSDM / BOARD</div>
+                  <div className="h-px w-36 bg-slate-300 my-1"></div>
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Authorized Coordinator</span>
+                </div>
+              </div>
+
+              <div className="w-full text-center text-[7px] font-bold text-slate-400 uppercase tracking-widest border-t border-slate-100 pt-4 mt-2">
+                This is a system generated authenticated credential. Verify using Verification ID on our portal.
               </div>
             </div>
-
-            {/* Center ID */}
-            <div className="text-center">
-              <span className="text-[8px] font-black text-gold uppercase tracking-[0.2em] block mb-0.5">Aligned Verification ID</span>
-              <span className="font-mono text-xs font-bold text-navy-deep bg-slate-100 px-3 py-0.5 rounded-md border border-slate-200 block">{certId}</span>
-            </div>
-
-            {/* Right Logo: AICTE */}
-            <div className="flex items-center gap-2.5 text-right">
-              <div className="text-right">
-                <span className="text-[8px] font-black text-gold uppercase tracking-[0.15em] block">Recognized By</span>
-                <span className="text-xs font-black text-navy-deep uppercase tracking-wider block font-sans">AICTE APPROVED</span>
-              </div>
-              <img src={aicteLogo} alt="AICTE Logo" className="h-11 object-contain" />
-            </div>
           </div>
-
-          {/* MAIN CERTIFICATE DETAILS */}
-          <div className="space-y-4 max-w-4xl relative z-20 mt-4">
-            <div className="flex justify-center mb-1">
-              <Award className="text-gold size-14 animate-pulse" />
-            </div>
-            <h1 className="font-display text-4xl font-black text-navy-deep uppercase tracking-[0.15em]">
-              Certificate of Completion
-            </h1>
-            <div className="h-0.5 w-60 bg-gold mx-auto my-3 relative">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2">
-                <BadgeCheck className="text-gold size-5" />
-              </div>
-            </div>
-            
-            <p className="text-sm font-medium text-slate-500 italic uppercase tracking-[0.1em] mt-2">
-              This is proudly presented to
-            </p>
-            
-            {/* STUDENT NAME */}
-            <h2 className="text-4xl md:text-5xl font-black font-display text-navy-deep underline decoration-gold/40 underline-offset-8 decoration-2 capitalize tracking-wide py-2">
-              {student?.full_name || "STUDENT NAME"}
-            </h2>
-
-            {/* STAGED DETAILS STATEMENT */}
-            <div className="text-sm text-slate-700 leading-relaxed max-w-3xl mx-auto space-y-3 font-medium px-4 mt-4">
-              <p>
-                for successfully completing a structured technical internship program in the domain of{" "}
-                <span className="font-black text-navy-deep text-base underline decoration-gold/60">{student?.program || student?.department || "Software Engineering"}</span>.
-              </p>
-              <p className="text-slate-600 text-xs">
-                Institution: <span className="font-bold text-navy-deep">{student?.college_name || "COLLEGE NAME"}</span> 
-                <span className="mx-2 text-slate-300">|</span> 
-                University: <span className="font-bold text-navy-deep">{student?.university_name || "UNIVERSITY NAME"}</span>
-              </p>
-              <p className="text-slate-600 text-xs">
-                Department: <span className="font-bold text-navy-deep">{student?.department || "BRANCH"}</span>
-                <span className="mx-2 text-slate-300">|</span> 
-                Degree: <span className="font-bold text-navy-deep">{student?.degree || "DEGREE"}</span>
-                <span className="mx-2 text-slate-300">|</span> 
-                University Roll No: <span className="font-mono font-bold text-gold">{student?.university_roll_number || "ROLL NUMBER"}</span>
-              </p>
-              <p className="text-slate-600 text-xs">
-                The candidate has fully satisfied all project milestones, assignments, and training requirements over a formal program duration of{" "}
-                <span className="font-bold text-navy-deep bg-slate-100 px-2 py-0.5 rounded">{durationStr}</span>.
-              </p>
-            </div>
-          </div>
-
-          {/* BOTTOM SIGNATURE SECTION */}
-          <div className="w-full grid grid-cols-3 items-end mt-8 relative z-20">
-            {/* LEFT: ISSUING AUTHORITY */}
-            <div className="flex flex-col items-center">
-              <div className="text-xs font-black text-navy-deep font-mono mb-1">TECHLAUNCHPAD</div>
-              <div className="h-px w-36 bg-slate-300 my-1"></div>
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Director, TechLaunchpad</span>
-            </div>
-
-            {/* CENTER: OFFICIAL SEAL */}
-            <div className="flex flex-col items-center justify-center">
-              <img 
-                src={officialSeal} 
-                alt="Official Seal" 
-                className="w-20 h-20 object-contain drop-shadow-md hover:scale-105 transition-transform duration-300 block" 
-              />
-              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider mt-2">Issued: {today}</span>
-            </div>
-
-            {/* RIGHT: INSTITUTION SIGNATURE */}
-            <div className="flex flex-col items-center">
-              <div className="text-xs font-black text-navy-deep font-mono mb-1">BSDM / BOARD</div>
-              <div className="h-px w-36 bg-slate-300 my-1"></div>
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Authorized Coordinator</span>
-            </div>
-          </div>
-
-          {/* STYLIZED CERTIFICATE FOOTER */}
-          <div className="w-full text-center text-[7px] font-bold text-slate-400 uppercase tracking-widest border-t border-slate-100 pt-4 mt-2">
-            This is a system generated authenticated credential. Scan Verification ID on our public verification portal to inspect record.
-          </div>
-        </div>
-      </div>
-      </>)}
+        </>
+      )}
 
       {/* TRAINING CERTIFICATES */}
       {completedTrainings.map(enr => (
         <div key={enr.id} className="mt-12 pt-8 border-t-4 border-dashed border-slate-200">
-           <h3 className="text-center font-black text-navy-deep uppercase tracking-widest text-lg mb-8">
-              Training Program Certificate
-           </h3>
-           <TrainingCertificate 
-             studentName={student?.full_name || "Student Name"}
-             collegeName={student?.college_name || "College Name"}
-             universityName={student?.university_name || "University Name"}
-             trainingName={enr.trainings?.name || "Training Name"}
-             durationDays={enr.trainings?.duration_days || 5}
-             startDate={enr.trainings?.start_date}
-             endDate={enr.trainings?.end_date}
-             certificateNumber={`TL/TRG/${student?.university_roll_number?.slice(-4) || "0000"}/${new Date(enr.created_at).getFullYear()}`}
-           />
+          <h3 className="no-print text-center font-black text-navy-deep uppercase tracking-widest text-lg mb-8">
+            Training Program Certificate
+          </h3>
+          <div className="print-cert">
+            <TrainingCertificate
+              studentName={student?.full_name || "Student Name"}
+              collegeName={student?.college_name || "College Name"}
+              universityName={student?.university_name || "University Name"}
+              trainingName={enr.trainings?.name || "Training Name"}
+              durationDays={enr.trainings?.duration_days || 5}
+              startDate={enr.trainings?.start_date}
+              endDate={enr.trainings?.end_date}
+              certificateNumber={`TL/TRG/${student?.university_roll_number?.slice(-4) || "0000"}/${new Date(enr.created_at).getFullYear()}`}
+            />
+          </div>
         </div>
       ))}
 
       {/* PRINT-ONLY CSS OVERRIDES */}
       <style>{`
         @media print {
-          body * {
-            visibility: hidden;
           }
           #certificate-container, #certificate-container * {
             visibility: visible;

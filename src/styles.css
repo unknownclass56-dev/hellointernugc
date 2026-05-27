@@ -170,3 +170,62 @@
     background: linear-gradient(to right, transparent, color-mix(in oklab, var(--gold) 60%, transparent), transparent);
   }
 }
+
+/* ============================================================
+   PRINT / PDF STYLES — Certificate only
+   ============================================================ */
+@media print {
+  /* Hide absolutely everything on the page */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Show only the certificate wrapper and all its children */
+  .print-cert,
+  .print-cert * {
+    visibility: visible !important;
+  }
+
+  /* Remove any page margins and background */
+  @page {
+    size: A4 landscape;
+    margin: 0;
+  }
+
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    height: 100% !important;
+    width: 100% !important;
+  }
+
+  /* Position the certificate to fill the entire printed page */
+  .print-cert {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    max-width: 100% !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    page-break-inside: avoid !important;
+    overflow: visible !important;
+    z-index: 99999 !important;
+  }
+
+  /* Ensure backgrounds and images print correctly */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Hide the print / action buttons */
+  .no-print {
+    display: none !important;
+  }
+}
