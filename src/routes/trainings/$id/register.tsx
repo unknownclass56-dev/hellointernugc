@@ -362,14 +362,12 @@ function TrainingRegisterPage() {
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">University *</label>
                 <div className="relative">
                   <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-                  <select
-                    value={form.universityId}
-                    onChange={e => handleUniChange(e.target.value)}
-                    className={`w-full h-12 pl-11 pr-4 rounded-xl border-2 font-medium text-sm outline-none focus:border-[#0a192f] transition-colors appearance-none ${errors.university ? "border-red-300 bg-red-50" : "border-slate-200 bg-slate-50"}`}
-                  >
-                    <option value="">Select university</option>
-                    {universities.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                  </select>
+                  <input
+                    value={form.university}
+                    onChange={e => setForm(f => ({ ...f, university: e.target.value }))}
+                    placeholder="Enter your university name"
+                    className={`w-full h-12 pl-11 pr-4 rounded-xl border-2 font-medium text-sm outline-none focus:border-[#0a192f] transition-colors ${errors.university ? "border-red-300 bg-red-50" : "border-slate-200 bg-slate-50"}`}
+                  />
                 </div>
                 {errors.university && <p className="text-red-500 text-xs font-bold">{errors.university}</p>}
               </div>
@@ -379,17 +377,12 @@ function TrainingRegisterPage() {
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">College *</label>
                 <div className="relative">
                   <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-                  <select
-                    value={form.collegeId}
-                    onChange={e => {
-                      const col = colleges.find(c => c.id === e.target.value);
-                      setForm(f => ({ ...f, collegeId: e.target.value, college: col?.name || "" }));
-                    }}
-                    className={`w-full h-12 pl-11 pr-4 rounded-xl border-2 font-medium text-sm outline-none focus:border-[#0a192f] transition-colors appearance-none ${errors.college ? "border-red-300 bg-red-50" : "border-slate-200 bg-slate-50"}`}
-                  >
-                    <option value="">Select college</option>
-                    {colleges.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  <input
+                    value={form.college}
+                    onChange={e => setForm(f => ({ ...f, college: e.target.value }))}
+                    placeholder="Enter your college name"
+                    className={`w-full h-12 pl-11 pr-4 rounded-xl border-2 font-medium text-sm outline-none focus:border-[#0a192f] transition-colors ${errors.college ? "border-red-300 bg-red-50" : "border-slate-200 bg-slate-50"}`}
+                  />
                 </div>
                 {errors.college && <p className="text-red-500 text-xs font-bold">{errors.college}</p>}
               </div>
