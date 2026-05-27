@@ -115,11 +115,31 @@ function TrainingRegisterPage() {
     }
   }
 
-  function initiatePayment(leadId: string) {
+  function loadRazorpay(): Promise<boolean> {
+    return new Promise((resolve) => {
+      if ((window as any).Razorpay) return resolve(true);
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  }
+
+  async function initiatePayment(leadId: string) {
+    const loaded = await loadRazorpay();
+    if (!loaded) {
+      setErrors({ form: "Failed to load payment gateway. Please check your internet connection." });
+      setStep("form");
+      return;
+    }
+
+    const fee = training?.fee ?? 999;
     const options = {
-      key: "rzp_test_placeholder", // Replace with actual Razorpay key
-      amount: 99900, // ₹999 in paise (example)
+      key: "rzp_live_SrD6N9ylebiBCT",
+      amount: Math.round(fee * 100), // in paise
       currency: "INR",
+      payment_capture: 1,
       name: "TechLaunchpad",
       description: training?.name || "Training Enrollment",
       prefill: { name: form.name, email: form.email, contact: form.phone },
@@ -134,13 +154,8 @@ function TrainingRegisterPage() {
       theme: { color: "#0a192f" }
     };
 
-    if ((window as any).Razorpay) {
-      const rzp = new (window as any).Razorpay(options);
-      rzp.open();
-    } else {
-      // Fallback: complete enrollment for demo
-      completeEnrollment(leadId, "demo_" + Date.now());
-    }
+    const rzp = new (window as any).Razorpay(options);
+    rzp.open();
   }
 
   async function completeEnrollment(leadId: string, paymentId: string) {
@@ -291,6 +306,7 @@ function TrainingRegisterPage() {
                 {training?.duration_days && (
                   <div className="text-[#fbbf24] text-xs font-bold">{training.duration_days} Days Program</div>
                 )}
+                <div className="mt-1 text-white/80 text-xs font-black">Fee: ₹{(training?.fee ?? 999).toLocaleString('en-IN')}</div>
               </div>
             </div>
 

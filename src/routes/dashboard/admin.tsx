@@ -136,6 +136,7 @@ function AdminDashboard() {
   const [tStartDate, setTStartDate] = useState("");
   const [tEndDate, setTEndDate] = useState("");
   const [tThumbnail, setTThumbnail] = useState("");
+  const [tFee, setTFee] = useState(999);
 
   // Training lecture form
   const [tlTitle, setTlTitle] = useState("");
@@ -992,7 +993,8 @@ function AdminDashboard() {
         duration_days: tDuration,
         start_date: tStartDate || null,
         end_date: tEndDate || null,
-        thumbnail_url: tThumbnail
+        thumbnail_url: tThumbnail,
+        fee: tFee
       };
       
       let error;
@@ -2866,7 +2868,7 @@ function AdminDashboard() {
                      <button onClick={() => setTrainingTab("transactions")} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${trainingTab === "transactions" ? "bg-white text-navy shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>Payments</button>
                   </div>
                   <Button className="h-10 px-6 bg-navy text-white rounded-xl font-bold uppercase text-[10px] tracking-widest shadow-lg flex items-center gap-1.5" onClick={() => {
-                     setTName(""); setTType("online"); setTDuration(5); setTStartDate(""); setTEndDate(""); setTThumbnail("");
+                     setTName(""); setTType("online"); setTDuration(5); setTStartDate(""); setTEndDate(""); setTThumbnail(""); setTFee(999);
                      setIsAddTrainingOpen(true);
                   }}>
                      <Plus size={16} /> New Training
@@ -2895,7 +2897,8 @@ function AdminDashboard() {
                         </div>
                         <div className="p-5 flex-1 flex flex-col">
                            <h3 className="font-display font-black text-navy-deep text-sm uppercase tracking-tight mb-2">{t.name}</h3>
-                           <div className="text-[10px] font-bold text-slate-400 mb-4 flex items-center gap-1"><Calendar className="size-3"/> {t.start_date ? new Date(t.start_date).toLocaleDateString() : 'TBA'} - {t.end_date ? new Date(t.end_date).toLocaleDateString() : 'TBA'}</div>
+                           <div className="text-[10px] font-bold text-slate-400 mb-2 flex items-center gap-1"><Calendar className="size-3"/> {t.start_date ? new Date(t.start_date).toLocaleDateString() : 'TBA'} - {t.end_date ? new Date(t.end_date).toLocaleDateString() : 'TBA'}</div>
+                           <div className="text-[11px] font-black text-green-600 mb-4">₹{(t.fee ?? 999).toLocaleString('en-IN')} <span className="text-slate-400 font-medium text-[9px]">/enrollment</span></div>
                            
                            <div className="mt-auto pt-4 border-t flex items-center justify-between">
                               <Button size="sm" variant="outline" className="h-8 text-[9px] font-black uppercase tracking-widest" onClick={() => { setViewingTraining(t); fetchTrainingLecturesForAdmin(t.id); }}>
@@ -2904,7 +2907,7 @@ function AdminDashboard() {
                               <div className="flex gap-1">
                                  <Button size="icon" variant="ghost" className="size-8" onClick={() => {
                                     setSelectedTraining(t);
-                                    setTName(t.name); setTType(t.type); setTDuration(t.duration_days); setTStartDate(t.start_date ? t.start_date.substring(0,16) : ""); setTEndDate(t.end_date ? t.end_date.substring(0,16) : ""); setTThumbnail(t.thumbnail_url || "");
+                                    setTName(t.name); setTType(t.type); setTDuration(t.duration_days); setTStartDate(t.start_date ? t.start_date.substring(0,16) : ""); setTEndDate(t.end_date ? t.end_date.substring(0,16) : ""); setTThumbnail(t.thumbnail_url || ""); setTFee(t.fee ?? 999);
                                     setIsEditTrainingOpen(true);
                                  }}><Edit size={14}/></Button>
                                  <Button size="icon" variant="ghost" className="size-8 text-red-500" onClick={() => onDeleteTraining(t.id)}><Trash2 size={14}/></Button>
@@ -4121,6 +4124,11 @@ function AdminDashboard() {
                <div className="space-y-1">
                   <Label className="text-[10px] font-black uppercase text-slate-500">Thumbnail URL</Label>
                   <Input value={tThumbnail} onChange={e => setTThumbnail(e.target.value)} placeholder="https://..." className="h-10 rounded-xl font-bold text-xs border-2"/>
+               </div>
+               <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase text-slate-500">Registration Fee (₹) *</Label>
+                  <Input type="number" min="0" required value={tFee} onChange={e => setTFee(parseInt(e.target.value) || 0)} placeholder="e.g. 999" className="h-10 rounded-xl font-bold text-xs border-2"/>
+                  <p className="text-[9px] text-slate-400 font-medium">This amount will be charged to students when they enroll via Razorpay.</p>
                </div>
                <div className="flex justify-end gap-3 pt-4 border-t">
                   <Button type="button" variant="ghost" onClick={() => {setIsAddTrainingOpen(false); setIsEditTrainingOpen(false);}} className="px-6 h-10 rounded-xl font-black text-[9px] uppercase">Cancel</Button>
