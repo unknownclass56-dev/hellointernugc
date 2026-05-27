@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Award, Download, Printer, Shield, CheckCircle2 } from "lucide-react";
 import logo from "@/assets/techlaunchpad-logo.png";
+import aicteLogo from "@/assets/aicte-logo.png";
+import officialSeal from "@/assets/official-seal.png";
 
 interface TrainingCertificateProps {
   studentName: string;
@@ -116,7 +118,7 @@ export function TrainingCertificate({
 
         {/* Certificate Content */}
         <div style={{ position: "relative", zIndex: 5, padding: "56px 64px" }}>
-          {/* Top Row: Logo + Title + MSME Badge */}
+          {/* Top Row: Logo + Title + Partners (AICTE & MSME) */}
           <div
             style={{
               display: "flex",
@@ -158,24 +160,33 @@ export function TrainingCertificate({
               </div>
             </div>
 
-            {/* MSME Badge */}
-            <div
-              style={{
-                background: "linear-gradient(135deg, #0a192f, #1e3a5f)",
-                borderRadius: "12px",
-                padding: "12px 18px",
-                textAlign: "center",
-                border: "1px solid rgba(184,134,11,0.5)",
-              }}
-            >
-              <div style={{ fontSize: "8px", fontWeight: 900, color: "#fbbf24", letterSpacing: "0.2em", textTransform: "uppercase", fontFamily: "Arial, sans-serif" }}>
-                ✓ MSME APPROVED
+            {/* AICTE & MSME Badge container */}
+            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+              {/* AICTE Logo */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <img src={aicteLogo} alt="AICTE" style={{ height: "50px", objectFit: "contain" }} />
+                <span style={{ fontSize: "7px", fontWeight: 900, color: "#0a192f", marginTop: "4px", fontFamily: "Arial, sans-serif", letterSpacing: "0.05em", textTransform: "uppercase" }}>AICTE APPROVED</span>
               </div>
-              <div style={{ fontSize: "7px", fontWeight: 700, color: "rgba(255,255,255,0.6)", letterSpacing: "0.15em", marginTop: "3px", fontFamily: "Arial, sans-serif" }}>
-                Govt. of India Recognized
-              </div>
-              <div style={{ fontSize: "7px", fontWeight: 700, color: "rgba(255,255,255,0.6)", letterSpacing: "0.15em", marginTop: "2px", fontFamily: "Arial, sans-serif" }}>
-                ISO 9001:2015 Certified
+              
+              {/* MSME Badge */}
+              <div
+                style={{
+                  background: "linear-gradient(135deg, #0a192f, #1e3a5f)",
+                  borderRadius: "12px",
+                  padding: "12px 18px",
+                  textAlign: "center",
+                  border: "1px solid rgba(184,134,11,0.5)",
+                }}
+              >
+                <div style={{ fontSize: "8px", fontWeight: 900, color: "#fbbf24", letterSpacing: "0.2em", textTransform: "uppercase", fontFamily: "Arial, sans-serif" }}>
+                  ✓ MSME APPROVED
+                </div>
+                <div style={{ fontSize: "7px", fontWeight: 700, color: "rgba(255,255,255,0.6)", letterSpacing: "0.15em", marginTop: "3px", fontFamily: "Arial, sans-serif" }}>
+                  Govt. of India Recognized
+                </div>
+                <div style={{ fontSize: "7px", fontWeight: 700, color: "rgba(255,255,255,0.6)", letterSpacing: "0.15em", marginTop: "2px", fontFamily: "Arial, sans-serif" }}>
+                  ISO 9001:2015 Certified
+                </div>
               </div>
             </div>
           </div>
@@ -297,22 +308,18 @@ export function TrainingCertificate({
 
             {/* Center Seal */}
             <div style={{ textAlign: "center" }}>
-              <div
-                style={{
-                  width: "80px",
-                  height: "80px",
-                  borderRadius: "50%",
-                  border: "3px solid #b8860b",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
+              <img 
+                src={officialSeal} 
+                alt="Official Seal" 
+                style={{ 
+                  width: "80px", 
+                  height: "80px", 
+                  objectFit: "contain",
                   margin: "0 auto 6px",
-                  background: "linear-gradient(135deg, #0a192f 0%, #1e3a5f 100%)",
-                  boxShadow: "0 0 0 4px rgba(184,134,11,0.15)",
-                }}
-              >
-                <img src={logo} alt="seal" style={{ width: "50px", height: "50px", objectFit: "contain", filter: "brightness(10)" }} />
-              </div>
+                  display: "block",
+                  filter: "drop-shadow(0px 4px 6px rgba(0,0,0,0.15))"
+                }} 
+              />
               <div style={{ fontSize: "8px", fontWeight: 700, color: "#b8860b", letterSpacing: "0.2em", textTransform: "uppercase", fontFamily: "Arial, sans-serif" }}>
                 Official Seal
               </div>

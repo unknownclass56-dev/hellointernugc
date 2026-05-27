@@ -5,6 +5,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { ShieldCheck, Printer, ArrowLeft, Award, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/techlaunchpad-logo.png";
+import aicteLogo from "@/assets/aicte-logo.png";
+import officialSeal from "@/assets/official-seal.png";
 import { TrainingCertificate } from "@/components/TrainingCertificate";
 
 export const Route = createFileRoute("/dashboard/student/certificate")({
@@ -117,14 +119,29 @@ function CertificatePage() {
           <div className="absolute inset-2 border-2 border-gold/40 pointer-events-none z-10"></div>
 
           {/* TOP HEADER */}
-          <div className="w-full flex justify-between items-start relative z-20">
-            <div className="text-left">
-              <span className="text-[10px] font-black text-gold uppercase tracking-[0.25em] block mb-1">Aligned Verification ID</span>
-              <span className="font-mono text-xs font-bold text-navy-deep bg-slate-100 px-3 py-1 rounded-md border">{certId}</span>
+          <div className="w-full flex justify-between items-center relative z-20">
+            {/* Left Logo: TechLaunchpad */}
+            <div className="flex items-center gap-2.5 text-left">
+              <img src={logo} alt="TechLaunchpad Logo" className="h-11 w-11 object-contain" />
+              <div>
+                <span className="text-[8px] font-black text-gold uppercase tracking-[0.15em] block">Certified Partner</span>
+                <span className="text-xs font-black text-navy-deep uppercase tracking-wider block">TechLaunchpad</span>
+              </div>
             </div>
-            <div className="text-right">
-              <span className="text-[10px] font-black text-gold uppercase tracking-[0.25em] block mb-1">Security Standard</span>
-              <span className="text-[9px] font-black text-navy border border-navy/30 px-2 py-0.5 rounded bg-white">ISO 9001:2015 · AICTE · BSDM</span>
+
+            {/* Center ID */}
+            <div className="text-center">
+              <span className="text-[8px] font-black text-gold uppercase tracking-[0.2em] block mb-0.5">Aligned Verification ID</span>
+              <span className="font-mono text-xs font-bold text-navy-deep bg-slate-100 px-3 py-0.5 rounded-md border border-slate-200 block">{certId}</span>
+            </div>
+
+            {/* Right Logo: AICTE */}
+            <div className="flex items-center gap-2.5 text-right">
+              <div className="text-right">
+                <span className="text-[8px] font-black text-gold uppercase tracking-[0.15em] block">Recognized By</span>
+                <span className="text-xs font-black text-navy-deep uppercase tracking-wider block font-sans">AICTE APPROVED</span>
+              </div>
+              <img src={aicteLogo} alt="AICTE Logo" className="h-11 object-contain" />
             </div>
           </div>
 
@@ -185,12 +202,13 @@ function CertificatePage() {
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Director, TechLaunchpad</span>
             </div>
 
-            {/* CENTER: VERIFIED GOLD BADGE */}
+            {/* CENTER: OFFICIAL SEAL */}
             <div className="flex flex-col items-center justify-center">
-              <div className="size-20 rounded-full border-4 border-gold/40 flex flex-col items-center justify-center bg-gold/5 relative p-1 shadow-inner">
-                <ShieldCheck className="text-gold size-8" />
-                <span className="text-[7px] font-black text-navy-deep uppercase tracking-tighter mt-0.5">VERIFIED</span>
-              </div>
+              <img 
+                src={officialSeal} 
+                alt="Official Seal" 
+                className="w-20 h-20 object-contain drop-shadow-md hover:scale-105 transition-transform duration-300 block" 
+              />
               <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider mt-2">Issued: {today}</span>
             </div>
 

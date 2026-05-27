@@ -1,0 +1,11 @@
+- [ ] Modify `trainings.tsx` to remove Attendance, Online Lecture, and Assignments tabs and UI elements
+- [ ] Add enrollment duplicate check in `fetchAll`
+- [ ] Update `submitAssignment` to prevent duplicate submissions
+- [ ] Create `adminAssignments.tsx` admin page for reviewing assignments
+- [ ] Create `CertificateVerification.tsx` component for verification UI
+- [x] Integrate official TechLaunchpad Seal and AICTE Logo into all certificates (Student page, Admin Bulk generator, and TrainingCertificate component)
+- [ ] Modify `TrainingCertificate.tsx` to add PDF download and verification UI
+- [ ] Write Supabase migration scripts for unique constraints and status enum
+- [ ] Implement new API routes for assignment review, certificate verification, and PDF generation
+- [ ] Add toast notifications and micro‑animations
+- [ ] Update tests and perform manual verification
