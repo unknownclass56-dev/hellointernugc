@@ -148,6 +148,8 @@ function TrainingStudentDashboard() {
 
   const navItems = [
     { key: "learning", label: "My Learning", icon: BookMarked },
+    { key: "profile", label: "My Profile", icon: User },
+    { key: "assignments", label: "Assignments", icon: ClipboardList },
     { key: "certificate", label: "Certificate", icon: ShieldCheck },
   ];
 
@@ -465,6 +467,106 @@ function TrainingStudentDashboard() {
                   </div>
                 )}
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* ======= ASSIGNMENTS TAB ======= */}
+        {tab === "assignments" && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-black text-[#0a192f] uppercase tracking-tight">Assignments</h2>
+            </div>
+
+            {/* Upload Form */}
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2"><Upload className="size-3.5" /> Submit New Assignment</h3>
+              <form onSubmit={submitAssignment} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Select Training *</label>
+                  <select
+                    required
+                    value={uploadingFor || ""}
+                    onChange={e => setUploadingFor(e.target.value)}
+                    className="w-full h-11 px-4 rounded-xl border-2 border-slate-200 bg-slate-50 font-bold text-sm outline-none focus:border-[#0a192f] transition-colors"
+                  >
+                    <option value="">Choose training program</option>
+                    {enrollments.map(e => (
+                      <option key={e.training_id} value={e.training_id}>{e.trainings?.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Assignment Title *</label>
+                    <input required value={assignTitle} onChange={e => setAssignTitle(e.target.value)} placeholder="e.g. Module 1 Project"
+                      className="w-full h-11 px-4 rounded-xl border-2 border-slate-200 bg-slate-50 font-bold text-sm outline-none focus:border-[#0a192f] transition-colors" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Attach File (optional)</label>
+                    <div
+                      onClick={() => fileRef.current?.click()}
+                      className="w-full h-11 px-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 font-bold text-sm text-slate-400 flex items-center gap-2 cursor-pointer hover:border-[#0a192f] transition-colors"
+                    >
+                      <Upload className="size-4" />
+                      {assignFile ? assignFile.name : "Click to upload PDF / Image"}
+                    </div>
+                    <input type="file" ref={fileRef} className="hidden" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                      onChange={e => setAssignFile(e.target.files?.[0] || null)} />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Description (optional)</label>
+                  <textarea value={assignDesc} onChange={e => setAssignDesc(e.target.value)} rows={3} placeholder="Describe your submission..."
+                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 font-bold text-sm outline-none focus:border-[#0a192f] transition-colors resize-none" />
+                </div>
+                <div className="flex justify-end">
+                  <button type="submit" disabled={submitting || !uploadingFor || !assignTitle}
+                    className="flex items-center gap-2 h-11 px-8 bg-[#0a192f] text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-[#1e40af] transition-all shadow-lg disabled:opacity-50">
+                    {submitting ? <Loader2 className="animate-spin size-4" /> : <Upload className="size-4" />}
+                    Submit Assignment
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Assignment History */}
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b bg-slate-50 flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Submission History ({assignments.length})</span>
+              </div>
+              {assignments.length === 0 ? (
+                <div className="py-14 text-center text-slate-400">
+                  <ClipboardList className="size-10 mx-auto mb-3 text-slate-200" />
+                  <p className="text-xs font-bold">No assignments submitted yet.</p>
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {assignments.map(a => (
+                    <div key={a.id} className="flex items-center gap-4 px-6 py-4">
+                      <div className="size-10 rounded-xl bg-[#0a192f]/5 flex items-center justify-center flex-shrink-0">
+                        <FileText className="size-5 text-[#0a192f]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black text-[#0a192f] text-sm">{a.title}</p>
+                        <p className="text-[10px] font-bold text-slate-400">{a.trainings?.name} · {fmt(a.created_at)}</p>
+                        {a.description && <p className="text-xs text-slate-500 mt-0.5 truncate">{a.description}</p>}
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        {a.file_url && (
+                          <a href={a.file_url} target="_blank" rel="noopener noreferrer"
+                            className="text-[9px] font-black text-[#0a192f] underline uppercase tracking-widest">View File</a>
+                        )}
+                        <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                          a.status === "graded" ? "bg-green-100 text-green-700" :
+                          a.status === "reviewed" ? "bg-blue-100 text-blue-600" :
+                          "bg-amber-100 text-amber-700"
+                        }`}>{a.status}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

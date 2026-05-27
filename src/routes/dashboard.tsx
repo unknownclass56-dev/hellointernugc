@@ -89,12 +89,8 @@ function DashboardLayout() {
   ];
 
   const studentLinks = [
-    { to: "/dashboard/student", icon: LayoutDashboard, label: "Dashboard" },
-    { to: "/dashboard/student/profile", icon: Users, label: "My Profile" },
-    { to: "/dashboard/student/attendance", icon: ListChecks, label: "Attendance" },
-    { to: "/dashboard/student/lectures", icon: Mail, label: "Online Lectures" },
     { to: "/dashboard/student/trainings", icon: BookOpen, label: "My Trainings" },
-    { to: "/dashboard/student/assignments", icon: Briefcase, label: "Assignments" },
+    { to: "/dashboard/student/profile", icon: Users, label: "My Profile" },
     { to: "/dashboard/student/certificate", icon: GraduationCap, label: "My Certificate" },
     { to: "/dashboard/student/payments", icon: ShieldCheck, label: "Payments" },
   ];

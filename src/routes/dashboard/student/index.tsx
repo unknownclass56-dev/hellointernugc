@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Briefcase, FileCheck, GraduationCap, TrendingUp, Download, Video, Calendar, ClipboardList, Wallet, User, School, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
@@ -11,8 +11,13 @@ export const Route = createFileRoute("/dashboard/student/")({
 
 function StudentDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    navigate({ to: "/dashboard/student/trainings", replace: true });
+  }, []);
 
   useEffect(() => {
     if (user?.id) {

@@ -33,6 +33,7 @@ function TrainingRegisterPage() {
   const [showPw, setShowPw] = useState(false);
   const [step, setStep] = useState<"form" | "payment" | "success">("form");
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null);
+  const [alreadyEnrolled, setAlreadyEnrolled] = useState(false);
 
   const [form, setForm] = useState({
     name: "", email: "", phone: "", state: "",
@@ -50,6 +51,40 @@ function TrainingRegisterPage() {
     setLoading(true);
     const { data: t } = await supabase.from("trainings").select("*").eq("id", id).maybeSingle();
     const { data: unis } = await supabase.from("universities").select("*, colleges(*)").order("name");
+    
+    // Check if user is logged in and already enrolled
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: existingEnroll } = await supabase
+        .from("training_enrollments")
+        .select("id")
+        .eq("student_id", user.id)
+        .eq("training_id", id)
+        .maybeSingle();
+
+      if (existingEnroll) {
+        setAlreadyEnrolled(true);
+      }
+      
+      // Auto-fill form details if user profile exists
+      const { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+      if (prof) {
+        setForm(f => ({
+          ...f,
+          name: prof.full_name || "",
+          email: prof.email || "",
+          phone: prof.contact_number || "",
+          state: prof.state || "",
+          university: prof.university_name || "",
+          college: prof.college_name || "",
+          roll_number: prof.university_roll_number || "",
+          subject: prof.department || "",
+          password: "••••••", // Dummy password since they already have an account
+          agreed: true
+        }));
+      }
+    }
+
     setTraining(t);
     setUniversities(unis || []);
     setLoading(false);
@@ -167,6 +202,19 @@ function TrainingRegisterPage() {
 
       let studentId = existingProfile?.id;
 
+      if (studentId) {
+        // Check if already enrolled in this course
+        const { data: existingEnroll } = await supabase
+          .from("training_enrollments")
+          .select("id")
+          .eq("student_id", studentId)
+          .eq("training_id", id)
+          .maybeSingle();
+        if (existingEnroll) {
+          throw new Error("You are already enrolled in this training program with this email address. Please log in to access your dashboard.");
+        }
+      }
+
       if (!studentId) {
         // Create auth user
         const { data: authData, error: authErr } = await supabase.auth.signUp({
@@ -238,6 +286,28 @@ function TrainingRegisterPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="animate-spin size-10 text-[#0a192f]" />
+      </div>
+    );
+  }
+
+  if (alreadyEnrolled) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#0a192f] to-[#1e40af] flex items-center justify-center px-4">
+        <div className="bg-white rounded-3xl p-10 max-w-md w-full text-center shadow-2xl">
+          <div className="size-20 rounded-full bg-blue-50 border-4 border-blue-200 flex items-center justify-center mx-auto mb-6">
+            <BookOpen className="size-10 text-blue-500" />
+          </div>
+          <h2 className="text-2xl font-black text-[#0a192f] uppercase tracking-tight mb-3">Already Enrolled</h2>
+          <p className="text-slate-500 text-sm mb-2">You have already registered and enrolled in</p>
+          <p className="font-black text-[#fbbf24] text-lg uppercase mb-6">{training?.name}</p>
+          <p className="text-slate-400 text-xs mb-8 font-medium">Please proceed to your dashboard to access your lectures, assignments, and sessions.</p>
+          <button
+            onClick={() => navigate({ to: "/dashboard/student/trainings" })}
+            className="w-full h-12 bg-[#0a192f] text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-[#1e40af] transition-all shadow-lg"
+          >
+            Go to My Dashboard
+          </button>
+        </div>
       </div>
     );
   }
