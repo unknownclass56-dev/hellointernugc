@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { tempSupabase } from "@/lib/tempSupabase";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import {
@@ -25,14 +26,13 @@ function TrainingRegisterPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
 
-  const [training, setTraining] = useState<any>(null);
+  const [training, setTraining]         = useState<any>(null);
   const [universities, setUniversities] = useState<any[]>([]);
-  const [colleges, setColleges] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [showPw, setShowPw] = useState(false);
-  const [step, setStep] = useState<"form" | "payment" | "success">("form");
-  const [enrollmentId, setEnrollmentId] = useState<string | null>(null);
+  const [colleges, setColleges]         = useState<any[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [submitting, setSubmitting]     = useState(false);
+  const [showPw, setShowPw]             = useState(false);
+  const [step, setStep]                 = useState<"form" | "payment" | "success">("form");
   const [alreadyEnrolled, setAlreadyEnrolled] = useState(false);
 
   const [form, setForm] = useState({
@@ -43,44 +43,42 @@ function TrainingRegisterPage() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    fetchData();
-  }, [id]);
+  // ─── Load training + check existing enrollment ───────────────────────────
+  useEffect(() => { fetchData(); }, [id]);
 
   async function fetchData() {
     setLoading(true);
-    const { data: t } = await supabase.from("trainings").select("*").eq("id", id).maybeSingle();
+    const { data: t }    = await supabase.from("trainings").select("*").eq("id", id).maybeSingle();
     const { data: unis } = await supabase.from("universities").select("*, colleges(*)").order("name");
-    
-    // Check if user is logged in and already enrolled
+
+    // If user is already logged in, check if they already enrolled
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const { data: existingEnroll } = await supabase
-        .from("training_enrollments")
+        .from("training_leads")
         .select("id")
-        .eq("student_id", user.id)
+        .eq("email", user.email)
         .eq("training_id", id)
+        .eq("status", "claimed")
         .maybeSingle();
 
-      if (existingEnroll) {
-        setAlreadyEnrolled(true);
-      }
-      
-      // Auto-fill form details if user profile exists
+      if (existingEnroll) { setAlreadyEnrolled(true); }
+
+      // Auto-fill from profile
       const { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
       if (prof) {
         setForm(f => ({
           ...f,
-          name: prof.full_name || "",
-          email: prof.email || "",
-          phone: prof.contact_number || "",
-          state: prof.state || "",
-          university: prof.university_name || "",
-          college: prof.college_name || "",
+          name:        prof.full_name || "",
+          email:       prof.email || "",
+          phone:       prof.contact_number || "",
+          state:       prof.state || "",
+          university:  prof.university_name || "",
+          college:     prof.college_name || "",
           roll_number: prof.university_roll_number || "",
-          subject: prof.department || "",
-          password: "••••••", // Dummy password since they already have an account
-          agreed: true
+          subject:     prof.department || "",
+          password:    "••••••",
+          agreed:      true,
         }));
       }
     }
@@ -98,19 +96,20 @@ function TrainingRegisterPage() {
 
   function validate() {
     const e: Record<string, string> = {};
-    if (!form.name.trim()) e.name = "Name is required";
+    if (!form.name.trim())                               e.name       = "Name is required";
     if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email)) e.email = "Valid email required";
-    if (!form.phone.trim() || form.phone.length < 10) e.phone = "Valid phone required";
-    if (!form.state) e.state = "State is required";
-    if (!form.university) e.university = "University is required";
-    if (!form.college) e.college = "College is required";
-    if (!form.roll_number) e.roll_number = "Roll Number is required";
-    if (!form.subject) e.subject = "Subject/Branch is required";
-    if (!form.password || form.password.length < 6) e.password = "Password must be at least 6 characters";
-    if (!form.agreed) e.agreed = "You must agree to the Terms & Conditions";
+    if (!form.phone.trim() || form.phone.length < 10)   e.phone      = "Valid phone required";
+    if (!form.state)                                     e.state      = "State is required";
+    if (!form.university)                                e.university = "University is required";
+    if (!form.college)                                   e.college    = "College is required";
+    if (!form.roll_number)                               e.roll_number = "Roll Number is required";
+    if (!form.subject)                                   e.subject    = "Subject/Branch is required";
+    if (!form.password || form.password.length < 6)     e.password   = "Password must be at least 6 characters";
+    if (!form.agreed)                                    e.agreed     = "You must agree to the Terms & Conditions";
     return e;
   }
 
+  // ─── STEP 1: Save data to training_leads, then open payment ──────────────
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     const errs = validate();
@@ -119,30 +118,61 @@ function TrainingRegisterPage() {
     setSubmitting(true);
 
     try {
-      // Save lead first (in case payment fails)
-      const { data: lead } = await supabase.from("training_leads").insert([{
-        training_id: id,
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
-        state: form.state,
-        university: form.university,
-        college: form.college,
-        roll_number: form.roll_number,
-        subject: form.subject,
-        status: "registration_failed",
-        raw_password: form.password
-      }]).select().single();
+      // Check if lead already exists for this email + training
+      const { data: existingLead } = await supabase
+        .from("training_leads")
+        .select("id, status")
+        .eq("email", form.email)
+        .eq("training_id", id)
+        .maybeSingle();
 
-      if (!lead) throw new Error("Failed to create registration. Please try again.");
+      if (existingLead?.status === "claimed") {
+        throw new Error("You have already registered for this training. Please login to access your dashboard.");
+      }
 
-      // Update status to payment_failed (registration succeeded)
-      await supabase.from("training_leads").update({ status: "payment_failed" }).eq("id", lead.id);
+      let leadId: string;
+
+      if (existingLead) {
+        // Update existing lead (re-attempt payment)
+        await supabase.from("training_leads").update({
+          name:         form.name,
+          phone:        form.phone,
+          state:        form.state,
+          university:   form.university,
+          college:      form.college,
+          roll_number:  form.roll_number,
+          subject:      form.subject,
+          raw_password: form.password,
+          status:       "payment_pending",
+        }).eq("id", existingLead.id);
+        leadId = existingLead.id;
+      } else {
+        // Create new lead — NO auth account yet
+        const { data: newLead, error: leadErr } = await supabase
+          .from("training_leads")
+          .insert([{
+            training_id:  id,
+            name:         form.name,
+            email:        form.email,
+            phone:        form.phone,
+            state:        form.state,
+            university:   form.university,
+            college:      form.college,
+            roll_number:  form.roll_number,
+            subject:      form.subject,
+            raw_password: form.password,
+            status:       "payment_pending",
+          }])
+          .select()
+          .single();
+
+        if (leadErr || !newLead) throw new Error(leadErr?.message || "Failed to save registration. Please try again.");
+        leadId = newLead.id;
+      }
 
       // Move to payment step
       setStep("payment");
-      // Initiate Razorpay payment
-      initiatePayment(lead.id);
+      initiatePayment(leadId);
     } catch (err: any) {
       setErrors({ form: err.message || "Registration failed. Please try again." });
     } finally {
@@ -150,12 +180,13 @@ function TrainingRegisterPage() {
     }
   }
 
+  // ─── Load Razorpay script ─────────────────────────────────────────────────
   function loadRazorpay(): Promise<boolean> {
     return new Promise((resolve) => {
       if ((window as any).Razorpay) return resolve(true);
       const script = document.createElement("script");
       script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.onload = () => resolve(true);
+      script.onload  = () => resolve(true);
       script.onerror = () => resolve(false);
       document.body.appendChild(script);
     });
@@ -171,117 +202,144 @@ function TrainingRegisterPage() {
 
     const fee = training?.fee ?? 999;
     const options = {
-      key: "rzp_live_SrD6N9ylebiBCT",
-      amount: Math.round(fee * 100), // in paise
-      currency: "INR",
+      key:             "rzp_live_SrD6N9ylebiBCT",
+      amount:          Math.round(fee * 100), // paise
+      currency:        "INR",
       payment_capture: 1,
-      name: "TechLaunchpad",
-      description: training?.name || "Training Enrollment",
-      prefill: { name: form.name, email: form.email, contact: form.phone },
+      name:            "TechLaunchpad",
+      description:     training?.name || "Training Enrollment",
+      prefill:         { name: form.name, email: form.email, contact: form.phone },
       handler: async function (response: any) {
-        await completeEnrollment(leadId, response.razorpay_payment_id);
+        await completeEnrollmentAfterPayment(leadId, response.razorpay_payment_id);
       },
       modal: {
-        ondismiss: function () {
-          setStep("form");
-        }
+        ondismiss: function () { setStep("form"); },
       },
-      theme: { color: "#0a192f" }
+      theme: { color: "#0a192f" },
     };
 
     const rzp = new (window as any).Razorpay(options);
     rzp.open();
   }
 
-  async function completeEnrollment(leadId: string, paymentId: string) {
+  // ─── STEP 2: After payment — create auth account + profile + enrollment ───
+  async function completeEnrollmentAfterPayment(leadId: string, paymentId: string) {
     setSubmitting(true);
     try {
-      // Check if user exists or create new one
-      const { data: existingProfile } = await supabase
-        .from("profiles").select("id").eq("email", form.email).maybeSingle();
+      // 1. Create Supabase auth user (role: training)
+      //    Use tempSupabase so we don't disturb any existing session
+      const { data: authData, error: authErr } = await tempSupabase.auth.signUp({
+        email:    form.email,
+        password: form.password,
+        options: {
+          data: { full_name: form.name, role: "training" },
+        },
+      });
 
-      let studentId = existingProfile?.id;
+      // If user already exists in auth, just fetch their existing id
+      let studentId: string | null = authData?.user?.id ?? null;
 
-      if (studentId) {
-        // Check if already enrolled in this course
-        const { data: existingEnroll } = await supabase
-          .from("training_enrollments")
-          .select("id")
-          .eq("student_id", studentId)
-          .eq("training_id", id)
-          .maybeSingle();
-        if (existingEnroll) {
-          throw new Error("You are already enrolled in this training program with this email address. Please log in to access your dashboard.");
+      if (authErr) {
+        if (authErr.message?.includes("already registered") || (authErr as any).status === 422) {
+          // User already has an account — fetch id from profiles
+          const { data: existing } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("email", form.email)
+            .maybeSingle();
+          studentId = existing?.id ?? null;
+        } else {
+          throw authErr;
         }
       }
 
-      if (!studentId) {
-        // Create auth user
-        const { data: authData, error: authErr } = await supabase.auth.signUp({
-          email: form.email,
-          password: form.password,
-          options: {
-            data: { full_name: form.name, role: "student" }
-          }
-        });
-        if (authErr) throw authErr;
-        studentId = authData.user?.id;
+      if (!studentId) throw new Error("Could not create or find account. Please contact support.");
 
-        // Create profile
-        if (studentId) {
-          await supabase.from("profiles").insert([{
-            id: studentId,
-            full_name: form.name,
-            email: form.email,
-            contact_number: form.phone,
-            university_name: form.university,
-            college_name: form.college,
+      // 2. Upsert into profiles with role "training"
+      const { error: profErr } = await supabase.from("profiles").upsert([{
+        id:                     studentId,
+        full_name:              form.name,
+        email:                  form.email,
+        contact_number:         form.phone,
+        state:                  form.state,
+        university_name:        form.university,
+        college_name:           form.college,
+        university_roll_number: form.roll_number,
+        department:             form.subject,
+        role:                   "training",
+        raw_password:           form.password,
+        created_at:             new Date().toISOString(),
+      }], { onConflict: "id" });
+
+      if (profErr) {
+        // If role check fails (constraint), fallback to "student"
+        if (profErr.code === "23514" || profErr.message?.includes("profiles_role_check")) {
+          await supabase.from("profiles").upsert([{
+            id:                     studentId,
+            full_name:              form.name,
+            email:                  form.email,
+            contact_number:         form.phone,
+            state:                  form.state,
+            university_name:        form.university,
+            college_name:           form.college,
             university_roll_number: form.roll_number,
-            department: form.subject,
-            role: "student",
-            raw_password: form.password,
-            created_at: new Date().toISOString()
-          }]);
+            department:             form.subject,
+            role:                   "student",
+            raw_password:           form.password,
+            created_at:             new Date().toISOString(),
+          }], { onConflict: "id" });
+        } else {
+          throw new Error("Profile creation failed: " + profErr.message);
         }
       }
 
-      if (!studentId) throw new Error("Failed to create account.");
-
-      // Create enrollment
-      const { data: enrollment } = await supabase.from("training_enrollments").insert([{
+      // 3. Mark training_lead as claimed (this is what shows in the training portal)
+      await supabase.from("training_leads").update({
+        status:     "claimed",
         student_id: studentId,
-        training_id: id,
-        status: "enrolled",
-        created_at: new Date().toISOString()
-      }]).select().single();
+        payment_id: paymentId,
+        paid_at:    new Date().toISOString(),
+      }).eq("id", leadId);
 
-      if (enrollment) {
-        // Record transaction
+      // 4. Create training_enrollment record
+      const { data: enrollment, error: enrErr } = await supabase
+        .from("training_enrollments")
+        .upsert([{
+          student_id:  studentId,
+          training_id: id,
+          status:      "enrolled",
+          created_at:  new Date().toISOString(),
+        }], { onConflict: "student_id,training_id" })
+        .select()
+        .single();
+
+      if (enrErr) console.error("Enrollment record error (non-fatal):", enrErr);
+
+      // 5. Record transaction
+      const fee = training?.fee ?? 999;
+      if (enrollment?.id) {
         await supabase.from("training_transactions").insert([{
           enrollment_id: enrollment.id,
-          amount: 999,
-          status: "success",
+          amount:        fee,
+          status:        "success",
           transaction_id: paymentId,
-          created_at: new Date().toISOString()
+          created_at:    new Date().toISOString(),
         }]);
-        setEnrollmentId(enrollment.id);
       }
 
-      // Mark lead as claimed
-      await supabase.from("training_leads").update({ status: "claimed" }).eq("id", leadId);
-
-      // Sign in the user
+      // 6. Sign the user in so they land on dashboard
       await supabase.auth.signInWithPassword({ email: form.email, password: form.password });
 
       setStep("success");
     } catch (err: any) {
-      setErrors({ form: "Payment recorded but enrollment failed: " + err.message });
+      setErrors({ form: err.message || "An error occurred after payment. Please contact support." });
       setStep("form");
     } finally {
       setSubmitting(false);
     }
   }
 
+  // ─── Loading ──────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -290,6 +348,7 @@ function TrainingRegisterPage() {
     );
   }
 
+  // ─── Already enrolled ─────────────────────────────────────────────────────
   if (alreadyEnrolled) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0a192f] to-[#1e40af] flex items-center justify-center px-4">
@@ -300,9 +359,9 @@ function TrainingRegisterPage() {
           <h2 className="text-2xl font-black text-[#0a192f] uppercase tracking-tight mb-3">Already Enrolled</h2>
           <p className="text-slate-500 text-sm mb-2">You have already registered and enrolled in</p>
           <p className="font-black text-[#fbbf24] text-lg uppercase mb-6">{training?.name}</p>
-          <p className="text-slate-400 text-xs mb-8 font-medium">Please proceed to your dashboard to access your lectures, assignments, and sessions.</p>
+          <p className="text-slate-400 text-xs mb-8 font-medium">Please login to access your training dashboard.</p>
           <button
-            onClick={() => navigate({ to: "/dashboard/student/trainings" })}
+            onClick={() => navigate({ to: "/dashboard/training" })}
             className="w-full h-12 bg-[#0a192f] text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-[#1e40af] transition-all shadow-lg"
           >
             Go to My Dashboard
@@ -312,6 +371,7 @@ function TrainingRegisterPage() {
     );
   }
 
+  // ─── Success ──────────────────────────────────────────────────────────────
   if (step === "success") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0a192f] to-[#1e40af] flex items-center justify-center px-4">
@@ -322,9 +382,9 @@ function TrainingRegisterPage() {
           <h2 className="text-2xl font-black text-[#0a192f] uppercase tracking-tight mb-3">Enrollment Successful!</h2>
           <p className="text-slate-500 text-sm mb-2">You have successfully enrolled in</p>
           <p className="font-black text-[#fbbf24] text-lg uppercase mb-6">{training?.name}</p>
-          <p className="text-slate-400 text-xs mb-8 font-medium">Access your training sessions and track progress from your student dashboard.</p>
+          <p className="text-slate-400 text-xs mb-8 font-medium">Your login credentials have been created. Access your training sessions from the dashboard.</p>
           <button
-            onClick={() => navigate({ to: "/dashboard/student/trainings" })}
+            onClick={() => navigate({ to: "/dashboard/training" })}
             className="w-full h-12 bg-[#0a192f] text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-[#1e40af] transition-all shadow-lg"
           >
             Go to My Dashboard
@@ -334,18 +394,20 @@ function TrainingRegisterPage() {
     );
   }
 
+  // ─── Payment loading screen ───────────────────────────────────────────────
   if (step === "payment") {
     return (
       <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center px-4">
         <div className="bg-white rounded-3xl p-10 max-w-md w-full text-center shadow-2xl border border-slate-100">
           <Loader2 className="animate-spin size-12 text-[#0a192f] mx-auto mb-4" />
-          <h2 className="text-xl font-black text-[#0a192f] uppercase tracking-tight mb-2">Processing Payment</h2>
-          <p className="text-slate-500 text-sm">Please wait while we open the payment gateway...</p>
+          <h2 className="text-xl font-black text-[#0a192f] uppercase tracking-tight mb-2">Opening Payment Gateway</h2>
+          <p className="text-slate-500 text-sm">Please complete the payment in the Razorpay window...</p>
         </div>
       </div>
     );
   }
 
+  // ─── Registration Form ────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#f8fafc]">
       <SiteHeader />
@@ -365,6 +427,7 @@ function TrainingRegisterPage() {
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-2xl mx-auto">
           <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+
             {/* Header */}
             <div className="bg-gradient-to-r from-[#0a192f] to-[#1e40af] p-6 flex items-center gap-4">
               <div className="size-14 rounded-2xl bg-white/10 flex items-center justify-center">
@@ -376,7 +439,7 @@ function TrainingRegisterPage() {
                 {training?.duration_days && (
                   <div className="text-[#fbbf24] text-xs font-bold">{training.duration_days} Days Program</div>
                 )}
-                <div className="mt-1 text-white/80 text-xs font-black">Fee: ₹{(training?.fee ?? 999).toLocaleString('en-IN')}</div>
+                <div className="mt-1 text-white/80 text-xs font-black">Fee: ₹{(training?.fee ?? 999).toLocaleString("en-IN")}</div>
               </div>
             </div>
 
@@ -388,7 +451,7 @@ function TrainingRegisterPage() {
                 </div>
               )}
 
-              {/* Name */}
+              {/* Full Name */}
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Full Name *</label>
                 <div className="relative">
@@ -505,7 +568,7 @@ function TrainingRegisterPage() {
                 {errors.roll_number && <p className="text-red-500 text-xs font-bold">{errors.roll_number}</p>}
               </div>
 
-              {/* Subject */}
+              {/* Subject / Branch */}
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Subject / Branch *</label>
                 <div className="relative">
@@ -539,6 +602,7 @@ function TrainingRegisterPage() {
                 {errors.password && <p className="text-red-500 text-xs font-bold">{errors.password}</p>}
               </div>
 
+              {/* Terms */}
               <div className="flex items-start gap-3 mt-4">
                 <input
                   type="checkbox"
@@ -561,7 +625,7 @@ function TrainingRegisterPage() {
                 {submitting ? <Loader2 className="animate-spin size-5" /> : (
                   <>
                     <CheckCircle2 className="size-5" />
-                    Register & Proceed to Payment
+                    Register &amp; Proceed to Payment
                   </>
                 )}
               </button>

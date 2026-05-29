@@ -47,7 +47,7 @@ function StudentProfile() {
   async function fetchProfile() {
     setLoading(true);
     const { data, error } = await supabase
-      .from("profiles")
+      .from("internship_students")
       .select("*")
       .eq("id", user?.id)
       .maybeSingle();
@@ -79,10 +79,18 @@ function StudentProfile() {
         id: user.id,
         full_name: user.user_metadata?.full_name || "New Student",
         email: user.email,
-        role: "student",
         created_at: new Date().toISOString()
       };
-      const { data: created } = await supabase.from("profiles").insert([newProfile]).select().single();
+      // Insert into base profiles table first, ignoring conflict
+      await supabase.from("profiles").insert([{
+        id: user.id,
+        full_name: newProfile.full_name,
+        email: newProfile.email,
+        role: "student",
+        created_at: newProfile.created_at
+      }]);
+      // Insert into internship_students table
+      const { data: created } = await supabase.from("internship_students").insert([newProfile]).select().single();
       if (created) setProfile(created);
     }
     setLoading(false);

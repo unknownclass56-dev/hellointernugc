@@ -1,54 +1,54 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { toast } from "sonner";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageShell } from "@/components/PageShell";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { supabase, supabaseConfigured } from "@/lib/supabase";
+import { ShieldCheck, Briefcase, BookOpen, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/login")({
-  component: LoginPage,
-  head: () => ({ meta: [{ title: "Login — TechLaunchpad" }, { name: "robots", content: "noindex" }] }),
+  component: LoginSelectorPage,
+  head: () => ({ meta: [{ title: "Select Login Portal — TechLaunchpad" }] }),
 });
 
-function LoginPage() {
-  const navigate = useNavigate();
-  const [busy, setBusy] = useState(false);
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    const email = String(fd.get("email") ?? "");
-    const password = String(fd.get("password") ?? "");
-    if (!supabaseConfigured) {
-      toast.error("Supabase not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
-      return;
-    }
-    setBusy(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    const role = (data.user?.user_metadata?.role as string) ?? "student";
-    toast.success("Welcome back!");
-    navigate({ to: role === "admin" ? "/dashboard/admin" : role === "company" ? "/dashboard/company" : "/dashboard/student" });
-  }
-
+function LoginSelectorPage() {
   return (
     <PageShell>
-      <section className="container mx-auto max-w-md px-4 py-20">
-        <div className="rounded-2xl border border-border bg-card p-8 shadow-[var(--shadow-elegant)]">
-          <h1 className="font-display text-3xl font-bold text-navy-deep">Welcome back</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Sign in to your TechLaunchpad account.</p>
-          <form onSubmit={onSubmit} className="mt-6 space-y-4">
-            <div><Label htmlFor="email">Email</Label><Input id="email" name="email" type="email" required /></div>
-            <div><Label htmlFor="password">Password</Label><Input id="password" name="password" type="password" required /></div>
-            <Button type="submit" disabled={busy} className="w-full bg-navy text-ivory hover:bg-navy-deep">{busy ? "Signing in…" : "Sign In"}</Button>
-          </form>
-          <div className="mt-4 flex items-center justify-between text-sm">
-            <Link to="/forgot-password" className="text-muted-foreground hover:text-navy">Forgot password?</Link>
-            <Link to="/register" className="font-semibold text-navy hover:text-gold">Create account</Link>
-          </div>
+      <section className="container mx-auto max-w-4xl px-4 py-20">
+        <div className="text-center mb-12">
+          <h1 className="font-display text-4xl font-bold text-navy-deep uppercase tracking-widest">Login Portals</h1>
+          <p className="mt-2 text-muted-foreground max-w-lg mx-auto">Please select your designated portal to access your dashboard. Access is strictly restricted by user type.</p>
+        </div>
+
+        <div className="grid gap-8 md:grid-cols-2 max-w-3xl mx-auto">
+          {/* Internship Portal Card */}
+          <Link to="/internship/login" className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl hover:border-navy">
+            <div className="absolute inset-0 bg-gradient-to-br from-navy/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+            <div className="mb-6 inline-flex size-14 items-center justify-center rounded-2xl bg-navy/10 text-navy transition-transform group-hover:scale-110">
+              <Briefcase className="size-7" />
+            </div>
+            <h3 className="mb-2 font-display text-xl font-bold text-navy-deep">Internship Portal</h3>
+            <p className="text-sm text-slate-500 mb-8">For students enrolled in internship programs, assignments, and offer letters.</p>
+            <div className="flex items-center text-sm font-bold text-navy uppercase tracking-widest group-hover:text-gold transition-colors">
+              Access Portal <ChevronRight className="ml-1 size-4 transition-transform group-hover:translate-x-1" />
+            </div>
+          </Link>
+
+          {/* Training Portal Card */}
+          <Link to="/training/login" className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl hover:border-blue-600">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+            <div className="mb-6 inline-flex size-14 items-center justify-center rounded-2xl bg-blue-100 text-blue-600 transition-transform group-hover:scale-110">
+              <BookOpen className="size-7" />
+            </div>
+            <h3 className="mb-2 font-display text-xl font-bold text-navy-deep">Training Portal</h3>
+            <p className="text-sm text-slate-500 mb-8">For candidates enrolled in online learning courses, lectures, and training certs.</p>
+            <div className="flex items-center text-sm font-bold text-blue-600 uppercase tracking-widest group-hover:text-blue-800 transition-colors">
+              Access Portal <ChevronRight className="ml-1 size-4 transition-transform group-hover:translate-x-1" />
+            </div>
+          </Link>
+
+        </div>
+        
+        <div className="mt-12 text-center">
+          <Link to="/register" className="inline-flex h-12 items-center justify-center rounded-xl bg-slate-100 px-8 text-sm font-bold text-navy-deep transition-colors hover:bg-slate-200">
+            Don't have an account? Register here
+          </Link>
         </div>
       </section>
     </PageShell>

@@ -10,8 +10,15 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 
+import { useEffect } from "react";
+
 export const Route = createFileRoute("/verify")({
   component: VerifyPage,
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      id: search.id as string | undefined,
+    };
+  },
   head: () => ({
     meta: [
       { title: "Verify Certificate — TechLaunchpad" },
@@ -26,11 +33,110 @@ type VerifyMode = "mobile" | "email" | "id";
 type ResultState = "idle" | "valid" | "invalid";
 
 function VerifyPage() {
+  const { id } = Route.useSearch();
   const [mode, setMode] = useState<VerifyMode>("mobile");
   const [inputValue, setInputValue] = useState("");
   const [result, setResult] = useState<ResultState>("idle");
   const [loading, setLoading] = useState(false);
   const [verifiedData, setVerifiedData] = useState<any>(null);
+
+  useEffect(() => {
+    if (id) {
+      setMode("id");
+      setInputValue(id);
+      autoVerify(id);
+    }
+  }, [id]);
+
+  async function autoVerify(certIdVal: string) {
+    setLoading(true);
+    setResult("idle");
+    setVerifiedData(null);
+    try {
+      let profileData: any = null;
+      
+      const { data: all } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("certificate_generated", true);
+      if (all) {
+        profileData = all.find((p: any) => {
+          const genId = `TL/OFFER/${p.university_roll_number?.slice(-4) || "0000"}/${new Date(p.created_at || Date.now()).getFullYear()}`;
+          return genId.toUpperCase() === certIdVal.toUpperCase();
+        }) ?? null;
+      }
+
+      if (profileData) {
+        const fullId = `TL/OFFER/${profileData.university_roll_number?.slice(-4) || "0000"}/${new Date(profileData.created_at || Date.now()).getFullYear()}`;
+        setVerifiedData({
+          type: "internship",
+          name: profileData.full_name,
+          program: profileData.program || profileData.department || "Internship Program",
+          college: profileData.college_name || "N/A",
+          university: profileData.university_name || "N/A",
+          department: profileData.department || "N/A",
+          rollNo: profileData.university_roll_number || "N/A",
+          certId: fullId.toUpperCase(),
+          recognition: "AICTE · UGC · BSDM · ISO 9001:2015",
+          issueYear: new Date(profileData.created_at || Date.now()).getFullYear(),
+        });
+        setResult("valid");
+        setLoading(false);
+        return;
+      }
+
+      let trainingEnroll: any = null;
+      if (certIdVal.toUpperCase().startsWith("TL/TRG/")) {
+        const parts = certIdVal.toUpperCase().split("/");
+        const rollSuffix = parts[2];
+        const yr = parts[3];
+        const { data: allProfs } = await supabase
+          .from("profiles")
+          .select("id, full_name, college_name, university_name, department, university_roll_number");
+        const matched = (allProfs || []).find((p: any) => {
+          const suffix = p.university_roll_number?.slice(-4) || "0000";
+          return suffix === rollSuffix && String(new Date(p.created_at || Date.now()).getFullYear()) === yr;
+        });
+        if (matched) {
+          const { data: enr } = await supabase
+            .from("training_enrollments")
+            .select("*, trainings(*)")
+            .eq("student_id", matched.id)
+            .eq("status", "completed")
+            .limit(1)
+            .maybeSingle();
+          if (enr) trainingEnroll = { enr, prof: matched };
+        }
+      }
+
+      if (trainingEnroll) {
+        const { enr, prof } = trainingEnroll;
+        const fullId = `TL/TRG/${prof.university_roll_number?.slice(-4) || "0000"}/${new Date(enr.created_at).getFullYear()}`;
+        setVerifiedData({
+          type: "training",
+          name: prof.full_name,
+          program: enr.trainings?.name || "Training Program",
+          college: prof.college_name || "N/A",
+          university: prof.university_name || "N/A",
+          department: prof.department || "N/A",
+          rollNo: prof.university_roll_number || "N/A",
+          certId: fullId.toUpperCase(),
+          durationDays: enr.trainings?.duration_days || "N/A",
+          recognition: "AICTE · MSME · TechLaunchpad",
+          issueYear: new Date(enr.created_at).getFullYear(),
+        });
+        setResult("valid");
+        setLoading(false);
+        return;
+      }
+
+      setResult("invalid");
+    } catch (err) {
+      console.error(err);
+      setResult("invalid");
+    }
+    setLoading(false);
+  }
 
   const modes: { key: VerifyMode; label: string; icon: React.ReactNode; placeholder: string }[] = [
     { key: "mobile", label: "Mobile Number", icon: <Phone className="size-4" />, placeholder: "Enter mobile number" },

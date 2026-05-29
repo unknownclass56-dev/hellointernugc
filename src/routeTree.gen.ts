@@ -26,8 +26,11 @@ import { Route as TrainingsIndexRouteImport } from './routes/trainings/index'
 import { Route as ProgramsIndexRouteImport } from './routes/programs/index'
 import { Route as InternshipsIndexRouteImport } from './routes/internships/index'
 import { Route as TrainingsIdRouteImport } from './routes/trainings/$id'
+import { Route as TrainingLoginRouteImport } from './routes/training/login'
 import { Route as ProgramsSlugRouteImport } from './routes/programs/$slug'
 import { Route as InternshipsIdRouteImport } from './routes/internships/$id'
+import { Route as InternshipLoginRouteImport } from './routes/internship/login'
+import { Route as DashboardTrainingRouteImport } from './routes/dashboard/training'
 import { Route as DashboardInboxRouteImport } from './routes/dashboard/inbox'
 import { Route as DashboardCertificatesRouteImport } from './routes/dashboard/certificates'
 import { Route as DashboardAdminRouteImport } from './routes/dashboard/admin'
@@ -132,6 +135,11 @@ const TrainingsIdRoute = TrainingsIdRouteImport.update({
   path: '/trainings/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TrainingLoginRoute = TrainingLoginRouteImport.update({
+  id: '/training/login',
+  path: '/training/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProgramsSlugRoute = ProgramsSlugRouteImport.update({
   id: '/programs/$slug',
   path: '/programs/$slug',
@@ -141,6 +149,16 @@ const InternshipsIdRoute = InternshipsIdRouteImport.update({
   id: '/internships/$id',
   path: '/internships/$id',
   getParentRoute: () => rootRouteImport,
+} as any)
+const InternshipLoginRoute = InternshipLoginRouteImport.update({
+  id: '/internship/login',
+  path: '/internship/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardTrainingRoute = DashboardTrainingRouteImport.update({
+  id: '/training',
+  path: '/training',
+  getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardInboxRoute = DashboardInboxRouteImport.update({
   id: '/inbox',
@@ -262,8 +280,11 @@ export interface FileRoutesByFullPath {
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/certificates': typeof DashboardCertificatesRoute
   '/dashboard/inbox': typeof DashboardInboxRoute
+  '/dashboard/training': typeof DashboardTrainingRoute
+  '/internship/login': typeof InternshipLoginRoute
   '/internships/$id': typeof InternshipsIdRoute
   '/programs/$slug': typeof ProgramsSlugRoute
+  '/training/login': typeof TrainingLoginRoute
   '/trainings/$id': typeof TrainingsIdRoute
   '/internships/': typeof InternshipsIndexRoute
   '/programs/': typeof ProgramsIndexRoute
@@ -301,8 +322,11 @@ export interface FileRoutesByTo {
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/certificates': typeof DashboardCertificatesRoute
   '/dashboard/inbox': typeof DashboardInboxRoute
+  '/dashboard/training': typeof DashboardTrainingRoute
+  '/internship/login': typeof InternshipLoginRoute
   '/internships/$id': typeof InternshipsIdRoute
   '/programs/$slug': typeof ProgramsSlugRoute
+  '/training/login': typeof TrainingLoginRoute
   '/trainings/$id': typeof TrainingsIdRoute
   '/internships': typeof InternshipsIndexRoute
   '/programs': typeof ProgramsIndexRoute
@@ -341,8 +365,11 @@ export interface FileRoutesById {
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/certificates': typeof DashboardCertificatesRoute
   '/dashboard/inbox': typeof DashboardInboxRoute
+  '/dashboard/training': typeof DashboardTrainingRoute
+  '/internship/login': typeof InternshipLoginRoute
   '/internships/$id': typeof InternshipsIdRoute
   '/programs/$slug': typeof ProgramsSlugRoute
+  '/training/login': typeof TrainingLoginRoute
   '/trainings/$id': typeof TrainingsIdRoute
   '/internships/': typeof InternshipsIndexRoute
   '/programs/': typeof ProgramsIndexRoute
@@ -382,8 +409,11 @@ export interface FileRouteTypes {
     | '/dashboard/admin'
     | '/dashboard/certificates'
     | '/dashboard/inbox'
+    | '/dashboard/training'
+    | '/internship/login'
     | '/internships/$id'
     | '/programs/$slug'
+    | '/training/login'
     | '/trainings/$id'
     | '/internships/'
     | '/programs/'
@@ -421,8 +451,11 @@ export interface FileRouteTypes {
     | '/dashboard/admin'
     | '/dashboard/certificates'
     | '/dashboard/inbox'
+    | '/dashboard/training'
+    | '/internship/login'
     | '/internships/$id'
     | '/programs/$slug'
+    | '/training/login'
     | '/trainings/$id'
     | '/internships'
     | '/programs'
@@ -460,8 +493,11 @@ export interface FileRouteTypes {
     | '/dashboard/admin'
     | '/dashboard/certificates'
     | '/dashboard/inbox'
+    | '/dashboard/training'
+    | '/internship/login'
     | '/internships/$id'
     | '/programs/$slug'
+    | '/training/login'
     | '/trainings/$id'
     | '/internships/'
     | '/programs/'
@@ -496,8 +532,10 @@ export interface RootRouteChildren {
   VerifyRoute: typeof VerifyRoute
   AdminLoginRoute: typeof AdminLoginRoute
   ApplyIdRoute: typeof ApplyIdRoute
+  InternshipLoginRoute: typeof InternshipLoginRoute
   InternshipsIdRoute: typeof InternshipsIdRoute
   ProgramsSlugRoute: typeof ProgramsSlugRoute
+  TrainingLoginRoute: typeof TrainingLoginRoute
   TrainingsIdRoute: typeof TrainingsIdRoute
   InternshipsIndexRoute: typeof InternshipsIndexRoute
   ProgramsIndexRoute: typeof ProgramsIndexRoute
@@ -626,6 +664,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TrainingsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/training/login': {
+      id: '/training/login'
+      path: '/training/login'
+      fullPath: '/training/login'
+      preLoaderRoute: typeof TrainingLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/programs/$slug': {
       id: '/programs/$slug'
       path: '/programs/$slug'
@@ -639,6 +684,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/internships/$id'
       preLoaderRoute: typeof InternshipsIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/internship/login': {
+      id: '/internship/login'
+      path: '/internship/login'
+      fullPath: '/internship/login'
+      preLoaderRoute: typeof InternshipLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/training': {
+      id: '/dashboard/training'
+      path: '/training'
+      fullPath: '/dashboard/training'
+      preLoaderRoute: typeof DashboardTrainingRouteImport
+      parentRoute: typeof DashboardRoute
     }
     '/dashboard/inbox': {
       id: '/dashboard/inbox'
@@ -783,6 +842,7 @@ interface DashboardRouteChildren {
   DashboardAdminRoute: typeof DashboardAdminRoute
   DashboardCertificatesRoute: typeof DashboardCertificatesRoute
   DashboardInboxRoute: typeof DashboardInboxRoute
+  DashboardTrainingRoute: typeof DashboardTrainingRoute
   DashboardStudentAssignmentsRoute: typeof DashboardStudentAssignmentsRoute
   DashboardStudentAttendanceRoute: typeof DashboardStudentAttendanceRoute
   DashboardStudentCertificateRoute: typeof DashboardStudentCertificateRoute
@@ -800,6 +860,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAdminRoute: DashboardAdminRoute,
   DashboardCertificatesRoute: DashboardCertificatesRoute,
   DashboardInboxRoute: DashboardInboxRoute,
+  DashboardTrainingRoute: DashboardTrainingRoute,
   DashboardStudentAssignmentsRoute: DashboardStudentAssignmentsRoute,
   DashboardStudentAttendanceRoute: DashboardStudentAttendanceRoute,
   DashboardStudentCertificateRoute: DashboardStudentCertificateRoute,
@@ -834,8 +895,10 @@ const rootRouteChildren: RootRouteChildren = {
   VerifyRoute: VerifyRoute,
   AdminLoginRoute: AdminLoginRoute,
   ApplyIdRoute: ApplyIdRoute,
+  InternshipLoginRoute: InternshipLoginRoute,
   InternshipsIdRoute: InternshipsIdRoute,
   ProgramsSlugRoute: ProgramsSlugRoute,
+  TrainingLoginRoute: TrainingLoginRoute,
   TrainingsIdRoute: TrainingsIdRoute,
   InternshipsIndexRoute: InternshipsIndexRoute,
   ProgramsIndexRoute: ProgramsIndexRoute,

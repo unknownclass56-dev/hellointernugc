@@ -306,22 +306,37 @@ export function TrainingCertificate({
               </div>
             </div>
 
-            {/* Center Seal */}
+            {/* Center Seal & QR Code */}
             <div style={{ textAlign: "center" }}>
-              <img 
-                src={officialSeal} 
-                alt="Official Seal" 
-                style={{ 
-                  width: "80px", 
-                  height: "80px", 
-                  objectFit: "contain",
-                  margin: "0 auto 6px",
-                  display: "block",
-                  filter: "drop-shadow(0px 4px 6px rgba(0,0,0,0.15))"
-                }} 
-              />
-              <div style={{ fontSize: "8px", fontWeight: 700, color: "#b8860b", letterSpacing: "0.2em", textTransform: "uppercase", fontFamily: "Arial, sans-serif" }}>
-                Official Seal
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", marginBottom: "6px" }}>
+                <img 
+                  src={officialSeal} 
+                  alt="Official Seal" 
+                  style={{ 
+                    width: "64px", 
+                    height: "64px", 
+                    objectFit: "contain",
+                    display: "block",
+                    filter: "drop-shadow(0px 4px 6px rgba(0,0,0,0.15))"
+                  }} 
+                />
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(typeof window !== "undefined" ? window.location.origin + "/verify?id=" + certificateNumber : "")}`} 
+                  alt="Verification QR Code" 
+                  style={{ 
+                    width: "64px", 
+                    height: "64px", 
+                    objectFit: "contain",
+                    border: "1px solid rgba(184, 134, 11, 0.3)",
+                    padding: "2px",
+                    background: "white",
+                    borderRadius: "4px",
+                    display: "block"
+                  }} 
+                />
+              </div>
+              <div style={{ fontSize: "7px", fontWeight: 700, color: "#b8860b", letterSpacing: "0.15em", textTransform: "uppercase", fontFamily: "Arial, sans-serif" }}>
+                Official Seal | Scan to Verify
               </div>
             </div>
 

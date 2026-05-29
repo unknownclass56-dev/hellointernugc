@@ -32,9 +32,9 @@ export function SiteFooter() {
               <li><Link to="/about" className="hover:text-gold">About Us</Link></li>
               <li><Link to="/programs" className="hover:text-gold">Programs</Link></li>
               <li><Link to="/internships" className="hover:text-gold">Internships</Link></li>
-              <li><Link to="/blog" className="hover:text-gold">Blog</Link></li>
-              <li><Link to="/faq" className="hover:text-gold">FAQ</Link></li>
-              <li><Link to="/contact" className="hover:text-gold">Contact</Link></li>
+              <li><Link to="/internship/login" className="hover:text-gold text-blue-300">Internship Login</Link></li>
+              <li><Link to="/training/login" className="hover:text-gold text-blue-300">Training Login</Link></li>
+              <li><Link to="/admin/login" className="hover:text-gold text-red-300">Admin Login</Link></li>
             </ul>
           </div>
 

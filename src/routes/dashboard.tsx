@@ -17,7 +17,9 @@ import {
   BookOpen,
   CreditCard,
   User,
-  Video
+  Video,
+  FileCheck,
+  ClipboardList
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
@@ -52,12 +54,55 @@ function DashboardLayout() {
          console.error("Profile fetch error:", error);
       }
 
-      const userRole = profile?.role || "student";
+      let userRole = profile?.role || "student";
+      
+      // Determine if they are a training student strictly by table existence
+      let isTrainingStudent = false;
+      const { data: tsMatch } = await supabase
+        .from("training_students")
+        .select("id")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (tsMatch) {
+        isTrainingStudent = true;
+      }
+
+      // Determine if they are an internship student strictly by table existence
+      let isInternshipStudent = false;
+      const { data: isMatch } = await supabase
+        .from("internship_students")
+        .select("id")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (isMatch) {
+        isInternshipStudent = true;
+      }
+
+      // Strictly map role in UI based on table presence
+      if (userRole === "admin") {
+        // Keep role as admin
+      } else if (isTrainingStudent) {
+        userRole = "training";
+      } else if (isInternshipStudent) {
+        userRole = "student";
+      }
+
       setRole(userRole);
 
-      // Biometric Guard: Check if the column exists in the returned data
-      // If the column is missing from DB, face_registered will be undefined
-      if (userRole === "student" && profile?.face_registered === false && location.pathname !== "/dashboard/student/face-register") {
+      // Handle root /dashboard redirect
+      if (location.pathname === "/dashboard" || location.pathname === "/dashboard/") {
+        if (userRole === "admin") {
+          navigate({ to: "/dashboard/admin" });
+        } else if (isTrainingStudent) {
+          navigate({ to: "/dashboard/training" });
+        } else {
+          navigate({ to: "/dashboard/student" });
+        }
+        return;
+      }
+
+      // Biometric Guard: Only for internship students (who are under /dashboard/student path)
+      if (location.pathname.startsWith("/dashboard/student") && userRole === "student" && profile?.face_registered === false && location.pathname !== "/dashboard/student/face-register") {
         navigate({ to: "/dashboard/student/face-register" });
       }
     } catch (err) {
@@ -88,14 +133,29 @@ function DashboardLayout() {
     { to: "/dashboard/inbox", icon: Mail, label: "Inbox" },
   ];
 
-  const studentLinks = [
-    { to: "/dashboard/student/trainings", icon: BookOpen, label: "My Trainings" },
-    { to: "/dashboard/student/profile", icon: Users, label: "My Profile" },
+  const internshipLinks = [
+    { to: "/dashboard/student", icon: LayoutDashboard, label: "Overview" },
+    { to: "/dashboard/student/offer-letter", icon: FileCheck, label: "My Offer Letter" },
+    { to: "/dashboard/student/lectures", icon: Video, label: "Online Lectures" },
+    { to: "/dashboard/student/assignments", icon: ClipboardList, label: "Assignments" },
+    { to: "/dashboard/student/payments", icon: CreditCard, label: "Payments" },
     { to: "/dashboard/student/certificate", icon: GraduationCap, label: "My Certificate" },
-    { to: "/dashboard/student/payments", icon: ShieldCheck, label: "Payments" },
+    { to: "/dashboard/student/profile", icon: User, label: "My Profile" },
   ];
 
-  const links = role === "admin" ? adminLinks : studentLinks;
+  const trainingLinks = [
+    { to: "/dashboard/training", search: { tab: "learning" }, icon: BookOpen, label: "My Trainings" },
+    { to: "/dashboard/training", search: { tab: "profile" }, icon: User, label: "My Profile" },
+    { to: "/dashboard/training", search: { tab: "assignments" }, icon: ClipboardList, label: "Assignments" },
+    { to: "/dashboard/training", search: { tab: "certificate" }, icon: ShieldCheck, label: "Certificate" },
+    { to: "/dashboard/training", search: { tab: "payments" }, icon: CreditCard, label: "Payments" },
+  ];
+
+  const links = role === "admin" 
+    ? adminLinks 
+    : role === "training" 
+      ? trainingLinks 
+      : internshipLinks;
 
   return (
     <div className="flex h-screen bg-[#f8f9fa] print:bg-white print:h-auto print:block">
@@ -126,21 +186,29 @@ function DashboardLayout() {
 
         {/* Navigation Links */}
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-          {links.map((link) => (
-            <Link
-              key={link.label}
-              to={link.to}
-              search={link.search}
-              className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all group ${
-                location.pathname === link.to && (!link.search || (location.search as any).view === link.search.view)
-                  ? "bg-gold text-navy-deep font-bold shadow-lg" 
-                  : "hover:bg-white/10 text-white/70 hover:text-white"
-              }`}
-            >
-              <link.icon className={`size-5 transition-transform group-hover:scale-110 ${isCollapsed ? "mx-auto" : ""}`} />
-              {!isCollapsed && <span className="text-sm">{link.label}</span>}
-            </Link>
-          ))}
+          {links.map((link) => {
+            const searchParams = location.search as any;
+            const isActive = location.pathname === link.to && (
+              !link.search || 
+              searchParams?.view === (link.search as any)?.view ||
+              searchParams?.tab === (link.search as any)?.tab
+            );
+            return (
+              <Link
+                key={link.label}
+                to={link.to}
+                search={link.search}
+                className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all group ${
+                  isActive
+                    ? "bg-gold text-navy-deep font-bold shadow-lg" 
+                    : "hover:bg-white/10 text-white/70 hover:text-white"
+                }`}
+              >
+                <link.icon className={`size-5 transition-transform group-hover:scale-110 ${isCollapsed ? "mx-auto" : ""}`} />
+                {!isCollapsed && <span className="text-sm">{link.label}</span>}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Footer / Sign Out */}

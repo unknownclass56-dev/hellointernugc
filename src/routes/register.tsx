@@ -191,7 +191,31 @@ async function fetchStaticData() {
           if (authError) throw authError;
 
           // --- 2. CREATE STUDENT PROFILE ---
-          const profileData: any = {
+          // Base profiles data
+          const baseProfile: any = {
+            id: authData.user?.id,
+            full_name: registeredUser.full_name,
+            email: registeredUser.email,
+            role: "student",
+            raw_password: registeredPassword,
+            created_at: new Date().toISOString()
+          };
+
+          // Try to insert base profile safely
+          const { error: baseError } = await supabase.from("profiles").insert([baseProfile]);
+          if (baseError && baseError.code !== '23505' && !baseError.message?.includes('duplicate key')) {
+            throw baseError;
+          } else if (baseError) {
+            // Update base profile if auto-created by database trigger
+            await supabase.from("profiles").update({ 
+              role: "student", 
+              full_name: registeredUser.full_name, 
+              raw_password: registeredPassword 
+            }).eq("id", authData.user?.id);
+          }
+
+          // Detailed internship student profile data
+          const studentProfile: any = {
             id: authData.user?.id,
             full_name: registeredUser.full_name,
             email: registeredUser.email,
@@ -206,12 +230,11 @@ async function fetchStaticData() {
             academic_session: registeredUser.raw_lead_data.academic_session,
             university_roll_number: registeredUser.university_roll_number,
             program: registeredUser.program,
-            role: "student",
             raw_password: registeredPassword,
             created_at: new Date().toISOString()
           };
 
-          const { error: profileError } = await supabase.from("profiles").insert([profileData]);
+          const { error: profileError } = await supabase.from("internship_students").insert([studentProfile]);
           if (profileError) throw profileError;
 
           // --- 3. MARK LEAD AS CLAIMED/PAID ---

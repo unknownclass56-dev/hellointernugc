@@ -16,18 +16,22 @@ function StudentDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    navigate({ to: "/dashboard/student/trainings", replace: true });
-  }, []);
-
-  useEffect(() => {
     if (user?.id) {
       fetchProfile();
     }
   }, [user]);
 
   async function fetchProfile() {
-    const { data } = await supabase.from("profiles").select("*").eq("id", user?.id).maybeSingle();
-    if (data) setProfile(data);
+    setLoading(true);
+    const { data } = await supabase.from("internship_students").select("*").eq("id", user?.id).maybeSingle();
+    if (data) {
+      setProfile(data);
+    } else {
+      const { data: tsMatch } = await supabase.from("training_students").select("id").eq("id", user?.id).maybeSingle();
+      if (tsMatch) {
+        navigate({ to: "/dashboard/training", replace: true });
+      }
+    }
     setLoading(false);
   }
 

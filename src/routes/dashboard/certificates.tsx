@@ -451,14 +451,21 @@ function AdminCertificatesPage() {
                             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Director, TechLaunchpad</span>
                           </div>
 
-                          {/* CENTER: OFFICIAL SEAL */}
+                          {/* CENTER: OFFICIAL SEAL & QR CODE */}
                           <div className="flex flex-col items-center justify-center">
-                            <img 
-                              src={officialSeal} 
-                              alt="Official Seal" 
-                              className="w-16 h-16 object-contain drop-shadow-md hover:scale-105 transition-transform duration-300 block" 
-                            />
-                            <span className="text-[7px] font-black text-slate-400 uppercase tracking-wider mt-1.5">Issued: {today}</span>
+                            <div className="flex items-center gap-3">
+                              <img 
+                                src={officialSeal} 
+                                alt="Official Seal" 
+                                className="w-12 h-12 object-contain drop-shadow-md block" 
+                              />
+                              <img 
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(typeof window !== "undefined" ? window.location.origin + "/verify?id=" + sCertId : "")}`} 
+                                alt="Verification QR Code" 
+                                className="w-12 h-12 object-contain border border-slate-200 p-0.5 bg-white rounded block" 
+                              />
+                            </div>
+                            <span className="text-[7px] font-black text-slate-400 uppercase tracking-wider mt-1.5">Issued: {today} | Scan to Verify</span>
                           </div>
 
                           <div className="flex flex-col items-center">

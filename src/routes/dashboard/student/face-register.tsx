@@ -65,7 +65,7 @@ function FaceRegistration() {
     // Mock scanning duration
     setTimeout(async () => {
       const { error } = await supabase
-        .from("profiles")
+        .from("internship_students")
         .update({ face_registered: true, face_data: "biometric_sample_active" })
         .eq("id", user?.id);
 

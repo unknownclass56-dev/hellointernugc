@@ -1,7 +1,18 @@
+const fs = require('fs');
+const path = require('path');
+const envContent = fs.readFileSync(path.join(__dirname, '.env'), 'utf8');
+const envVars = {};
+envContent.split('\n').forEach(line => {
+  const parts = line.split('=');
+  if (parts.length >= 2) {
+    envVars[parts[0].trim()] = parts.slice(1).join('=').trim();
+  }
+});
+
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = "https://prnrdlmmplmxrptdhmfj.supabase.co";
-const supabaseAnonKey = "sb_publishable_wqG_8g8c8qIwUPDJDNVx8A_Wi2cA1Hh";
+const supabaseUrl = envVars.VITE_SUPABASE_URL;
+const supabaseAnonKey = envVars.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function testRpcs() {
