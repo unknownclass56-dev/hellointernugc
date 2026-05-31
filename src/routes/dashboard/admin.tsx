@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { 
   Users, Building2, Briefcase, ShieldCheck, Download, Search, Plus, Edit, Trash2, 
   Key, Filter, Eye, EyeOff, GraduationCap, CreditCard, Award, FileUp, ListChecks, 
@@ -7,7 +7,7 @@ import {
   Phone, User, Heart, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Zap,
   TrendingUp, Activity, Globe, MoreHorizontal, ChevronRight, FileText, Printer,
   Loader2, MoreVertical, XCircle, Scan, Linkedin, Mail, Percent, UserPlus, Settings,
-  Lock, Video
+  Lock, Video, Upload
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -137,6 +137,9 @@ function AdminDashboard() {
   const [tStartDate, setTStartDate] = useState("");
   const [tEndDate, setTEndDate] = useState("");
   const [tThumbnail, setTThumbnail] = useState("");
+  const [tThumbnailFile, setTThumbnailFile] = useState<File | null>(null);
+  const [tThumbnailUploading, setTThumbnailUploading] = useState(false);
+  const tThumbnailRef = useRef<HTMLInputElement>(null);
   const [tFee, setTFee] = useState(999);
 
   // Training lecture form
@@ -1009,13 +1012,28 @@ function AdminDashboard() {
     e.preventDefault();
     setSavingTraining(true);
     try {
+      // Upload thumbnail image if a new file was selected
+      let finalThumbnailUrl = tThumbnail;
+      if (tThumbnailFile) {
+        setTThumbnailUploading(true);
+        const ext = tThumbnailFile.name.split('.').pop();
+        const filePath = `training-thumbnails/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const { data: upData, error: upErr } = await supabase.storage
+          .from('training-assets')
+          .upload(filePath, tThumbnailFile, { upsert: true, contentType: tThumbnailFile.type });
+        if (upErr) throw new Error('Image upload failed: ' + upErr.message);
+        const { data: urlData } = supabase.storage.from('training-assets').getPublicUrl(filePath);
+        finalThumbnailUrl = urlData.publicUrl;
+        setTThumbnailUploading(false);
+      }
+
       const payload = {
         name: tName,
         type: tType,
         duration_days: tDuration,
         start_date: tStartDate || null,
         end_date: tEndDate || null,
-        thumbnail_url: tThumbnail,
+        thumbnail_url: finalThumbnailUrl,
         fee: tFee
       };
       
@@ -1033,9 +1051,11 @@ function AdminDashboard() {
       setIsAddTrainingOpen(false);
       setIsEditTrainingOpen(false);
       setSelectedTraining(null);
+      setTThumbnailFile(null);
       fetchTrainingsData();
     } catch (err: any) {
       toast.error(err.message || "Failed to save training");
+      setTThumbnailUploading(false);
     } finally {
       setSavingTraining(false);
     }
@@ -4152,8 +4172,67 @@ function AdminDashboard() {
                   </div>
                </div>
                <div className="space-y-1">
-                  <Label className="text-[10px] font-black uppercase text-slate-500">Thumbnail URL</Label>
-                  <Input value={tThumbnail} onChange={e => setTThumbnail(e.target.value)} placeholder="https://..." className="h-10 rounded-xl font-bold text-xs border-2"/>
+                  <Label className="text-[10px] font-black uppercase text-slate-500">Thumbnail Image</Label>
+                  <div
+                     onClick={() => tThumbnailRef.current?.click()}
+                     className="relative w-full h-32 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:border-[#0a192f] hover:bg-slate-100 transition-all cursor-pointer flex flex-col items-center justify-center gap-2 overflow-hidden group"
+                  >
+                     {tThumbnailFile ? (
+                        <>
+                           <img
+                              src={URL.createObjectURL(tThumbnailFile)}
+                              alt="Preview"
+                              className="absolute inset-0 w-full h-full object-cover rounded-xl"
+                           />
+                           <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl">
+                              <span className="text-white text-[9px] font-black uppercase tracking-widest">Click to Change</span>
+                           </div>
+                        </>
+                     ) : tThumbnail ? (
+                        <>
+                           <img
+                              src={tThumbnail}
+                              alt="Current Thumbnail"
+                              className="absolute inset-0 w-full h-full object-cover rounded-xl"
+                           />
+                           <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl">
+                              <span className="text-white text-[9px] font-black uppercase tracking-widest">Click to Change</span>
+                           </div>
+                        </>
+                     ) : (
+                        <>
+                           <div className="size-10 rounded-xl bg-slate-200 flex items-center justify-center">
+                              <Upload className="size-5 text-slate-400" />
+                           </div>
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Click to Upload Thumbnail</p>
+                           <p className="text-[9px] text-slate-400">PNG, JPG, WEBP up to 5MB</p>
+                        </>
+                     )}
+                     {tThumbnailUploading && (
+                        <div className="absolute inset-0 bg-white/70 flex items-center justify-center rounded-xl">
+                           <Loader2 className="animate-spin size-6 text-[#0a192f]" />
+                        </div>
+                     )}
+                  </div>
+                  <input
+                     ref={tThumbnailRef}
+                     type="file"
+                     accept="image/png,image/jpeg,image/webp,image/gif"
+                     className="hidden"
+                     onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) setTThumbnailFile(file);
+                     }}
+                  />
+                  {(tThumbnailFile || tThumbnail) && (
+                     <button
+                        type="button"
+                        onClick={e => { e.stopPropagation(); setTThumbnailFile(null); setTThumbnail(""); }}
+                        className="text-[9px] font-black text-red-500 uppercase tracking-widest hover:underline"
+                     >
+                        Remove Image
+                     </button>
+                  )}
                </div>
                <div className="space-y-1">
                   <Label className="text-[10px] font-black uppercase text-slate-500">Registration Fee (₹) *</Label>
