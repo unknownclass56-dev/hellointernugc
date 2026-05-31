@@ -128,6 +128,7 @@ function AdminDashboard() {
   const [selectedTrainingLecture, setSelectedTrainingLecture] = useState<any>(null);
   const [savingTraining, setSavingTraining] = useState(false);
   const [trainingSearch, setTrainingSearch] = useState("");
+  const [capturing, setCapturing] = useState(false);
 
   // Training form states
   const [tName, setTName] = useState("");
@@ -924,6 +925,27 @@ function AdminDashboard() {
     }
   }
 
+  async function handleCaptureAllAuthorized() {
+    if (!confirm("Are you sure you want to capture all authorized Razorpay payments? This will search for and capture up to the latest 100 payments.")) return;
+    setCapturing(true);
+    try {
+      const res = await fetch("/api/capture-all-authorized", {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(`Success! Captured: ${data.captured}, Failed: ${data.failed}. Total authorized found: ${data.totalFound}`);
+        fetchData();
+      } else {
+        toast.error("Failed to capture: " + (data.error || "Unknown error"));
+      }
+    } catch (err: any) {
+      toast.error("Error: " + err.message);
+    } finally {
+      setCapturing(false);
+    }
+  }
+
   useEffect(() => { fetchData(); }, [view]);
 
   async function fetchData() {
@@ -1239,6 +1261,14 @@ function AdminDashboard() {
             </h1>
          </div>
          <div className="flex gap-2">
+            <Button 
+               onClick={handleCaptureAllAuthorized} 
+               disabled={capturing} 
+               className="h-11 px-4 bg-navy hover:bg-navy/80 text-white rounded-xl font-bold uppercase text-[9px] tracking-widest shadow-sm flex items-center gap-2"
+            >
+               {capturing ? <Loader2 className="animate-spin size-4" /> : <ShieldCheck className="size-4 text-gold" />}
+               {capturing ? "Capturing..." : "Capture All Authorized"}
+            </Button>
             <div className="bg-white px-4 py-2 rounded-xl border shadow-sm flex items-center gap-3">
                <div className="size-8 rounded-lg bg-gold/10 text-gold grid place-items-center"><Zap size={16}/></div>
                <div><div className="text-[8px] font-black opacity-40 uppercase tracking-widest">Status</div><div className="text-[10px] font-black text-navy">ACTIVE</div></div>

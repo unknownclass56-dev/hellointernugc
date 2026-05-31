@@ -1,4 +1,12 @@
-import { createFileRoute, Outlet, Link, useNavigate, useLocation } from "@tanstack/react-router";
+import { createFileRoute, Outlet, Link, useNavigate, useLocation, type AnyRouter } from "@tanstack/react-router";
+import type { LucideIcon } from "lucide-react";
+
+type NavLink = {
+  to: string;
+  icon: LucideIcon;
+  label: string;
+  search?: Record<string, string>;
+};
 import { useEffect, useState } from "react";
 import { 
   LayoutDashboard, 
@@ -56,15 +64,29 @@ function DashboardLayout() {
 
       let userRole = profile?.role || "student";
       
-      // Determine if they are a training student strictly by table existence
-      let isTrainingStudent = false;
-      const { data: tsMatch } = await supabase
-        .from("training_students")
-        .select("id")
-        .eq("id", user.id)
-        .maybeSingle();
-      if (tsMatch) {
-        isTrainingStudent = true;
+      // Determine if they are a training student strictly by role or profile type
+      let isTrainingStudent = userRole === "training";
+      if (!isTrainingStudent) {
+        // Fallback: Check if they have an active training enrollment
+        const { data: hasEnrollment } = await supabase
+          .from("training_enrollments")
+          .select("id")
+          .eq("student_id", user.id)
+          .maybeSingle();
+        if (hasEnrollment) {
+          isTrainingStudent = true;
+        } else {
+          // Check training leads table
+          const { data: hasLead } = await supabase
+            .from("training_leads")
+            .select("id")
+            .eq("student_id", user.id)
+            .eq("status", "claimed")
+            .maybeSingle();
+          if (hasLead) {
+            isTrainingStudent = true;
+          }
+        }
       }
 
       // Determine if they are an internship student strictly by table existence
@@ -78,7 +100,7 @@ function DashboardLayout() {
         isInternshipStudent = true;
       }
 
-      // Strictly map role in UI based on table presence
+      // Strictly map role in UI
       if (userRole === "admin") {
         // Keep role as admin
       } else if (isTrainingStudent) {
@@ -92,9 +114,9 @@ function DashboardLayout() {
       // Handle root /dashboard redirect
       if (location.pathname === "/dashboard" || location.pathname === "/dashboard/") {
         if (userRole === "admin") {
-          navigate({ to: "/dashboard/admin" });
+          navigate({ to: "/dashboard/admin" } as any);
         } else if (isTrainingStudent) {
-          navigate({ to: "/dashboard/training" });
+          navigate({ to: "/dashboard/training", search: { tab: "learning" } } as any);
         } else {
           navigate({ to: "/dashboard/student" });
         }
@@ -115,7 +137,7 @@ function DashboardLayout() {
     navigate({ to: "/login" });
   };
 
-  const adminLinks = [
+  const adminLinks: NavLink[] = [
     { to: "/dashboard/admin", icon: LayoutDashboard, label: "Overview" },
     { to: "/dashboard/admin", search: { view: 'students' }, icon: GraduationCap, label: "Active Students" },
     { to: "/dashboard/admin", search: { view: 'pre-reg' }, icon: ListChecks, label: "Pre-Registration" },
@@ -133,7 +155,7 @@ function DashboardLayout() {
     { to: "/dashboard/inbox", icon: Mail, label: "Inbox" },
   ];
 
-  const internshipLinks = [
+  const internshipLinks: NavLink[] = [
     { to: "/dashboard/student", icon: LayoutDashboard, label: "Overview" },
     { to: "/dashboard/student/offer-letter", icon: FileCheck, label: "My Offer Letter" },
     { to: "/dashboard/student/lectures", icon: Video, label: "Online Lectures" },
@@ -143,7 +165,7 @@ function DashboardLayout() {
     { to: "/dashboard/student/profile", icon: User, label: "My Profile" },
   ];
 
-  const trainingLinks = [
+  const trainingLinks: NavLink[] = [
     { to: "/dashboard/training", search: { tab: "learning" }, icon: BookOpen, label: "My Trainings" },
     { to: "/dashboard/training", search: { tab: "profile" }, icon: User, label: "My Profile" },
     { to: "/dashboard/training", search: { tab: "assignments" }, icon: ClipboardList, label: "Assignments" },
@@ -197,7 +219,7 @@ function DashboardLayout() {
               <Link
                 key={link.label}
                 to={link.to}
-                search={link.search}
+                search={link.search as any}
                 className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all group ${
                   isActive
                     ? "bg-gold text-navy-deep font-bold shadow-lg" 

@@ -226,6 +226,21 @@ function TrainingRegisterPage() {
   async function completeEnrollmentAfterPayment(leadId: string, paymentId: string) {
     setSubmitting(true);
     try {
+      // 0. Verify and capture the payment on the server immediately
+      const verifyRes = await fetch("/api/verify-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payment_id: paymentId }),
+      });
+
+      const verifyData = await verifyRes.json().catch(() => ({}));
+
+      if (!verifyRes.ok) {
+        throw new Error(verifyData.error || "Payment verification or capture failed. Please contact support.");
+      }
+
+      const verifiedAmount = verifyData.amount;
+
       // 1. Create Supabase auth user (role: training)
       //    Use tempSupabase so we don't disturb any existing session
       const { data: authData, error: authErr } = await tempSupabase.auth.signUp({
@@ -302,25 +317,39 @@ function TrainingRegisterPage() {
       }).eq("id", leadId);
 
       // 4. Create training_enrollment record
-      const { data: enrollment, error: enrErr } = await supabase
+      // Check if already enrolled first to prevent duplicates/conflicts
+      const { data: existingEnroll } = await supabase
         .from("training_enrollments")
-        .upsert([{
-          student_id:  studentId,
-          training_id: id,
-          status:      "enrolled",
-          created_at:  new Date().toISOString(),
-        }], { onConflict: "student_id,training_id" })
-        .select()
-        .single();
+        .select("id")
+        .eq("student_id", studentId)
+        .eq("training_id", id)
+        .maybeSingle();
 
-      if (enrErr) console.error("Enrollment record error (non-fatal):", enrErr);
+      let enrollment = existingEnroll;
+      if (!existingEnroll) {
+        const { data: newEnroll, error: enrErr } = await supabase
+          .from("training_enrollments")
+          .insert([{
+            student_id:  studentId,
+            training_id: id,
+            status:      "enrolled",
+            created_at:  new Date().toISOString(),
+          }])
+          .select()
+          .single();
+        if (enrErr) {
+          console.error("Enrollment record error:", enrErr);
+          throw new Error("Failed to create enrollment record: " + enrErr.message);
+        }
+        enrollment = newEnroll;
+      }
 
       // 5. Record transaction
-      const fee = training?.fee ?? 999;
+      const finalAmount = verifiedAmount || training?.fee || 999;
       if (enrollment?.id) {
         await supabase.from("training_transactions").insert([{
           enrollment_id: enrollment.id,
-          amount:        fee,
+          amount:        finalAmount,
           status:        "success",
           transaction_id: paymentId,
           created_at:    new Date().toISOString(),
@@ -361,7 +390,7 @@ function TrainingRegisterPage() {
           <p className="font-black text-[#fbbf24] text-lg uppercase mb-6">{training?.name}</p>
           <p className="text-slate-400 text-xs mb-8 font-medium">Please login to access your training dashboard.</p>
           <button
-            onClick={() => navigate({ to: "/dashboard/training" })}
+            onClick={() => navigate({ to: "/dashboard/training", search: { tab: "learning" } })}
             className="w-full h-12 bg-[#0a192f] text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-[#1e40af] transition-all shadow-lg"
           >
             Go to My Dashboard
@@ -384,7 +413,7 @@ function TrainingRegisterPage() {
           <p className="font-black text-[#fbbf24] text-lg uppercase mb-6">{training?.name}</p>
           <p className="text-slate-400 text-xs mb-8 font-medium">Your login credentials have been created. Access your training sessions from the dashboard.</p>
           <button
-            onClick={() => navigate({ to: "/dashboard/training" })}
+            onClick={() => navigate({ to: "/dashboard/training", search: { tab: "learning" } })}
             className="w-full h-12 bg-[#0a192f] text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-[#1e40af] transition-all shadow-lg"
           >
             Go to My Dashboard

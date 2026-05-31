@@ -184,34 +184,200 @@ export default {
           const body: any = await request.json();
           const { order_id, payment_id, signature } = body;
 
-          if (!order_id || !payment_id || !signature) {
-            return new Response(JSON.stringify({ error: "Missing required fields: order_id, payment_id, signature" }), {
+          // If signature & order_id are provided, do signature verification
+          if (order_id && signature) {
+            const expected = crypto
+              .createHmac("sha256", razorpaySecret)
+              .update(`${order_id}|${payment_id}`)
+              .digest("hex");
+
+            if (expected !== signature) {
+              console.error(`Payment signature mismatch for payment ${payment_id}`);
+              return new Response(JSON.stringify({ error: "Invalid payment signature" }), {
+                status: 400,
+                headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" },
+              });
+            }
+            console.log(`Payment signature verified successfully: ${payment_id}`);
+            return new Response(JSON.stringify({ success: true, message: "Payment verified" }), {
+              status: 200,
+              headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" },
+            });
+          }
+
+          // Otherwise, perform direct server-side API verification & capture
+          if (!payment_id) {
+            return new Response(JSON.stringify({ error: "Missing required field: payment_id" }), {
               status: 400,
               headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" },
             });
           }
 
-          const expected = crypto
-            .createHmac("sha256", razorpaySecret)
-            .update(`${order_id}|${payment_id}`)
-            .digest("hex");
-
-          if (expected !== signature) {
-            console.error(`Payment signature mismatch for payment ${payment_id}`);
-            return new Response(JSON.stringify({ error: "Invalid payment signature" }), {
+          const keyId = "rzp_live_SrD6N9ylebiBCT";
+          const keySecret = "yVUQfJrrTUuINPDXkATMCNsF";
+          
+          const authHeader = "Basic " + btoa(`${keyId}:${keySecret}`);
+          const fetchUrl = `https://api.razorpay.com/v1/payments/${payment_id}`;
+          
+          const payRes = await fetch(fetchUrl, {
+            headers: { "Authorization": authHeader }
+          });
+          
+          if (!payRes.ok) {
+            const errText = await payRes.text();
+            console.error("Razorpay fetch error:", errText);
+            return new Response(JSON.stringify({ error: "Failed to fetch payment details from Razorpay" }), {
+              status: 400,
+              headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" },
+            });
+          }
+          
+          const payment = await payRes.json();
+          
+          if (payment.status === "authorized") {
+            const captureUrl = `https://api.razorpay.com/v1/payments/${payment_id}/capture`;
+            const capRes = await fetch(captureUrl, {
+              method: "POST",
+              headers: {
+                "Authorization": authHeader,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                amount: payment.amount,
+                currency: payment.currency || "INR"
+              })
+            });
+            
+            if (!capRes.ok) {
+              const errText = await capRes.text();
+              console.error("Razorpay capture error:", errText);
+              return new Response(JSON.stringify({ error: "Failed to capture payment" }), {
+                status: 400,
+                headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" },
+              });
+            }
+            
+            console.log(`Payment captured successfully via API: ${payment_id}`);
+          } else if (payment.status !== "captured") {
+            return new Response(JSON.stringify({ error: `Payment is in invalid state: ${payment.status}` }), {
               status: 400,
               headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" },
             });
           }
 
-          console.log(`Payment verified successfully: ${payment_id}`);
-          return new Response(JSON.stringify({ success: true, message: "Payment verified" }), {
+          console.log(`Payment verified and captured: ${payment_id}`);
+          return new Response(JSON.stringify({ 
+            success: true, 
+            message: "Payment verified and captured",
+            amount: payment.amount / 100
+          }), {
             status: 200,
             headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" },
           });
         } catch (err: any) {
           console.error("Payment verification error:", err);
           return new Response(JSON.stringify({ error: err.message || "Verification failed" }), {
+            status: 500,
+            headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" },
+          });
+        }
+      }
+
+      // ────────────────────────────────────────────
+      // /api/capture-all-authorized (Capture all authorized payments in Razorpay)
+      // ────────────────────────────────────────────
+      if (url.pathname === "/api/capture-all-authorized") {
+        if (request.method === "OPTIONS") {
+          return new Response(null, {
+            status: 204,
+            headers: {
+              "Access-Control-Allow-Origin": "*",
+              "Access-Control-Allow-Headers": "Content-Type",
+              "Access-Control-Allow-Methods": "POST, OPTIONS",
+            },
+          });
+        }
+
+        if (request.method !== "POST") {
+          return new Response(JSON.stringify({ error: "Only POST allowed" }), {
+            status: 405,
+            headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" },
+          });
+        }
+
+        try {
+          const keyId = "rzp_live_SrD6N9ylebiBCT";
+          const keySecret = "yVUQfJrrTUuINPDXkATMCNsF";
+          const authHeader = "Basic " + btoa(`${keyId}:${keySecret}`);
+
+          // Fetch the latest 100 payments
+          const listUrl = "https://api.razorpay.com/v1/payments?count=100";
+          const listRes = await fetch(listUrl, {
+            headers: { "Authorization": authHeader }
+          });
+
+          if (!listRes.ok) {
+            const errText = await listRes.text();
+            console.error("Razorpay list payments error:", errText);
+            return new Response(JSON.stringify({ error: "Failed to fetch payments from Razorpay" }), {
+              status: 400,
+              headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" },
+            });
+          }
+
+          const data = await listRes.json();
+          const payments = data.items || [];
+          const authorizedPayments = payments.filter((p: any) => p.status === "authorized");
+
+          let successCount = 0;
+          let failCount = 0;
+          const details = [];
+
+          for (const payment of authorizedPayments) {
+            try {
+              const captureUrl = `https://api.razorpay.com/v1/payments/${payment.id}/capture`;
+              const capRes = await fetch(captureUrl, {
+                method: "POST",
+                headers: {
+                  "Authorization": authHeader,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  amount: payment.amount,
+                  currency: payment.currency || "INR"
+                })
+              });
+
+              if (capRes.ok) {
+                successCount++;
+                details.push({ id: payment.id, status: "captured", amount: payment.amount / 100 });
+              } else {
+                failCount++;
+                const errText = await capRes.text();
+                details.push({ id: payment.id, status: "failed", error: errText });
+              }
+            } catch (err: any) {
+              failCount++;
+              details.push({ id: payment.id, status: "error", error: err.message });
+            }
+          }
+
+          return new Response(
+            JSON.stringify({
+              success: true,
+              totalFound: authorizedPayments.length,
+              captured: successCount,
+              failed: failCount,
+              details
+            }),
+            {
+              status: 200,
+              headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" },
+            }
+          );
+        } catch (err: any) {
+          console.error("Capture all authorized error:", err);
+          return new Response(JSON.stringify({ error: err.message || "Execution failed" }), {
             status: 500,
             headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" },
           });

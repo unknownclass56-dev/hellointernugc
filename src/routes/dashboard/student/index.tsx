@@ -27,9 +27,9 @@ function StudentDashboard() {
     if (data) {
       setProfile(data);
     } else {
-      const { data: tsMatch } = await supabase.from("training_students").select("id").eq("id", user?.id).maybeSingle();
-      if (tsMatch) {
-        navigate({ to: "/dashboard/training", replace: true });
+      const { data: profileData } = await supabase.from("profiles").select("role").eq("id", user?.id).maybeSingle();
+      if (profileData?.role === "training") {
+        navigate({ to: "/dashboard/training", search: { tab: "learning" }, replace: true });
       }
     }
     setLoading(false);

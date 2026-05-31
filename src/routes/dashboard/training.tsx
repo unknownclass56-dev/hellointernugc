@@ -7,7 +7,7 @@ import {
   User, Mail, Phone, MapPin, GraduationCap, Building2, FileText,
   Edit3, Save, X, Lock, ChevronDown, ChevronUp, Upload,
   LayoutDashboard, BookMarked, ShieldCheck, ClipboardList, ArrowRight,
-  CreditCard, RefreshCw
+  CreditCard, RefreshCw, CheckCircle
 } from "lucide-react";
 import { TrainingCertificate } from "@/components/TrainingCertificate";
 
@@ -20,12 +20,112 @@ export const Route = createFileRoute("/dashboard/training")({
   },
 });
 
+// ── Video Modal Component ─────────────────────────────────────────────────────
+function VideoModal({
+  lecture,
+  onClose,
+  onComplete,
+  isCompleted,
+}: {
+  lecture: any;
+  onClose: () => void;
+  onComplete: () => void;
+  isCompleted: boolean;
+}) {
+  const [watched, setWatched] = useState(isCompleted);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  function getYouTubeId(url: string) {
+    const match = url?.match(/^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
+    return match && match[2].length === 11 ? match[2] : null;
+  }
+
+  const ytId = getYouTubeId(lecture.link || "");
+  const embedUrl = ytId
+    ? `https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0`
+    : lecture.link;
+
+  function handleMarkComplete() {
+    setWatched(true);
+    onComplete();
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="bg-[#0a192f] rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden border border-white/10">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+          <div>
+            <p className="text-[9px] font-black text-[#fbbf24] uppercase tracking-widest">Now Watching</p>
+            <h3 className="text-white font-black text-base uppercase tracking-tight">{lecture.title}</h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="size-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* Video */}
+        <div className="relative w-full aspect-video bg-black">
+          {ytId || lecture.link?.includes("embed") ? (
+            <iframe
+              ref={iframeRef}
+              src={embedUrl}
+              className="w-full h-full"
+              allow="autoplay; fullscreen; picture-in-picture"
+              allowFullScreen
+            />
+          ) : lecture.link ? (
+            <video
+              src={lecture.link}
+              controls
+              className="w-full h-full"
+              onEnded={handleMarkComplete}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-white/40">
+              <Clock className="size-16" />
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between px-6 py-4 border-t border-white/10">
+          <div className="text-white/50 text-xs font-medium">
+            {lecture.description && <p className="line-clamp-1">{lecture.description}</p>}
+          </div>
+          <div className="flex items-center gap-3 flex-shrink-0">
+            {watched || isCompleted ? (
+              <div className="flex items-center gap-2 text-green-400 text-xs font-black uppercase tracking-widest">
+                <CheckCircle className="size-4" /> Session Completed
+              </div>
+            ) : (
+              <button
+                onClick={handleMarkComplete}
+                className="flex items-center gap-2 h-9 px-5 bg-green-500 hover:bg-green-400 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+              >
+                <CheckCircle className="size-3.5" /> Mark as Complete
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Dashboard ────────────────────────────────────────────────────────────
 function TrainingStudentDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { tab: activeTab } = Route.useSearch() as any;
   const [tab, setTab] = useState<"learning" | "profile" | "certificate" | "assignments" | "payments">("learning");
-  
+
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>(null);
   const [assignments, setAssignments] = useState<any[]>([]);
@@ -33,6 +133,11 @@ function TrainingStudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [expandedTraining, setExpandedTraining] = useState<string | null>(null);
   const [lectures, setLectures] = useState<Record<string, any[]>>({});
+  // Tracks which session IDs the user has completed: { [sessionId]: true }
+  const [completedSessions, setCompletedSessions] = useState<Record<string, boolean>>({});
+
+  // Video modal state
+  const [videoModal, setVideoModal] = useState<{ lecture: any; trainingId: string } | null>(null);
 
   // Profile edit state
   const [editing, setEditing] = useState(false);
@@ -61,18 +166,54 @@ function TrainingStudentDashboard() {
   async function fetchAll() {
     setLoading(true);
     try {
-      const [enrRes, profRes, asnRes, txRes] = await Promise.all([
-        supabase.from("training_enrollments").select("*, trainings(*)").eq("student_id", user!.id).order("created_at", { ascending: false }),
-        supabase.from("training_students").select("*").eq("id", user!.id).maybeSingle(),
-        supabase.from("training_assignments").select("*, trainings(name)").eq("student_id", user!.id).order("created_at", { ascending: false }),
-        supabase.from("training_transactions").select("*, training_enrollments!inner(*, trainings(*))").order("created_at", { ascending: false }),
-      ]);
-      
-      setEnrollments(enrRes.data || []);
-      setProfile(profRes.data);
-      setEditForm(profRes.data || {});
-      setAssignments(asnRes.data || []);
-      setTransactions(txRes.data || []);
+      // Fetch enrollments with training info
+      const { data: enrData } = await supabase
+        .from("training_enrollments")
+        .select("*, trainings(*)")
+        .eq("student_id", user!.id)
+        .order("created_at", { ascending: false });
+
+      // Fetch profile
+      const { data: profData } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user!.id)
+        .maybeSingle();
+
+      // Fetch assignments
+      const { data: asnData } = await supabase
+        .from("training_assignments")
+        .select("*, trainings(name)")
+        .eq("student_id", user!.id)
+        .order("created_at", { ascending: false });
+
+      // Fetch transactions — join via enrollment_id, filtered by student_id
+      const enrollmentIds = (enrData || []).map((e: any) => e.id).filter(Boolean);
+      let txData: any[] = [];
+      if (enrollmentIds.length > 0) {
+        const { data: rawTx } = await supabase
+          .from("training_transactions")
+          .select("*, training_enrollments!inner(*, trainings(*))")
+          .in("enrollment_id", enrollmentIds)
+          .order("created_at", { ascending: false });
+        txData = rawTx || [];
+      }
+
+      // Fetch completed sessions for this user
+      const { data: sessData } = await supabase
+        .from("training_session_completions")
+        .select("session_id")
+        .eq("student_id", user!.id);
+
+      const completedMap: Record<string, boolean> = {};
+      (sessData || []).forEach((s: any) => { completedMap[s.session_id] = true; });
+
+      setEnrollments(enrData || []);
+      setProfile(profData);
+      setEditForm(profData || {});
+      setAssignments(asnData || []);
+      setTransactions(txData);
+      setCompletedSessions(completedMap);
     } catch (err) {
       console.error("Error loading data:", err);
     } finally {
@@ -82,7 +223,11 @@ function TrainingStudentDashboard() {
 
   async function fetchLectures(trainingId: string) {
     if (lectures[trainingId]) return;
-    const { data } = await supabase.from("training_lectures").select("*").eq("training_id", trainingId).order("created_at");
+    const { data } = await supabase
+      .from("training_lectures")
+      .select("*")
+      .eq("training_id", trainingId)
+      .order("created_at");
     setLectures(prev => ({ ...prev, [trainingId]: data || [] }));
   }
 
@@ -93,6 +238,29 @@ function TrainingStudentDashboard() {
       setExpandedTraining(tid);
       fetchLectures(tid);
     }
+  }
+
+  // Mark a session as complete in DB
+  async function markSessionComplete(sessionId: string, trainingId: string) {
+    if (completedSessions[sessionId]) return; // already done
+    try {
+      await supabase.from("training_session_completions").upsert([{
+        student_id: user!.id,
+        session_id: sessionId,
+        training_id: trainingId,
+        completed_at: new Date().toISOString(),
+      }], { onConflict: "student_id,session_id" });
+      setCompletedSessions(prev => ({ ...prev, [sessionId]: true }));
+    } catch (err) {
+      console.error("Failed to mark session complete:", err);
+    }
+  }
+
+  // Check if a session is unlocked (index 0 always unlocked; rest need previous completed)
+  function isSessionUnlocked(lectures: any[], index: number): boolean {
+    if (index === 0) return true;
+    const prevLec = lectures[index - 1];
+    return !!completedSessions[prevLec?.id];
   }
 
   async function saveProfile(e: React.FormEvent) {
@@ -122,18 +290,18 @@ function TrainingStudentDashboard() {
   async function submitAssignment(e: React.FormEvent) {
     e.preventDefault();
     if (!uploadingFor || !assignTitle) return;
-    
+
     const dupCheck = await supabase.from('training_assignments')
       .select('id')
       .eq('student_id', user!.id)
       .eq('training_id', uploadingFor)
       .maybeSingle();
-      
+
     if (dupCheck.data) {
       setProfileMsg('You have already submitted an assignment for this training.');
       return;
     }
-    
+
     setSubmitting(true);
     let fileUrl = "";
     if (assignFile) {
@@ -145,17 +313,15 @@ function TrainingStudentDashboard() {
         fileUrl = urlData.publicUrl;
       }
     }
-    await supabase.from('training_assignments').insert([
-      {
-        student_id: user!.id,
-        training_id: uploadingFor,
-        title: assignTitle,
-        description: assignDesc,
-        file_url: fileUrl,
-        status: 'submitted',
-        created_at: new Date().toISOString(),
-      },
-    ]);
+    await supabase.from('training_assignments').insert([{
+      student_id: user!.id,
+      training_id: uploadingFor,
+      title: assignTitle,
+      description: assignDesc,
+      file_url: fileUrl,
+      status: 'submitted',
+      created_at: new Date().toISOString(),
+    }]);
     setUploadingFor(null);
     setAssignTitle('');
     setAssignDesc('');
@@ -189,6 +355,16 @@ function TrainingStudentDashboard() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc]">
+      {/* Video Modal */}
+      {videoModal && (
+        <VideoModal
+          lecture={videoModal.lecture}
+          isCompleted={!!completedSessions[videoModal.lecture.id]}
+          onClose={() => setVideoModal(null)}
+          onComplete={() => markSessionComplete(videoModal.lecture.id, videoModal.trainingId)}
+        />
+      )}
+
       {/* Top Banner */}
       <div className="bg-gradient-to-r from-[#0a192f] via-[#1e3a5f] to-[#1e40af] px-6 py-8 rounded-3xl shadow-lg border border-gold/10">
         <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-4">
@@ -331,15 +507,33 @@ function TrainingStudentDashboard() {
                         ) : (
                           trainingLectures.map((lec, idx) => {
                             const ytId = getYouTubeId(lec.link || "");
-                            const done = lec.start_time && new Date(lec.start_time) < new Date();
+                            const sessionDone = !!completedSessions[lec.id];
+                            const unlocked = isSessionUnlocked(trainingLectures, idx);
                             return (
-                              <div key={lec.id} className="bg-white rounded-2xl border border-slate-100 p-4 flex items-start gap-4">
-                                <div className="w-24 aspect-video rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
+                              <div
+                                key={lec.id}
+                                className={`bg-white rounded-2xl border p-4 flex items-start gap-4 transition-all ${
+                                  sessionDone
+                                    ? "border-green-200 bg-green-50/30"
+                                    : unlocked
+                                    ? "border-slate-100 hover:border-[#0a192f]/30"
+                                    : "border-slate-100 opacity-60"
+                                }`}
+                              >
+                                {/* Thumbnail */}
+                                <div className="w-24 aspect-video rounded-lg overflow-hidden bg-slate-100 flex-shrink-0 relative">
                                   {ytId
                                     ? <img src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`} alt={lec.title} className="w-full h-full object-cover" />
                                     : <div className="w-full h-full flex items-center justify-center bg-[#0a192f]/5"><span className="text-lg font-black text-slate-300">#{idx + 1}</span></div>
                                   }
+                                  {sessionDone && (
+                                    <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center">
+                                      <CheckCircle className="size-8 text-green-500" />
+                                    </div>
+                                  )}
                                 </div>
+
+                                {/* Info */}
                                 <div className="flex-1 min-w-0">
                                   <p className="text-[9px] font-black text-[#fbbf24] uppercase tracking-widest mb-0.5">Session {idx + 1}</p>
                                   <h5 className="font-black text-[#0a192f] text-sm uppercase tracking-tight leading-tight">{lec.title}</h5>
@@ -351,16 +545,32 @@ function TrainingStudentDashboard() {
                                     </p>
                                   )}
                                 </div>
-                                <div className="flex-shrink-0">
-                                  {lec.link && done ? (
-                                    <a href={lec.link} target="_blank" rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1.5 h-8 px-3 bg-[#0a192f] text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-[#1e40af] transition-all">
-                                      <Play className="size-3" /> Watch Session
-                                    </a>
+
+                                {/* Action */}
+                                <div className="flex-shrink-0 flex flex-col items-end gap-2">
+                                  {unlocked && lec.link ? (
+                                    <button
+                                      onClick={() => setVideoModal({ lecture: lec, trainingId: t.id })}
+                                      className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+                                        sessionDone
+                                          ? "bg-green-100 text-green-700 hover:bg-green-200"
+                                          : "bg-[#0a192f] text-white hover:bg-[#1e40af]"
+                                      }`}
+                                    >
+                                      <Play className="size-3" />
+                                      {sessionDone ? "Re-watch" : "Watch Session"}
+                                    </button>
+                                  ) : !unlocked ? (
+                                    <div className="inline-flex items-center gap-1.5 h-8 px-3 bg-slate-100 text-slate-400 rounded-lg text-[9px] font-black uppercase tracking-widest">
+                                      <Lock className="size-3" /> Complete Previous
+                                    </div>
                                   ) : (
                                     <div className="inline-flex items-center gap-1.5 h-8 px-3 bg-slate-100 text-slate-400 rounded-lg text-[9px] font-black uppercase tracking-widest">
-                                      <Lock className="size-3" /> Upcoming
+                                      <Clock className="size-3" /> Upcoming
                                     </div>
+                                  )}
+                                  {sessionDone && (
+                                    <span className="text-[8px] font-black text-green-600 uppercase tracking-widest">✓ Completed</span>
                                   )}
                                 </div>
                               </div>
@@ -386,7 +596,7 @@ function TrainingStudentDashboard() {
                 </div>
                 <div>
                   <h2 className="text-xl font-black text-white uppercase tracking-tight">{profile?.full_name || "Your Name"}</h2>
-                  <p className="text-white/50 text-xs font-medium mt-0.5">{profile?.email}</p>
+                  <p className="text-white/50 text-xs font-medium mt-0.5">{profile?.email || user?.email}</p>
                   <div className="flex gap-2 mt-2">
                     <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-[#fbbf24] text-[#0a192f]">Training Candidate</span>
                     {profile?.department && <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-white/10 text-white">{profile.department}</span>}
@@ -425,7 +635,7 @@ function TrainingStudentDashboard() {
 
                   <div className="space-y-1.5">
                     <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1"><Mail className="size-3" /> Email</label>
-                    <div className="h-11 px-4 rounded-xl bg-slate-50 border-2 border-slate-100 flex items-center text-sm font-bold text-slate-400">{profile?.email || "—"}</div>
+                    <div className="h-11 px-4 rounded-xl bg-slate-50 border-2 border-slate-100 flex items-center text-sm font-bold text-slate-400">{profile?.email || user?.email || "—"}</div>
                   </div>
 
                   <div className="space-y-1.5">
@@ -620,7 +830,6 @@ function TrainingStudentDashboard() {
                       </div>
                     </div>
 
-                    {/* RENDER TRAINING CERTIFICATE LIVE */}
                     <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xl overflow-x-auto flex justify-center">
                       <div className="w-full max-w-[850px] min-w-[700px]">
                         <TrainingCertificate
@@ -676,11 +885,17 @@ function TrainingStudentDashboard() {
                     <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
                       {transactions.map(tx => (
                         <tr key={tx.id} className="hover:bg-slate-50/40">
-                          <td className="px-6 py-4 font-mono font-black text-navy-deep">{tx.transaction_id || "N/A"}</td>
+                          <td className="px-6 py-4 font-mono font-black text-navy-deep text-[10px]">{tx.transaction_id || "N/A"}</td>
                           <td className="px-6 py-4 uppercase text-[#0a192f]">{tx.training_enrollments?.trainings?.name || "Training Course"}</td>
-                          <td className="px-6 py-4 text-slate-800">₹{(tx.amount || 999).toLocaleString("en-IN")}</td>
+                          <td className="px-6 py-4 text-slate-800 font-black">
+                            ₹{tx.amount != null ? Number(tx.amount).toLocaleString("en-IN") : "—"}
+                          </td>
                           <td className="px-6 py-4">
-                            <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-green-100 text-green-700">
+                            <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                              tx.status === "success" || tx.status === "captured"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-amber-100 text-amber-700"
+                            }`}>
                               {tx.status || "success"}
                             </span>
                           </td>

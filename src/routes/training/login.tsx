@@ -43,7 +43,7 @@ function TrainingLoginPage() {
     let isTrainingStudent = false;
     let role = "student";
     try {
-      // Check if user is admin in profiles
+      // Check if user is admin or training in profiles
       const { data: profile } = await supabase
         .from("profiles")
         .select("role")
@@ -51,17 +51,29 @@ function TrainingLoginPage() {
         .maybeSingle();
       if (profile?.role) role = profile.role;
 
-      if (role === "admin") {
+      if (role === "admin" || role === "training") {
         isTrainingStudent = true;
       } else {
-        // Check if user exists in training_students table
-        const { data: studentMatch } = await supabase
-          .from("training_students")
+        // Fallback check: check if they have a training enrollment
+        const { data: hasEnrollment } = await supabase
+          .from("training_enrollments")
           .select("id")
-          .eq("id", data.user.id)
+          .eq("student_id", data.user.id)
           .maybeSingle();
-        if (studentMatch) {
+        
+        if (hasEnrollment) {
           isTrainingStudent = true;
+        } else {
+          // Check training leads table
+          const { data: hasLead } = await supabase
+            .from("training_leads")
+            .select("id")
+            .eq("student_id", data.user.id)
+            .eq("status", "claimed")
+            .maybeSingle();
+          if (hasLead) {
+            isTrainingStudent = true;
+          }
         }
       }
     } catch (_) {}
@@ -75,7 +87,7 @@ function TrainingLoginPage() {
 
     setBusy(false);
     toast.success("Welcome back to your Training Dashboard!");
-    navigate({ to: "/dashboard/training" });
+    navigate({ to: "/dashboard/training", search: { tab: "learning" } });
   }
 
   return (
