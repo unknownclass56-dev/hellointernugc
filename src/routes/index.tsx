@@ -166,6 +166,44 @@ function Home() {
         )}
       </section>
 
+      {/* PLACEMENT SHOWCASE */}
+      <section className="container mx-auto px-4 py-20 border-t border-border">
+        <div className="text-center max-w-3xl mx-auto mb-12">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs font-semibold text-gold">
+            <Award className="size-3.5" /> Career Placements
+          </div>
+          <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight text-navy-deep">
+            30+ Students Placed in Global Leaders
+          </h2>
+          <p className="mt-4 text-muted-foreground text-base md:text-lg">
+            Our students launch their careers at top-tier organizations and technology leaders. We bridge the gap between academic education and industry requirements.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-5xl mx-auto">
+          {[
+            { name: "Google", color: "from-blue-500/10 to-transparent border-blue-500/20 text-blue-600", placement: "2 Students" },
+            { name: "Amazon", color: "from-orange-500/10 to-transparent border-orange-500/20 text-orange-600", placement: "3 Students" },
+            { name: "Microsoft", color: "from-sky-500/10 to-transparent border-sky-500/20 text-sky-600", placement: "2 Students" },
+            { name: "Rapido", color: "from-yellow-500/10 to-transparent border-yellow-500/20 text-yellow-600", placement: "4 Students" },
+            { name: "Virtusa", color: "from-teal-500/10 to-transparent border-teal-500/20 text-teal-600", placement: "5 Students" },
+            { name: "Quantronsoft", color: "from-purple-500/10 to-transparent border-purple-500/20 text-purple-600", placement: "6 Students" },
+            { name: "Cognizant", color: "from-cyan-500/10 to-transparent border-cyan-500/20 text-cyan-600", placement: "4 Students" },
+            { name: "HCL Tech", color: "from-indigo-500/10 to-transparent border-indigo-500/20 text-indigo-600", placement: "5 Students" },
+          ].map((company) => (
+            <motion.div
+              key={company.name}
+              whileHover={{ y: -5, scale: 1.02 }}
+              transition={{ duration: 0.2 }}
+              className={`relative overflow-hidden rounded-2xl border bg-card p-6 text-center shadow-sm bg-gradient-to-br ${company.color} flex flex-col items-center justify-center`}
+            >
+              <div className="font-display text-2xl font-black tracking-tight mb-1">{company.name}</div>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{company.placement}</div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
       {/* TESTIMONIALS */}
       <section className="container mx-auto px-4 py-20">
         <SectionHeader eyebrow="Success Stories" title="Student Experiences" />

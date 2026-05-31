@@ -15,10 +15,14 @@ export const MOCK_INTERNSHIPS = [
 export const CATEGORIES = ["All", "Web Development", "Data Science", "AI/ML", "Mobile Development", "Cybersecurity", "Design", "Marketing", "Content"] as const;
 
 export const TESTIMONIALS = [
-  { name: "Aarav Mehta", role: "B.Tech, IIT Roorkee", quote: "TechLaunchpad matched me with a real-world AI internship in 48 hours. The certificate helped me land my first job.", rating: 5 },
-  { name: "Priya Sharma", role: "MBA, Symbiosis Pune", quote: "The mentorship and structured projects gave me confidence to pitch in interviews. Best decision of my final year.", rating: 5 },
-  { name: "Rohit Verma", role: "B.Sc CS, DU", quote: "Government-grade certification and real industry projects — this is what every student needs.", rating: 5 },
-  { name: "Sneha Kapoor", role: "B.Des, NID", quote: "From applying to certificate download, every step felt premium and professional.", rating: 5 },
+  { name: "Aditya Patel", role: "Software Engineer at Google", quote: "TechLaunchpad's advanced training curriculum and mentorship gave me the exact skills needed to clear the Google technical interview. The hands-on project was the highlight of my resume.", rating: 5 },
+  { name: "Ananya Iyer", role: "Cloud Analyst at Amazon", quote: "The structured internship projects simulated a real corporate environment. It prepared me perfectly for my role at Amazon.", rating: 5 },
+  { name: "Neha Reddy", role: "Software Engineer at Microsoft", quote: "The ISO certification and verified credentials made a huge difference. Recruiters at Microsoft recognized the structured learning path.", rating: 5 },
+  { name: "Rahul Sen", role: "SDE-1 at Rapido", quote: "From learning web development to building production-ready apps, TechLaunchpad was a game changer. Super proud to join Rapido!", rating: 5 },
+  { name: "Divyansh Saxena", role: "Frontend Developer at Quantronsoft", quote: "Quantronsoft hired me directly through the campus-connect reference from TechLaunchpad. The support team was with me at every step.", rating: 5 },
+  { name: "Vikram Malhotra", role: "Systems Engineer at Virtusa", quote: "The full-stack web development program is incredibly comprehensive. It helped me land my placement at Virtusa right out of college.", rating: 5 },
+  { name: "Pooja Choudhury", role: "Programmer Analyst at Cognizant", quote: "TechLaunchpad provides high-quality industry assignments. The skills I learned here are directly helping me in my role at Cognizant.", rating: 5 },
+  { name: "Karan Verma", role: "Graduate Engineer Trainee at HCL Tech", quote: "The training program is aligned with the latest industry standards. Joining HCL Tech was smooth because of my strong foundation.", rating: 5 },
 ];
 
 export const PARTNERS = [
