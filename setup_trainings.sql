@@ -84,3 +84,53 @@ CREATE POLICY "Training transactions viewable by related student." ON public.tra
     enrollment_id IN (SELECT id FROM public.training_enrollments WHERE student_id = auth.uid())
 );
 CREATE POLICY "Training transactions manageable by admin." ON public.training_transactions FOR ALL USING (true);
+
+-- 6. Set up Storage Bucket and Policies for training-assets
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('training-assets', 'training-assets', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Allow public read access to training-assets
+DROP POLICY IF EXISTS "Allow public read access to training-assets" ON storage.objects;
+CREATE POLICY "Allow public read access to training-assets"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'training-assets');
+
+-- Allow admins to insert files into training-assets
+DROP POLICY IF EXISTS "Allow admin insert access to training-assets" ON storage.objects;
+CREATE POLICY "Allow admin insert access to training-assets"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+  bucket_id = 'training-assets' AND
+  (EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'admin'
+  ))
+);
+
+-- Allow admins to update files in training-assets
+DROP POLICY IF EXISTS "Allow admin update access to training-assets" ON storage.objects;
+CREATE POLICY "Allow admin update access to training-assets"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING (
+  bucket_id = 'training-assets' AND
+  (EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'admin'
+  ))
+);
+
+-- Allow admins to delete files from training-assets
+DROP POLICY IF EXISTS "Allow admin delete access to training-assets" ON storage.objects;
+CREATE POLICY "Allow admin delete access to training-assets"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (
+  bucket_id = 'training-assets' AND
+  (EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'admin'
+  ))
+);

@@ -123,16 +123,20 @@ export default {
             });
           }
 
+          const typedEnv = (env || {}) as Record<string, string>;
+          const smtpUser = typedEnv.SMTP_USER || (typeof process !== "undefined" && process.env ? process.env.SMTP_USER : "") || "techlaunchpad01@gmail.com";
+          const smtpPass = typedEnv.SMTP_PASS || (typeof process !== "undefined" && process.env ? process.env.SMTP_PASS : "") || "oahjqhatwddgeiig";
+
           const transporter = nodemailer.createTransport({
             service: "gmail",
             auth: {
-              user: "email-techlaunchpad01@gmail.com",
-              pass: "oahjqhatwddgeiig",
+              user: smtpUser,
+              pass: smtpPass,
             },
           });
 
           const info = await transporter.sendMail({
-            from: '"TechLaunchpad" <email-techlaunchpad01@gmail.com>',
+            from: `"TechLaunchpad" <${smtpUser}>`,
             to,
             subject,
             html,
