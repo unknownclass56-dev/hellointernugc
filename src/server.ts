@@ -84,6 +84,35 @@ export default {
     try {
       const url = new URL(request.url);
 
+      // Redirect subdomain trainings.domain.com to domain.com/trainings
+      const hostParts = url.hostname.split(".");
+      if (hostParts.length >= 2 && hostParts[0] === "trainings") {
+        const mainDomainParts = hostParts.slice(1);
+        const mainDomain = mainDomainParts.join(".");
+        
+        let targetPath = url.pathname;
+        if (!targetPath.startsWith("/trainings")) {
+          if (targetPath === "/") {
+            targetPath = "/trainings";
+          } else {
+            targetPath = `/trainings${targetPath}`;
+          }
+        }
+        
+        const port = url.port ? `:${url.port}` : "";
+        const isLocal = url.hostname.includes("localhost") || url.hostname.includes("127.0.0.1") || url.hostname.includes("::1");
+        const protocol = isLocal ? "http:" : "https:";
+        const targetUrl = `${protocol}//${mainDomain}${port}${targetPath}${url.search}`;
+        
+        return new Response(null, {
+          status: 301,
+          headers: {
+            Location: targetUrl,
+          },
+        });
+      }
+
+
       // ────────────────────────────────────────────
       // /api/send-email
       // ────────────────────────────────────────────

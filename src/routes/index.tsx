@@ -55,10 +55,10 @@ function Home() {
               <Sparkles className="size-3.5" /> AICTE · UGC · BSDM · ISO
             </div>
             <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-tight text-balance sm:text-5xl lg:text-6xl">
-              India's premium <span className="text-gold">internship</span> & training platform
+              Bihar <span className="text-gold">Student Support</span>
             </h1>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-ivory/80 sm:text-lg">
-              Industry-focused internships, government-aligned training, and verifiable certificates — all in one place.
+              Providing comprehensive services: Internship, Training, Student Job Support, Student Job Reference, Student Help Center, Tech & Non-Tech Courses, and Admission Counselor.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -119,10 +119,14 @@ function Home() {
         <SectionHeader eyebrow="Programs" title="Internships for every ambition" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { icon: GraduationCap, title: "AICTE Approved", desc: "Engineering and technology internships." },
-            { icon: BadgeCheck, title: "UGC Approved", desc: "Research and academia programs." },
-            { icon: Award, title: "BSDM Supported", desc: "Skill-first vocational training." },
-            { icon: ShieldCheck, title: "ISO Certified", desc: "Quality standards 9001:2015." },
+            { icon: Briefcase, title: "Internship", desc: "Industry-focused internships to kickstart your career." },
+            { icon: Award, title: "Training", desc: "Government-aligned & industry-ready skill training." },
+            { icon: ShieldCheck, title: "Student Job Support", desc: "Complete placement and job assistance." },
+            { icon: FileCheck, title: "Student Job Reference", desc: "Get strong industry references for roles." },
+            { icon: Users, title: "Student Help Center", desc: "24/7 support for all your academic needs." },
+            { icon: Search, title: "Tech & Non-Tech Courses", desc: "Comprehensive courses across all domains." },
+            { icon: GraduationCap, title: "Admission Counselor", desc: "Expert guidance for higher education choices." },
+            { icon: BadgeCheck, title: "Student Counselor", desc: "Personalized career counseling." },
           ].map((c, i) => (
             <div key={c.title} className="rounded-2xl border border-border bg-card p-6 transition-all hover:-translate-y-1 hover:shadow-lg">
               <div className="mb-4 grid size-12 place-items-center rounded-xl bg-navy text-ivory">
