@@ -107,8 +107,7 @@ function CounselorPage() {
       pg_college: formDataObj.pg_college,
       pg_year_of_passing: formDataObj.pg_year_of_passing,
       preferred_institute: formDataObj.preferred_institute,
-      expected_college: formDataObj.expected_college,
-      remark: formDataObj.remark,
+      remark: formDataObj.expected_college ? `Expected College: ${formDataObj.expected_college}\n\n${formDataObj.remark}` : formDataObj.remark,
       status: "pending"
     }).select().single();
 
