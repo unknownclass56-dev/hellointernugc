@@ -23,10 +23,14 @@ const SUBDOMAIN_ROUTES: Record<string, string> = {
   "/verify": "verify",
 };
 
-/** Extract the root domain (e.g. "techlaunchpad.in") from hostname */
+/** Extract the root domain (e.g. "techlaunchpad.in") from any hostname */
 function getRootDomain(hostname: string): string {
   const parts = hostname.split(".");
-  if (parts.length >= 3 && !SKIP_SUBDOMAINS.has(parts[0])) {
+  // Always strip the first segment if it's www OR a known/unknown subdomain
+  // e.g. www.techlaunchpad.in → techlaunchpad.in
+  // e.g. counselor.techlaunchpad.in → techlaunchpad.in
+  // e.g. techlaunchpad.in → techlaunchpad.in (2 parts, no stripping)
+  if (parts.length >= 3) {
     return parts.slice(1).join(".");
   }
   return hostname;
