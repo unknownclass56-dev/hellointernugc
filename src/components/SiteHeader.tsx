@@ -9,17 +9,49 @@ import { useAuth } from "@/hooks/use-auth";
 const SKIP_SUBDOMAINS = new Set(["www", "api", "mail", "smtp", "ftp", "cdn"]);
 
 /**
- * If we are on a subdomain (e.g. counselor.techlaunchpad.in),
- * returns the main domain base URL (e.g. https://techlaunchpad.in).
- * Returns null on the main domain or SSR.
+ * Routes that have their own dedicated subdomain.
+ * Key = route path, Value = subdomain prefix
  */
-function getMainDomainBase(): string | null {
-  if (typeof window === "undefined") return null;
-  const parts = window.location.hostname.split(".");
+const SUBDOMAIN_ROUTES: Record<string, string> = {
+  "/trainings": "trainings",
+  "/counselor": "counselor",
+  "/internships": "internships",
+  "/blog": "blog",
+  "/about": "about",
+  "/contact": "contact",
+  "/programs": "programs",
+  "/verify": "verify",
+};
+
+/** Extract the root domain (e.g. "techlaunchpad.in") from hostname */
+function getRootDomain(hostname: string): string {
+  const parts = hostname.split(".");
   if (parts.length >= 3 && !SKIP_SUBDOMAINS.has(parts[0])) {
-    return `${window.location.protocol}//${parts.slice(1).join(".")}`;
+    return parts.slice(1).join(".");
   }
-  return null;
+  return hostname;
+}
+
+/** Get main domain base URL (e.g. "https://techlaunchpad.in") */
+function getMainDomainBase(hostname: string): string {
+  const protocol = window.location.protocol;
+  const root = getRootDomain(hostname);
+  return `${protocol}//${root}`;
+}
+
+/** Build the correct href for a nav item */
+function buildNavHref(to: string, hostname: string): string {
+  if (typeof window === "undefined") return to;
+  const root = getRootDomain(hostname);
+  const protocol = window.location.protocol;
+  const subdomain = SUBDOMAIN_ROUTES[to];
+
+  if (subdomain) {
+    // This route has a dedicated subdomain → use it
+    return `${protocol}//${subdomain}.${root}`;
+  }
+  // No subdomain for this route → use main domain
+  return `${protocol}//${root}${to}`;
 }
 
 const NAV = [
@@ -41,21 +73,28 @@ export function SiteHeader() {
   const dashboard =
     role === "admin" ? "/dashboard/admin" : role === "company" ? "/dashboard/company" : "/dashboard/student";
 
-  const [mainDomainBase, setMainDomainBase] = useState<string | null>(null);
+  const [hostname, setHostname] = useState<string>("");
 
   useEffect(() => {
-    setMainDomainBase(getMainDomainBase());
+    setHostname(window.location.hostname);
   }, []);
 
-  // Build correct href: if on subdomain, point to main domain; else use relative path
-  const navHref = (to: string) => (mainDomainBase ? `${mainDomainBase}${to}` : to);
-  const dashboardHref = mainDomainBase ? `${mainDomainBase}${dashboard}` : null;
-  const loginHref = mainDomainBase ? `${mainDomainBase}/login` : null;
-  const registerHref = mainDomainBase ? `${mainDomainBase}/register` : null;
-  const logoHref = mainDomainBase ? `${mainDomainBase}/` : null;
+  const isOnSubdomain = hostname
+    ? hostname.split(".").length >= 3 && !SKIP_SUBDOMAINS.has(hostname.split(".")[0])
+    : false;
 
-  // Active check: compare against internal pathname (already rewritten by router)
-  const isActive = (to: string) => pathname === to || (to !== "/" && pathname.startsWith(to));
+  const mainBase = hostname ? getMainDomainBase(hostname) : null;
+
+  const href = (to: string) =>
+    hostname ? buildNavHref(to, hostname) : to;
+
+  const logoHref = hostname ? `${mainBase}/` : null;
+  const dashboardHref = isOnSubdomain && mainBase ? `${mainBase}${dashboard}` : null;
+  const loginHref = isOnSubdomain && mainBase ? `${mainBase}/login` : null;
+  const registerHref = isOnSubdomain && mainBase ? `${mainBase}/register` : null;
+
+  const isActive = (to: string) =>
+    pathname === to || (to !== "/" && pathname.startsWith(to));
 
   return (
     <header className="sticky top-0 z-50 w-full">
@@ -65,9 +104,11 @@ export function SiteHeader() {
           <span>support@techlaunchpad.in</span>
         </div>
       </div>
+
       <div className="border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="container mx-auto flex h-16 items-center justify-between gap-4 px-4">
-          {/* Logo */}
+
+          {/* Logo → always goes to main domain home */}
           {logoHref ? (
             <a href={logoHref} className="flex items-center gap-3">
               <img src={logo} alt="TechLaunchpad" className="h-11 w-11 object-contain" />
@@ -88,53 +129,33 @@ export function SiteHeader() {
 
           {/* Desktop Nav */}
           <nav className="hidden items-center gap-1 lg:flex">
-            {NAV.map((n) =>
-              mainDomainBase ? (
-                // On subdomain: use <a> with absolute main-domain URL
-                <a
-                  key={n.to}
-                  href={navHref(n.to)}
-                  className={cn(
-                    "relative rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                    isActive(n.to) ? "text-navy-deep" : "text-muted-foreground hover:text-navy-deep",
-                  )}
-                >
-                  {n.label}
-                  {isActive(n.to) && (
-                    <span className="absolute inset-x-3 -bottom-0.5 h-0.5 rounded-full bg-gold" />
-                  )}
-                </a>
-              ) : (
-                // On main domain: use TanStack <Link>
-                <Link
-                  key={n.to}
-                  to={n.to}
-                  className={cn(
-                    "relative rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                    pathname === n.to ? "text-navy-deep" : "text-muted-foreground hover:text-navy-deep",
-                  )}
-                >
-                  {n.label}
-                  {pathname === n.to && (
-                    <span className="absolute inset-x-3 -bottom-0.5 h-0.5 rounded-full bg-gold" />
-                  )}
-                </Link>
-              ),
-            )}
+            {NAV.map((n) => (
+              <a
+                key={n.to}
+                href={hostname ? href(n.to) : n.to}
+                className={cn(
+                  "relative rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  isActive(n.to) ? "text-navy-deep" : "text-muted-foreground hover:text-navy-deep",
+                )}
+              >
+                {n.label}
+                {isActive(n.to) && (
+                  <span className="absolute inset-x-3 -bottom-0.5 h-0.5 rounded-full bg-gold" />
+                )}
+              </a>
+            ))}
           </nav>
 
-          {/* Desktop Auth Buttons */}
+          {/* Desktop Auth */}
           <div className="hidden items-center gap-2 lg:flex">
             {session ? (
-              dashboardHref ? (
-                <Button asChild className="bg-navy hover:bg-navy-deep text-ivory">
+              <Button asChild className="bg-navy hover:bg-navy-deep text-ivory">
+                {dashboardHref ? (
                   <a href={dashboardHref}>Dashboard</a>
-                </Button>
-              ) : (
-                <Button asChild className="bg-navy hover:bg-navy-deep text-ivory">
+                ) : (
                   <Link to={dashboard}>Dashboard</Link>
-                </Button>
-              )
+                )}
+              </Button>
             ) : (
               <>
                 <Button asChild variant="ghost">
@@ -157,33 +178,19 @@ export function SiteHeader() {
         {open && (
           <div className="border-t border-border bg-background lg:hidden">
             <div className="container mx-auto flex flex-col gap-1 px-4 py-3">
-              {NAV.map((n) =>
-                mainDomainBase ? (
-                  <a
-                    key={n.to}
-                    href={navHref(n.to)}
-                    onClick={() => setOpen(false)}
-                    className={cn(
-                      "rounded-md px-3 py-2 text-sm font-medium",
-                      isActive(n.to) ? "bg-secondary text-navy-deep" : "text-muted-foreground",
-                    )}
-                  >
-                    {n.label}
-                  </a>
-                ) : (
-                  <Link
-                    key={n.to}
-                    to={n.to}
-                    onClick={() => setOpen(false)}
-                    className={cn(
-                      "rounded-md px-3 py-2 text-sm font-medium",
-                      pathname === n.to ? "bg-secondary text-navy-deep" : "text-muted-foreground",
-                    )}
-                  >
-                    {n.label}
-                  </Link>
-                ),
-              )}
+              {NAV.map((n) => (
+                <a
+                  key={n.to}
+                  href={hostname ? href(n.to) : n.to}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "rounded-md px-3 py-2 text-sm font-medium",
+                    isActive(n.to) ? "bg-secondary text-navy-deep" : "text-muted-foreground",
+                  )}
+                >
+                  {n.label}
+                </a>
+              ))}
               <div className="mt-2 flex gap-2">
                 {session ? (
                   <Button asChild className="flex-1 bg-navy text-ivory">
