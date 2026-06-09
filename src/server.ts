@@ -85,36 +85,46 @@ export default {
       let ssrRequest = request;
       const url = new URL(request.url);
 
-      // Rewrite subdomain trainings.domain.com to domain.com/trainings internally
+      // Generic subdomain routing: any-subdomain.domain.com → domain.com/any-subdomain/path
       const hostParts = url.hostname.split(".");
-      if (hostParts.includes("trainings")) {
+      const SKIP_SUBDOMAINS = new Set(["www", "api", "mail", "smtp", "ftp", "cdn", "static", "assets"]);
+      // Detect subdomain: must have at least 3 parts (sub.domain.tld) and not be a reserved one
+      const hasSubdomain = hostParts.length >= 3 && !SKIP_SUBDOMAINS.has(hostParts[0]);
+
+      if (hasSubdomain) {
+        const subdomain = hostParts[0]; // e.g. "trainings", "blog", "internships"
         const pathname = url.pathname;
-        if (
-          !pathname.startsWith("/api") &&
-          !pathname.startsWith("/_build") &&
-          !pathname.startsWith("/_server") &&
-          !pathname.startsWith("/__vite_ping") &&
-          !pathname.startsWith("/@") &&
-          !pathname.startsWith("/src") &&
-          !pathname.startsWith("/node_modules") &&
-          !/\.[a-zA-Z0-9]+$/.test(pathname)
-        ) {
+
+        // Skip static files, API routes, and dev server internals
+        const isStaticOrApi =
+          pathname.startsWith("/api") ||
+          pathname.startsWith("/_build") ||
+          pathname.startsWith("/_server") ||
+          pathname.startsWith("/__vite_ping") ||
+          pathname.startsWith("/@") ||
+          pathname.startsWith("/src") ||
+          pathname.startsWith("/node_modules") ||
+          /\.[a-zA-Z0-9]+$/.test(pathname);
+
+        if (!isStaticOrApi) {
           let targetPath = pathname;
-          if (!targetPath.startsWith("/trainings")) {
+          const basePath = `/${subdomain}`;
+
+          if (!targetPath.startsWith(basePath)) {
             if (targetPath === "/") {
-              targetPath = "/trainings";
+              targetPath = basePath;
             } else {
-              targetPath = `/trainings${targetPath}`;
+              targetPath = `${basePath}${targetPath}`;
             }
           }
-          
+
           const port = url.port ? `:${url.port}` : "";
-          const mainDomainParts = hostParts.filter(p => p !== "trainings" && p !== "www");
+          const mainDomainParts = hostParts.slice(1); // remove subdomain
           const mainDomain = mainDomainParts.join(".") || "localhost";
-          const isLocal = url.hostname.includes("localhost") || url.hostname.includes("127.0.0.1") || url.hostname.includes("::1");
+          const isLocal = url.hostname.includes("localhost") || url.hostname.includes("127.0.0.1");
           const protocol = isLocal ? "http:" : "https:";
           const targetUrl = `${protocol}//${mainDomain}${port}${targetPath}${url.search}`;
-          
+
           ssrRequest = new Request(targetUrl, request);
         }
       }
