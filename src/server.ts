@@ -82,34 +82,41 @@ const razorpaySecret = "ZXeWWgHpCF9C9M6sLEQE7Wpz";
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      let ssrRequest = request;
       const url = new URL(request.url);
 
-      // Redirect subdomain trainings.domain.com to domain.com/trainings
+      // Rewrite subdomain trainings.domain.com to domain.com/trainings internally
       const hostParts = url.hostname.split(".");
-      if (hostParts.length >= 2 && hostParts[0] === "trainings") {
-        const mainDomainParts = hostParts.slice(1);
-        const mainDomain = mainDomainParts.join(".");
-        
-        let targetPath = url.pathname;
-        if (!targetPath.startsWith("/trainings")) {
-          if (targetPath === "/") {
-            targetPath = "/trainings";
-          } else {
-            targetPath = `/trainings${targetPath}`;
+      if (hostParts.includes("trainings")) {
+        const pathname = url.pathname;
+        if (
+          !pathname.startsWith("/api") &&
+          !pathname.startsWith("/_build") &&
+          !pathname.startsWith("/_server") &&
+          !pathname.startsWith("/__vite_ping") &&
+          !pathname.startsWith("/@") &&
+          !pathname.startsWith("/src") &&
+          !pathname.startsWith("/node_modules") &&
+          !/\.[a-zA-Z0-9]+$/.test(pathname)
+        ) {
+          let targetPath = pathname;
+          if (!targetPath.startsWith("/trainings")) {
+            if (targetPath === "/") {
+              targetPath = "/trainings";
+            } else {
+              targetPath = `/trainings${targetPath}`;
+            }
           }
+          
+          const port = url.port ? `:${url.port}` : "";
+          const mainDomainParts = hostParts.filter(p => p !== "trainings" && p !== "www");
+          const mainDomain = mainDomainParts.join(".") || "localhost";
+          const isLocal = url.hostname.includes("localhost") || url.hostname.includes("127.0.0.1") || url.hostname.includes("::1");
+          const protocol = isLocal ? "http:" : "https:";
+          const targetUrl = `${protocol}//${mainDomain}${port}${targetPath}${url.search}`;
+          
+          ssrRequest = new Request(targetUrl, request);
         }
-        
-        const port = url.port ? `:${url.port}` : "";
-        const isLocal = url.hostname.includes("localhost") || url.hostname.includes("127.0.0.1") || url.hostname.includes("::1");
-        const protocol = isLocal ? "http:" : "https:";
-        const targetUrl = `${protocol}//${mainDomain}${port}${targetPath}${url.search}`;
-        
-        return new Response(null, {
-          status: 301,
-          headers: {
-            Location: targetUrl,
-          },
-        });
       }
 
 
@@ -618,7 +625,7 @@ export default {
 
       // Fall through to SSR handler
       const handler = await getServerEntry();
-      const response = await handler.fetch(request, env, ctx);
+      const response = await handler.fetch(ssrRequest, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
       console.error(error);

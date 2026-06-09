@@ -12,6 +12,7 @@ const NAV = [
   { to: "/programs", label: "Programs" },
   { to: "/internships", label: "Internships" },
   { to: "/trainings", label: "Trainings" },
+  { to: "/counselor", label: "Counselor" },
   { to: "/verify", label: "Verify Certificate" },
   { to: "/blog", label: "Blog" },
   { to: "/contact", label: "Contact" },
