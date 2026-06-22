@@ -51,14 +51,19 @@ function Home() {
             transition={{ duration: 0.6 }}
             className="relative z-10 flex flex-col justify-center"
           >
-            <div className="mb-5 inline-flex w-fit items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs font-medium text-gold">
-              <Sparkles className="size-3.5" /> AICTE · UGC · BSDM · ISO
+            <div className="mb-5 flex flex-wrap gap-2.5">
+              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs font-medium text-gold">
+                <Sparkles className="size-3.5" /> AICTE · UGC · BSDM · ISO
+              </div>
+              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
+                <ShieldCheck className="size-3.5" /> 100% Job Placement Guarantee
+              </div>
             </div>
             <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-tight text-balance sm:text-5xl lg:text-6xl">
-              Bihar <span className="text-gold">Student Support</span>
+              Training & <span className="text-gold">Placement</span> Service Provider
             </h1>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-ivory/80 sm:text-lg">
-              Providing comprehensive services: Internship, Training, Student Job Support, Student Job Reference, Student Help Center, Tech & Non-Tech Courses, and Admission Counselor.
+              Bihar's leading education portal offering verified internships, professional training, and a <strong className="text-gold font-semibold">100% placement guarantee for jobs</strong>. Empowering careers since 2026.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -173,14 +178,14 @@ function Home() {
       {/* PLACEMENT SHOWCASE */}
       <section className="container mx-auto px-4 py-20 border-t border-border">
         <div className="text-center max-w-3xl mx-auto mb-12">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs font-semibold text-gold">
-            <Award className="size-3.5" /> Career Placements
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600">
+            <ShieldCheck className="size-3.5" /> 100% Placement Guarantee
           </div>
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight text-navy-deep">
-            30+ Students Placed in Global Leaders
+            Training & Placement with 100% Job Guarantee
           </h2>
           <p className="mt-4 text-muted-foreground text-base md:text-lg">
-            Our students launch their careers at top-tier organizations and technology leaders. We bridge the gap between academic education and industry requirements.
+            As a premier training and placement service provider, we offer a <strong className="text-navy-deep font-bold">100% placement guarantee for jobs</strong>. Learn from industry experts and secure your career with global leaders.
           </p>
         </div>
 
