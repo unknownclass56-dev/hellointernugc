@@ -21,11 +21,23 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 
 export const Route = createFileRoute("/dashboard/sales")({
   component: SalesDashboard,
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      tab: (search.tab as string) || "overview"
+    };
+  }
 });
 
 function SalesDashboard() {
   const { user, role } = useAuth();
-  const [activeTab, setActiveTab] = useState("overview");
+  const { tab } = (Route as any).useSearch();
+  const [activeTab, setActiveTab] = useState(tab || "overview");
+
+  useEffect(() => {
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [tab]);
   const [summary, setSummary] = useState<{ total_sales: number; profit_yesterday: number; total_earnings: number } | null>(null);
   const [transactions, setTransactions] = useState<any[]>([]); // chart data
   const [rawTransactions, setRawTransactions] = useState<any[]>([]); // table data

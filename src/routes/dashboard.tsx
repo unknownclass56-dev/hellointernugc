@@ -198,8 +198,8 @@ function DashboardLayout() {
   ];
 
   const salesLinks: NavLink[] = [
-    { to: "/dashboard/sales", icon: TrendingUp, label: "Sales Dashboard" },
-    { to: "/dashboard/sales", icon: Users, label: "My Students" },
+    { to: "/dashboard/sales", search: { tab: "overview" }, icon: TrendingUp, label: "Sales Dashboard" },
+    { to: "/dashboard/sales", search: { tab: "leads" }, icon: Users, label: "My Students" },
   ];
 
   const links = role === "admin" 
