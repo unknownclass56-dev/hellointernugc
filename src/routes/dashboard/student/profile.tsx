@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/lib/supabase";
+import { LogoLoader } from "@/components/LogoLoader";
 
 export const Route = createFileRoute("/dashboard/student/profile")({
   component: StudentProfile,
@@ -144,7 +145,7 @@ function StudentProfile() {
 
   if (loading) return (
     <div className="flex h-96 flex-col items-center justify-center gap-4">
-      <Loader2 className="size-12 animate-spin text-navy" />
+      <LogoLoader size="md" />
       <p className="font-black text-xs uppercase tracking-widest text-navy/40">Syncing Profile Data...</p>
     </div>
   );

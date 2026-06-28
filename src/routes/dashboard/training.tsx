@@ -10,6 +10,7 @@ import {
   CreditCard, RefreshCw, CheckCircle
 } from "lucide-react";
 import { TrainingCertificate } from "@/components/TrainingCertificate";
+import { LogoLoader } from "@/components/LogoLoader";
 
 export const Route = createFileRoute("/dashboard/training")({
   component: TrainingStudentDashboard,
@@ -348,7 +349,7 @@ function TrainingStudentDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <Loader2 className="animate-spin size-10 text-[#0a192f]" />
+        <LogoLoader size="md" />
       </div>
     );
   }

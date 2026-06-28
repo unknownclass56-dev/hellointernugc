@@ -28,15 +28,18 @@ import { Route as ProgramsIndexRouteImport } from './routes/programs/index'
 import { Route as InternshipsIndexRouteImport } from './routes/internships/index'
 import { Route as TrainingsIdRouteImport } from './routes/trainings/$id'
 import { Route as TrainingLoginRouteImport } from './routes/training/login'
+import { Route as SalesLoginRouteImport } from './routes/sales/login'
 import { Route as ProgramsSlugRouteImport } from './routes/programs/$slug'
 import { Route as InternshipsIdRouteImport } from './routes/internships/$id'
 import { Route as InternshipLoginRouteImport } from './routes/internship/login'
 import { Route as DashboardTrainingRouteImport } from './routes/dashboard/training'
+import { Route as DashboardSalesRouteImport } from './routes/dashboard/sales'
 import { Route as DashboardInboxRouteImport } from './routes/dashboard/inbox'
 import { Route as DashboardCertificatesRouteImport } from './routes/dashboard/certificates'
 import { Route as DashboardAdminRouteImport } from './routes/dashboard/admin'
 import { Route as BlogSlugRouteImport } from './routes/blog/$slug'
 import { Route as ApplyIdRouteImport } from './routes/apply/$id'
+import { Route as AdminSalesRouteImport } from './routes/admin/sales'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as DashboardStudentIndexRouteImport } from './routes/dashboard/student/index'
 import { Route as TrainingsIdRegisterRouteImport } from './routes/trainings_.$id.register'
@@ -146,6 +149,11 @@ const TrainingLoginRoute = TrainingLoginRouteImport.update({
   path: '/training/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SalesLoginRoute = SalesLoginRouteImport.update({
+  id: '/sales/login',
+  path: '/sales/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProgramsSlugRoute = ProgramsSlugRouteImport.update({
   id: '/programs/$slug',
   path: '/programs/$slug',
@@ -164,6 +172,11 @@ const InternshipLoginRoute = InternshipLoginRouteImport.update({
 const DashboardTrainingRoute = DashboardTrainingRouteImport.update({
   id: '/training',
   path: '/training',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardSalesRoute = DashboardSalesRouteImport.update({
+  id: '/sales',
+  path: '/sales',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardInboxRoute = DashboardInboxRouteImport.update({
@@ -189,6 +202,11 @@ const BlogSlugRoute = BlogSlugRouteImport.update({
 const ApplyIdRoute = ApplyIdRouteImport.update({
   id: '/apply/$id',
   path: '/apply/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSalesRoute = AdminSalesRouteImport.update({
+  id: '/admin/sales',
+  path: '/admin/sales',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
@@ -282,15 +300,18 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/verify': typeof VerifyRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/sales': typeof AdminSalesRoute
   '/apply/$id': typeof ApplyIdRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/certificates': typeof DashboardCertificatesRoute
   '/dashboard/inbox': typeof DashboardInboxRoute
+  '/dashboard/sales': typeof DashboardSalesRoute
   '/dashboard/training': typeof DashboardTrainingRoute
   '/internship/login': typeof InternshipLoginRoute
   '/internships/$id': typeof InternshipsIdRoute
   '/programs/$slug': typeof ProgramsSlugRoute
+  '/sales/login': typeof SalesLoginRoute
   '/training/login': typeof TrainingLoginRoute
   '/trainings/$id': typeof TrainingsIdRoute
   '/internships/': typeof InternshipsIndexRoute
@@ -325,15 +346,18 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/verify': typeof VerifyRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/sales': typeof AdminSalesRoute
   '/apply/$id': typeof ApplyIdRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/certificates': typeof DashboardCertificatesRoute
   '/dashboard/inbox': typeof DashboardInboxRoute
+  '/dashboard/sales': typeof DashboardSalesRoute
   '/dashboard/training': typeof DashboardTrainingRoute
   '/internship/login': typeof InternshipLoginRoute
   '/internships/$id': typeof InternshipsIdRoute
   '/programs/$slug': typeof ProgramsSlugRoute
+  '/sales/login': typeof SalesLoginRoute
   '/training/login': typeof TrainingLoginRoute
   '/trainings/$id': typeof TrainingsIdRoute
   '/internships': typeof InternshipsIndexRoute
@@ -369,15 +393,18 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/verify': typeof VerifyRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/sales': typeof AdminSalesRoute
   '/apply/$id': typeof ApplyIdRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/certificates': typeof DashboardCertificatesRoute
   '/dashboard/inbox': typeof DashboardInboxRoute
+  '/dashboard/sales': typeof DashboardSalesRoute
   '/dashboard/training': typeof DashboardTrainingRoute
   '/internship/login': typeof InternshipLoginRoute
   '/internships/$id': typeof InternshipsIdRoute
   '/programs/$slug': typeof ProgramsSlugRoute
+  '/sales/login': typeof SalesLoginRoute
   '/training/login': typeof TrainingLoginRoute
   '/trainings/$id': typeof TrainingsIdRoute
   '/internships/': typeof InternshipsIndexRoute
@@ -414,15 +441,18 @@ export interface FileRouteTypes {
     | '/terms'
     | '/verify'
     | '/admin/login'
+    | '/admin/sales'
     | '/apply/$id'
     | '/blog/$slug'
     | '/dashboard/admin'
     | '/dashboard/certificates'
     | '/dashboard/inbox'
+    | '/dashboard/sales'
     | '/dashboard/training'
     | '/internship/login'
     | '/internships/$id'
     | '/programs/$slug'
+    | '/sales/login'
     | '/training/login'
     | '/trainings/$id'
     | '/internships/'
@@ -457,15 +487,18 @@ export interface FileRouteTypes {
     | '/terms'
     | '/verify'
     | '/admin/login'
+    | '/admin/sales'
     | '/apply/$id'
     | '/blog/$slug'
     | '/dashboard/admin'
     | '/dashboard/certificates'
     | '/dashboard/inbox'
+    | '/dashboard/sales'
     | '/dashboard/training'
     | '/internship/login'
     | '/internships/$id'
     | '/programs/$slug'
+    | '/sales/login'
     | '/training/login'
     | '/trainings/$id'
     | '/internships'
@@ -500,15 +533,18 @@ export interface FileRouteTypes {
     | '/terms'
     | '/verify'
     | '/admin/login'
+    | '/admin/sales'
     | '/apply/$id'
     | '/blog/$slug'
     | '/dashboard/admin'
     | '/dashboard/certificates'
     | '/dashboard/inbox'
+    | '/dashboard/sales'
     | '/dashboard/training'
     | '/internship/login'
     | '/internships/$id'
     | '/programs/$slug'
+    | '/sales/login'
     | '/training/login'
     | '/trainings/$id'
     | '/internships/'
@@ -544,10 +580,12 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   VerifyRoute: typeof VerifyRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminSalesRoute: typeof AdminSalesRoute
   ApplyIdRoute: typeof ApplyIdRoute
   InternshipLoginRoute: typeof InternshipLoginRoute
   InternshipsIdRoute: typeof InternshipsIdRoute
   ProgramsSlugRoute: typeof ProgramsSlugRoute
+  SalesLoginRoute: typeof SalesLoginRoute
   TrainingLoginRoute: typeof TrainingLoginRoute
   TrainingsIdRoute: typeof TrainingsIdRoute
   InternshipsIndexRoute: typeof InternshipsIndexRoute
@@ -691,6 +729,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TrainingLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sales/login': {
+      id: '/sales/login'
+      path: '/sales/login'
+      fullPath: '/sales/login'
+      preLoaderRoute: typeof SalesLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/programs/$slug': {
       id: '/programs/$slug'
       path: '/programs/$slug'
@@ -717,6 +762,13 @@ declare module '@tanstack/react-router' {
       path: '/training'
       fullPath: '/dashboard/training'
       preLoaderRoute: typeof DashboardTrainingRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/sales': {
+      id: '/dashboard/sales'
+      path: '/sales'
+      fullPath: '/dashboard/sales'
+      preLoaderRoute: typeof DashboardSalesRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/inbox': {
@@ -752,6 +804,13 @@ declare module '@tanstack/react-router' {
       path: '/apply/$id'
       fullPath: '/apply/$id'
       preLoaderRoute: typeof ApplyIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/sales': {
+      id: '/admin/sales'
+      path: '/admin/sales'
+      fullPath: '/admin/sales'
+      preLoaderRoute: typeof AdminSalesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/login': {
@@ -862,6 +921,7 @@ interface DashboardRouteChildren {
   DashboardAdminRoute: typeof DashboardAdminRoute
   DashboardCertificatesRoute: typeof DashboardCertificatesRoute
   DashboardInboxRoute: typeof DashboardInboxRoute
+  DashboardSalesRoute: typeof DashboardSalesRoute
   DashboardTrainingRoute: typeof DashboardTrainingRoute
   DashboardStudentAssignmentsRoute: typeof DashboardStudentAssignmentsRoute
   DashboardStudentAttendanceRoute: typeof DashboardStudentAttendanceRoute
@@ -880,6 +940,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAdminRoute: DashboardAdminRoute,
   DashboardCertificatesRoute: DashboardCertificatesRoute,
   DashboardInboxRoute: DashboardInboxRoute,
+  DashboardSalesRoute: DashboardSalesRoute,
   DashboardTrainingRoute: DashboardTrainingRoute,
   DashboardStudentAssignmentsRoute: DashboardStudentAssignmentsRoute,
   DashboardStudentAttendanceRoute: DashboardStudentAttendanceRoute,
@@ -915,10 +976,12 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   VerifyRoute: VerifyRoute,
   AdminLoginRoute: AdminLoginRoute,
+  AdminSalesRoute: AdminSalesRoute,
   ApplyIdRoute: ApplyIdRoute,
   InternshipLoginRoute: InternshipLoginRoute,
   InternshipsIdRoute: InternshipsIdRoute,
   ProgramsSlugRoute: ProgramsSlugRoute,
+  SalesLoginRoute: SalesLoginRoute,
   TrainingLoginRoute: TrainingLoginRoute,
   TrainingsIdRoute: TrainingsIdRoute,
   InternshipsIndexRoute: InternshipsIndexRoute,

@@ -7,6 +7,7 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
+import { LogoLoader } from "@/components/LogoLoader";
 import { toast } from "sonner";
 import { 
   Dialog, 
@@ -234,7 +235,7 @@ function StudentAttendance() {
             </thead>
             <tbody className="divide-y divide-border">
               {loading ? (
-                <tr><td colSpan={4} className="px-8 py-10 text-center"><Loader2 className="animate-spin mx-auto text-navy/20" /></td></tr>
+                <tr><td colSpan={4} className="px-8 py-10 text-center"><div className="flex justify-center"><LogoLoader size="sm" /></div></td></tr>
               ) : attendance.length === 0 ? (
                 <tr><td colSpan={4} className="px-8 py-16 text-center text-muted-foreground font-bold uppercase text-[10px] tracking-widest">No presence logs found.</td></tr>
               ) : attendance.map((a) => (

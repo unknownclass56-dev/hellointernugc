@@ -27,11 +27,15 @@ import {
   User,
   Video,
   FileCheck,
-  ClipboardList
+  ClipboardList,
+  TrendingUp,
+  UserPlus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import logo from "@/assets/techlaunchpad-logo.png";
+
+import { LogoLoader } from "@/components/LogoLoader";
 
 export const Route = createFileRoute("/dashboard")({
   component: DashboardLayout,
@@ -42,6 +46,7 @@ function DashboardLayout() {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [role, setRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     checkUser();
@@ -62,47 +67,53 @@ function DashboardLayout() {
          console.error("Profile fetch error:", error);
       }
 
-      let userRole = profile?.role || "student";
+      let userRole = user.user_metadata?.role || profile?.role || "student";
       
-      // Determine if they are a training student strictly by role or profile type
-      let isTrainingStudent = userRole === "training";
-      if (!isTrainingStudent) {
-        // Fallback: Check if they have an active training enrollment
-        const { data: hasEnrollment } = await supabase
-          .from("training_enrollments")
-          .select("id")
-          .eq("student_id", user.id)
-          .maybeSingle();
-        if (hasEnrollment) {
-          isTrainingStudent = true;
-        } else {
-          // Check training leads table
-          const { data: hasLead } = await supabase
-            .from("training_leads")
+      let isTrainingStudent = false;
+      let isInternshipStudent = false;
+
+      // Only perform student checks if the user is not an admin or sales representative
+      if (userRole !== "admin" && userRole !== "sales") {
+        isTrainingStudent = userRole === "training";
+        if (!isTrainingStudent) {
+          // Fallback: Check if they have an active training enrollment
+          const { data: hasEnrollment } = await supabase
+            .from("training_enrollments")
             .select("id")
             .eq("student_id", user.id)
-            .eq("status", "claimed")
             .maybeSingle();
-          if (hasLead) {
+          if (hasEnrollment) {
             isTrainingStudent = true;
+          } else {
+            // Check training leads table
+            const { data: hasLead } = await supabase
+              .from("training_leads")
+              .select("id")
+              .eq("student_id", user.id)
+              .eq("status", "claimed")
+              .maybeSingle();
+            if (hasLead) {
+              isTrainingStudent = true;
+            }
           }
         }
-      }
 
-      // Determine if they are an internship student strictly by table existence
-      let isInternshipStudent = false;
-      const { data: isMatch } = await supabase
-        .from("internship_students")
-        .select("id")
-        .eq("id", user.id)
-        .maybeSingle();
-      if (isMatch) {
-        isInternshipStudent = true;
+        // Determine if they are an internship student strictly by table existence
+        const { data: isMatch } = await supabase
+          .from("internship_students")
+          .select("id")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (isMatch) {
+          isInternshipStudent = true;
+        }
       }
 
       // Strictly map role in UI
       if (userRole === "admin") {
         // Keep role as admin
+      } else if (userRole === "sales") {
+        // Keep role as sales
       } else if (isTrainingStudent) {
         userRole = "training";
       } else if (isInternshipStudent) {
@@ -115,6 +126,8 @@ function DashboardLayout() {
       if (location.pathname === "/dashboard" || location.pathname === "/dashboard/") {
         if (userRole === "admin") {
           navigate({ to: "/dashboard/admin" } as any);
+        } else if (userRole === "sales") {
+          navigate({ to: "/dashboard/sales" } as any);
         } else if (isTrainingStudent) {
           navigate({ to: "/dashboard/training", search: { tab: "learning" } } as any);
         } else {
@@ -129,7 +142,17 @@ function DashboardLayout() {
       }
     } catch (err) {
       console.error("Auth guard error:", err);
+    } finally {
+      setLoading(false);
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#0a192f]">
+        <LogoLoader size="lg" />
+      </div>
+    );
   }
 
   const handleSignOut = async () => {
@@ -149,6 +172,7 @@ function DashboardLayout() {
     { to: "/dashboard/admin", search: { view: 'leads' }, icon: Users, label: "Student Leads" },
     { to: "/dashboard/admin", search: { view: 'lectures' }, icon: Video, label: "Online Lectures" },
     { to: "/dashboard/admin", search: { view: 'trainings' }, icon: BookOpen, label: "Trainings" },
+    { to: "/dashboard/admin", search: { view: 'sales' }, icon: TrendingUp, label: "Sales Team" },
     { to: "/dashboard/admin", search: { view: 'marketing' }, icon: Mail, label: "Marketing Mailer" },
     { to: "/dashboard/admin", search: { view: 'profile' }, icon: User, label: "My Profile" },
     { to: "/dashboard/certificates", icon: ShieldCheck, label: "Certificates" },
@@ -173,11 +197,18 @@ function DashboardLayout() {
     { to: "/dashboard/training", search: { tab: "payments" }, icon: CreditCard, label: "Payments" },
   ];
 
+  const salesLinks: NavLink[] = [
+    { to: "/dashboard/sales", icon: TrendingUp, label: "Sales Dashboard" },
+    { to: "/dashboard/sales", icon: Users, label: "My Students" },
+  ];
+
   const links = role === "admin" 
     ? adminLinks 
-    : role === "training" 
-      ? trainingLinks 
-      : internshipLinks;
+    : role === "sales"
+      ? salesLinks
+      : role === "training" 
+        ? trainingLinks 
+        : internshipLinks;
 
   return (
     <div className="flex h-screen bg-[#f8f9fa] print:bg-white print:h-auto print:block">

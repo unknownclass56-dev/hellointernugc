@@ -7,7 +7,7 @@ import {
   Phone, User, Heart, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Zap,
   TrendingUp, Activity, Globe, MoreHorizontal, ChevronRight, FileText, Printer,
   Loader2, MoreVertical, XCircle, Scan, Linkedin, Mail, Percent, UserPlus, Settings,
-  Lock, Video, Upload
+  Lock, Video, Upload, Target, DollarSign, PhoneCall
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { createClient } from "@supabase/supabase-js";
 import { useAuth } from "@/hooks/use-auth";
+import { LogoLoader } from "@/components/LogoLoader";
 
 export const Route = createFileRoute("/dashboard/admin")({
   component: AdminDashboard,
@@ -51,6 +52,33 @@ function AdminDashboard() {
   const { view } = (Route as any).useSearch();
   const { user } = useAuth();
   
+  // Sales management states
+  const [salesUsers, setSalesUsers] = useState<any[]>([]);
+  const [selectedSalesRep, setSelectedSalesRep] = useState<any>(null);
+  const [salesRepHistory, setSalesRepHistory] = useState<any[]>([]);
+  const [salesHistoryStart, setSalesHistoryStart] = useState("");
+  const [salesHistoryEnd, setSalesHistoryEnd] = useState("");
+  const [loadingSalesUsers, setLoadingSalesUsers] = useState(false);
+  const [loadingSalesHistory, setLoadingSalesHistory] = useState(false);
+  const [salesStudents, setSalesStudents] = useState<any[]>([]);
+  const [assignStudentId, setAssignStudentId] = useState("");
+  const [assignSalesRepId, setAssignSalesRepId] = useState("");
+  const [assigningStudent, setAssigningStudent] = useState(false);
+  const [showCreateSalesUser, setShowCreateSalesUser] = useState(false);
+  const [newSalesName, setNewSalesName] = useState("");
+  const [newSalesEmail, setNewSalesEmail] = useState("");
+  const [newSalesPassword, setNewSalesPassword] = useState("");
+  const [creatingSalesUser, setCreatingSalesUser] = useState(false);
+  const [salesAssignments, setSalesAssignments] = useState<any[]>([]);
+
+  // Sales CSV distribution states
+  const [bulkSalesCSVFile, setBulkSalesCSVFile] = useState<File | null>(null);
+  const [parsedCSVStudentsCount, setParsedCSVStudentsCount] = useState<number>(0);
+  const [parsedCSVStudents, setParsedCSVStudents] = useState<any[]>([]);
+  const [selectedRepsForCSV, setSelectedRepsForCSV] = useState<string[]>([]);
+  const [importingCSV, setImportingCSV] = useState(false);
+  const [importCSVProgress, setImportCSVProgress] = useState("");
+
   // Admin Profile States
   const [adminProfile, setAdminProfile] = useState<any>(null);
   const [adminName, setAdminName] = useState("");
@@ -386,14 +414,12 @@ function AdminDashboard() {
     if (error) {
       toast.error('Bulk insert failed: ' + error.message);
     } else {
-      toast.success(`✅ ${inserts.length} universities added`);
       fetchData();
       setIsBulkUniOpen(false);
       setBulkCSV('');
     }
     setBulkLoading(false);
   };
-
   const handleBulkCollegeSubmit = async () => {
     if (!selectedUniForCollege) {
       toast.error('Select a university before bulk adding colleges');
@@ -411,38 +437,31 @@ function AdminDashboard() {
     if (error) {
       toast.error('Bulk insert failed: ' + error.message);
     } else {
-      toast.success(`✅ ${inserts.length} colleges added`);
       fetchData();
       setIsBulkCollegeOpen(false);
       setBulkCSV('');
     }
     setBulkLoading(false);
   };
-
   // Cascading Selection State for Forms
   const [activeUni, setActiveUni] = useState("");
   const [activeCol, setActiveCol] = useState("");
   const [activeStructures, setActiveStructures] = useState<any[]>([]);
   const [filteredColleges, setFilteredColleges] = useState<any[]>([]);
-
   const activeUniData = explorerUni ? universities.find(u => u.id === explorerUni.id) : null;
-
   async function syncNewCollegesStructures(uniId: string) {
     const { data: cols } = await supabase.from("colleges").select("id").eq("university_id", uniId);
     if (!cols || cols.length === 0) return;
-    
     const { data: structs } = await supabase.from("academic_structures").select("*").in("college_id", cols.map(c => c.id));
     const degrees = Array.from(new Set(structs?.map(s => s.degree))).filter(Boolean);
     const departments = Array.from(new Set(structs?.map(s => s.department))).filter(Boolean);
     const sessions = Array.from(new Set(structs?.map(s => s.session))).filter(Boolean);
-    
     const allInserts: any[] = [];
     for (const col of cols) {
       const colStructs = structs?.filter(s => s.college_id === col.id) || [];
       const colDegrees = new Set(colStructs.map(s => s.degree));
       const colDepts = new Set(colStructs.map(s => s.department));
       const colSessions = new Set(colStructs.map(s => s.session));
-      
       for (const deg of degrees) {
         if (!colDegrees.has(deg)) {
           allInserts.push({ college_id: col.id, degree: deg, department: "General", session: "2024-28" });
@@ -459,12 +478,10 @@ function AdminDashboard() {
         }
       }
     }
-    
     if (allInserts.length > 0) {
       await supabase.from("academic_structures").insert(allInserts);
     }
   }
-
   async function addUniversityDepartment(deptName: string) {
     if (!deptName) return;
     const collegesList = activeUniData?.colleges || [];
@@ -488,7 +505,6 @@ function AdminDashboard() {
       toast.error("Failed to add department: " + error.message);
     }
   }
-
   async function addUniversityCourse(courseName: string) {
     if (!courseName) return;
     const collegesList = activeUniData?.colleges || [];
@@ -512,7 +528,6 @@ function AdminDashboard() {
       toast.error("Failed to add course: " + error.message);
     }
   }
-
   async function addUniversitySession(sessionName: string) {
     if (!sessionName) return;
     const collegesList = activeUniData?.colleges || [];
@@ -536,7 +551,6 @@ function AdminDashboard() {
       toast.error("Failed to add session: " + error.message);
     }
   }
-
   async function deleteUniversityDepartment(deptName: string) {
     if (!confirm(`Are you sure you want to delete department "${deptName}" from all colleges?`)) return;
     const colIds = (activeUniData?.colleges || []).map((c: any) => c.id);
@@ -551,7 +565,6 @@ function AdminDashboard() {
       toast.error("Error deleting department: " + error.message);
     }
   }
-
   async function deleteUniversityCourse(courseName: string) {
     if (!confirm(`Are you sure you want to delete course "${courseName}" from all colleges?`)) return;
     const colIds = (activeUniData?.colleges || []).map((c: any) => c.id);
@@ -566,7 +579,6 @@ function AdminDashboard() {
       toast.error("Error deleting course: " + error.message);
     }
   }
-
   async function deleteUniversitySession(sessionName: string) {
     if (!confirm(`Are you sure you want to delete session "${sessionName}" from all colleges?`)) return;
     const colIds = (activeUniData?.colleges || []).map((c: any) => c.id);
@@ -581,7 +593,6 @@ function AdminDashboard() {
       toast.error("Error deleting session: " + error.message);
     }
   }
-
   useEffect(() => { 
     if (selectedStudent) {
       const uni = universities.find(u => u.name === selectedStudent.university_name);
@@ -601,7 +612,6 @@ function AdminDashboard() {
       setActiveStructures([]);
     }
   }, [selectedStudent, universities]);
-
   async function fetchAdminProfile() {
     if (!user?.id) return;
     setProfileLoading(true);
@@ -611,7 +621,6 @@ function AdminDashboard() {
         .select("*")
         .eq("id", user.id)
         .maybeSingle();
-
       if (error) {
         toast.error("Failed to load admin profile: " + error.message);
       } else if (data) {
@@ -646,13 +655,11 @@ function AdminDashboard() {
       setProfileLoading(false);
     }
   }
-
   useEffect(() => {
     if (user?.id) {
       fetchAdminProfile();
     }
   }, [user]);
-
   async function handleUpdateProfile(e: React.FormEvent) {
     e.preventDefault();
     if (!user?.id) return;
@@ -665,7 +672,6 @@ function AdminDashboard() {
         updated_at: new Date().toISOString()
       })
       .eq("id", user.id);
-
     setUpdatingProfile(false);
     if (error) {
       toast.error("Error updating profile details: " + error.message);
@@ -674,7 +680,6 @@ function AdminDashboard() {
       fetchAdminProfile();
     }
   }
-
   async function handleUpdateEmail(e: React.FormEvent) {
     e.preventDefault();
     const cleanEmail = newEmail.trim().toLowerCase();
@@ -682,19 +687,16 @@ function AdminDashboard() {
       toast.error("Please enter a new email address.");
       return;
     }
-
     // Email regex validation to check for a valid domain structure
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(cleanEmail)) {
       toast.error("Please enter a valid email address (e.g., user@example.com).");
       return;
     }
-    
     if (user?.email && cleanEmail === user.email.trim().toLowerCase()) {
       toast.error("New email must be different from your current email.");
       return;
     }
-
     setUpdatingEmail(true);
     const { error } = await supabase.auth.updateUser({ email: cleanEmail });
     setUpdatingEmail(false);
@@ -705,7 +707,6 @@ function AdminDashboard() {
       setNewEmail("");
     }
   }
-
   async function handleUpdatePassword(e: React.FormEvent) {
     e.preventDefault();
     if (!newPassword) {
@@ -984,10 +985,295 @@ function AdminDashboard() {
     if (view === "trainings") {
       fetchTrainingsData();
     }
+    if (view === "sales") {
+      fetchSalesData();
+    }
     
     setLoading(false);
   }
 
+  async function fetchSalesData() {
+    setLoadingSalesUsers(true);
+    // Load all sales users (profiles with role 'sales')
+    const { data: su } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("role", "sales")
+      .order("created_at", { ascending: false });
+    setSalesUsers(su || []);
+
+    // Load all unassigned students (profiles with role 'student') for the assign dropdown
+    const { data: allStudents } = await supabase
+      .from("profiles")
+      .select("id, full_name, email, contact_number")
+      .eq("role", "student")
+      .order("full_name");
+    setSalesStudents(allStudents || []);
+
+    // Load existing assignments
+    const { data: assignments } = await supabase
+      .from("sales_notes")
+      .select("*, profile:profile_id(id, full_name, email, contact_number), rep:sales_rep_id(full_name)")
+      .order("created_at", { ascending: false });
+    setSalesAssignments(assignments || []);
+    setLoadingSalesUsers(false);
+  }
+
+  async function fetchSalesRepHistory(repId: string) {
+    if (!repId) return;
+    setLoadingSalesHistory(true);
+    let query = supabase
+      .from("training_transactions")
+      .select("*, training_enrollments(*, profiles(full_name), trainings(name))")
+      .eq("sales_rep_id", repId)
+      .order("created_at", { ascending: false });
+    if (salesHistoryStart) query = query.gte("created_at", salesHistoryStart);
+    if (salesHistoryEnd) query = query.lte("created_at", salesHistoryEnd + "T23:59:59");
+    const { data, error } = await query;
+    if (error) toast.error("Error loading history: " + error.message);
+    setSalesRepHistory(data || []);
+    setLoadingSalesHistory(false);
+  }
+
+  async function handleCreateSalesUser(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newSalesEmail || !newSalesPassword || !newSalesName) {
+      toast.error("Please fill all fields");
+      return;
+    }
+    setCreatingSalesUser(true);
+    try {
+      // Create auth user via Supabase signUp with sales role in metadata
+      const tempClient = createClient(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_ANON_KEY,
+        { auth: { persistSession: false } }
+      );
+      const { data: authData, error: authError } = await tempClient.auth.signUp({
+        email: newSalesEmail,
+        password: newSalesPassword,
+        options: {
+          data: { role: "sales", full_name: newSalesName }
+        }
+      });
+      if (authError) throw authError;
+      if (!authData.user) throw new Error("User creation failed");
+
+      // Create profile entry
+      const { error: profileError } = await supabase.from("profiles").upsert({
+        id: authData.user.id,
+        full_name: newSalesName,
+        email: newSalesEmail,
+        role: "sales",
+        raw_password: newSalesPassword,
+      });
+      if (profileError) throw profileError;
+
+      setNewSalesName(""); setNewSalesEmail(""); setNewSalesPassword("");
+      setShowCreateSalesUser(false);
+      fetchSalesData();
+    } catch (err: any) {
+      toast.error("Failed: " + err.message);
+    } finally {
+      setCreatingSalesUser(false);
+    }
+  }
+  async function handleAssignStudent() {
+    if (!assignStudentId || !assignSalesRepId) {
+      toast.error("Please select both a student and a sales rep");
+      return;
+    }
+    setAssigningStudent(true);
+    const { error } = await supabase.from("sales_notes").upsert({
+      profile_id: assignStudentId,
+      sales_rep_id: assignSalesRepId,
+      status: "assigned",
+      remark: "",
+    });
+    setAssigningStudent(false);
+    if (error) {
+      toast.error("Assignment failed: " + error.message);
+    } else {
+      toast.success("Student assigned successfully!");
+      setAssignStudentId("");
+      setAssignSalesRepId("");
+      fetchSalesData();
+    }
+  }
+  const handleSalesCSVFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBulkSalesCSVFile(file);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      if (lines.length <= 1) {
+        toast.error("CSV file is empty or only contains headers");
+        return;
+      }
+      const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+      const students: any[] = [];
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        const cols: string[] = [];
+        let current = "";
+        let inQuotes = false;
+        for (let charIdx = 0; charIdx < line.length; charIdx++) {
+          const char = line[charIdx];
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            cols.push(current.trim());
+            current = "";
+          } else {
+            current += char;
+          }
+        }
+        cols.push(current.trim());
+        if (cols.length === 0 || !cols[0]) continue;
+        const row: any = {};
+        headers.forEach((h, idx) => {
+          row[h] = (cols[idx] || "").replace(/^["']|["']$/g, "").trim();
+        });
+        // Normalize fields
+        const full_name = row.full_name || row.name || "";
+        const email = row.email || "";
+        const contact_number = row.contact_number || row.phone || row.contact || "";
+        const university_name = row.university_name || row.university || "";
+        const college_name = row.college_name || row.college || "";
+        const university_roll_number = row.university_roll_number || row.roll_number || row.roll || "";
+        const department = row.department || row.branch || "";
+        const semester = row.semester || row.sem || "";
+        if (!email || !full_name) continue;
+        students.push({
+          full_name,
+          email,
+          contact_number,
+          university_name,
+          college_name,
+          university_roll_number,
+          department,
+          semester
+        });
+      }
+      setParsedCSVStudents(students);
+      setParsedCSVStudentsCount(students.length);
+      toast.success(`Parsed ${students.length} students from CSV.`);
+    };
+    reader.readAsText(file);
+  };
+  async function handleDistributeAndAssignCSV() {
+    if (parsedCSVStudents.length === 0) {
+      toast.error("Please upload and parse a valid CSV first");
+      return;
+    }
+    if (selectedRepsForCSV.length === 0) {
+      toast.error("Please select at least one sales representative to assign to");
+      return;
+    }
+    setImportingCSV(true);
+    setImportCSVProgress("Starting assignment...");
+    let successCount = 0;
+    let failCount = 0;
+    const tempClient = createClient(
+      import.meta.env.VITE_SUPABASE_URL,
+      import.meta.env.VITE_SUPABASE_ANON_KEY,
+      { auth: { persistSession: false } }
+    );
+    for (let i = 0; i < parsedCSVStudents.length; i++) {
+      const student = parsedCSVStudents[i];
+      const repId = selectedRepsForCSV[i % selectedRepsForCSV.length];
+      setImportCSVProgress(`Processing student ${i + 1} of ${parsedCSVStudents.length}: ${student.full_name}`);
+      try {
+        let studentId = "";
+        // 1. Check if student profile already exists in DB
+        const { data: existingProfile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("email", student.email)
+          .maybeSingle();
+        if (existingProfile) {
+          studentId = existingProfile.id;
+        } else {
+          // 2. Create the auth user account
+          const { data: authData, error: authError } = await tempClient.auth.signUp({
+            email: student.email,
+            password: "123456",
+            options: {
+              data: {
+                role: "student",
+                full_name: student.full_name,
+                contact_number: student.contact_number,
+                university_name: student.university_name,
+                college_name: student.college_name,
+                university_roll_number: student.university_roll_number,
+                department: student.department,
+                semester: student.semester,
+                raw_password: "123456"
+              }
+            }
+          });
+          if (authError) {
+            console.error("Auth signUp error for " + student.email, authError);
+            failCount++;
+            continue;
+          }
+          if (authData?.user) {
+            studentId = authData.user.id;
+            // Upsert the profile entry to guarantee it has 'student' role
+            await supabase.from("profiles").upsert({
+              id: studentId,
+              full_name: student.full_name,
+              email: student.email,
+              contact_number: student.contact_number,
+              university_name: student.university_name,
+              college_name: student.college_name,
+              university_roll_number: student.university_roll_number,
+              department: student.department,
+              semester: student.semester,
+              role: "student",
+              raw_password: "123456"
+            });
+          }
+        }
+        if (studentId) {
+          // 3. Assign the student to the sales rep in sales_notes
+          const { error: assignError } = await supabase
+            .from("sales_notes")
+            .upsert({
+              profile_id: studentId,
+              sales_rep_id: repId,
+              status: "assigned",
+              remark: "Imported via bulk CSV assignment"
+            });
+          if (assignError) {
+            console.error("Assign error", assignError);
+            failCount++;
+          } else {
+            successCount++;
+          }
+        } else {
+          failCount++;
+        }
+      } catch (err) {
+        console.error("Unexpected error for student " + student.email, err);
+        failCount++;
+      }
+    }
+    setImportingCSV(false);
+    setImportCSVProgress("");
+    toast.success(`Import and distribution complete! Successful: ${successCount}, Failed: ${failCount}`);
+    // Clear state & refresh
+    setParsedCSVStudents([]);
+    setParsedCSVStudentsCount(0);
+    setBulkSalesCSVFile(null);
+    setSelectedRepsForCSV([]);
+    // Reset file input in DOM
+    const fileInput = document.getElementById("bulk_sales_csv_input") as HTMLInputElement;
+    if (fileInput) fileInput.value = "";
+    fetchSalesData();
+  }
   // --- TRAINING CRUD HANDLERS ---
   async function fetchTrainingsData() {
     setLoadingTrainings(true);
@@ -995,19 +1281,16 @@ function AdminDashboard() {
     const { data: lList } = await supabase.from("training_leads").select("*").order("created_at", { ascending: false });
     const { data: eList } = await supabase.from("training_enrollments").select("*, profiles(*), trainings(name)").order("created_at", { ascending: false });
     const { data: trxList } = await supabase.from("training_transactions").select("*, training_enrollments(*, profiles(*), trainings(name))").order("created_at", { ascending: false });
-    
     setTrainings(tList || []);
     setTrainingLeads(lList || []);
     setTrainingEnrollments(eList || []);
     setTrainingTransactions(trxList || []);
     setLoadingTrainings(false);
   }
-
   async function fetchTrainingLecturesForAdmin(trainingId: string) {
     const { data } = await supabase.from("training_lectures").select("*").eq("training_id", trainingId).order("created_at", { ascending: true });
     setTrainingLecturesMap(prev => ({ ...prev, [trainingId]: data || [] }));
   }
-
   async function onSaveTraining(e: React.FormEvent) {
     e.preventDefault();
     setSavingTraining(true);
@@ -1026,7 +1309,6 @@ function AdminDashboard() {
         finalThumbnailUrl = urlData.publicUrl;
         setTThumbnailUploading(false);
       }
-
       const payload = {
         name: tName,
         type: tType,
@@ -1036,7 +1318,6 @@ function AdminDashboard() {
         thumbnail_url: finalThumbnailUrl,
         fee: tFee
       };
-      
       let error;
       if (selectedTraining) {
         const res = await supabase.from("trainings").update(payload).eq("id", selectedTraining.id);
@@ -1045,7 +1326,6 @@ function AdminDashboard() {
         const res = await supabase.from("trainings").insert([payload]);
         error = res.error;
       }
-      
       if (error) throw error;
       toast.success(selectedTraining ? "Training Updated" : "Training Created");
       setIsAddTrainingOpen(false);
@@ -1060,14 +1340,12 @@ function AdminDashboard() {
       setSavingTraining(false);
     }
   }
-
   async function onDeleteTraining(id: string) {
     if (!confirm("Are you sure you want to delete this training? This will delete all lectures and enrollments associated with it.")) return;
     const { error } = await supabase.from("trainings").delete().eq("id", id);
     if (error) toast.error("Error deleting training: " + error.message);
     else { toast.success("Training deleted"); fetchTrainingsData(); }
   }
-
   async function onSaveTrainingLecture(e: React.FormEvent) {
     e.preventDefault();
     if (!viewingTraining) return;
@@ -1080,7 +1358,6 @@ function AdminDashboard() {
         start_time: tlStartTime || null,
         link: tlLink
       };
-      
       let error;
       if (selectedTrainingLecture) {
         const res = await supabase.from("training_lectures").update(payload).eq("id", selectedTrainingLecture.id);
@@ -1089,7 +1366,6 @@ function AdminDashboard() {
         const res = await supabase.from("training_lectures").insert([payload]);
         error = res.error;
       }
-      
       if (error) throw error;
       toast.success(selectedTrainingLecture ? "Lecture Updated" : "Lecture Added");
       setIsAddTrainingLectureOpen(false);
@@ -1102,14 +1378,12 @@ function AdminDashboard() {
       setSavingTraining(false);
     }
   }
-
   async function onDeleteTrainingLecture(id: string) {
     if (!confirm("Are you sure you want to delete this lecture?")) return;
     const { error } = await supabase.from("training_lectures").delete().eq("id", id);
     if (error) toast.error("Error deleting lecture: " + error.message);
     else { toast.success("Lecture deleted"); if (viewingTraining) fetchTrainingLecturesForAdmin(viewingTraining.id); }
   }
-
   // --- CSV Handlers ---
   const handlePreRegCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return;
@@ -1142,7 +1416,6 @@ function AdminDashboard() {
     };
     reader.readAsText(file);
   };
-
   const handleInstituteCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return;
     const reader = new FileReader();
@@ -1160,25 +1433,20 @@ function AdminDashboard() {
     };
     reader.readAsText(file);
   };
-
   async function onSaveStudent(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget); 
     const { password, program, ...formData } = Object.fromEntries(fd);
-    
     const uN = universities.find(u => u.id === activeUni)?.name;
     const cN = filteredColleges.find(c => c.id === activeCol)?.name;
-    
     setBusy(true);
     let userId = selectedStudent?.id;
-
     if (!userId) {
       const tempClient = createClient(
         import.meta.env.VITE_SUPABASE_URL,
         import.meta.env.VITE_SUPABASE_ANON_KEY,
         { auth: { persistSession: false } }
       );
-
       const { data: authData, error: authError } = await tempClient.auth.signUp({
         email: String(formData.email),
         password: String(password || "123456"),
@@ -1193,7 +1461,6 @@ function AdminDashboard() {
           }
         }
       });
-
       if (authError) {
         toast.error("Account Creation Failed: " + authError.message);
         setBusy(false);
@@ -1201,7 +1468,6 @@ function AdminDashboard() {
       }
       userId = authData.user?.id;
     }
-
     const studentData: any = {
       id: userId,
       ...formData,
@@ -1210,9 +1476,7 @@ function AdminDashboard() {
       role: "student",
       raw_password: String(password || selectedStudent?.raw_password || "123456")
     };
-
     const { error } = await supabase.from("profiles").upsert(studentData);
-    
     setBusy(false);
     if (!error) { 
       toast.success(selectedStudent ? "Student Updated!" : "Student & Login Account Created!"); 
@@ -1223,12 +1487,10 @@ function AdminDashboard() {
       toast.error("Profile Sync Error: " + error.message);
     }
   }
-
   async function onSaveInternship(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const data = Object.fromEntries(fd);
-    
     const internshipData: any = {
       title: data.title,
       duration: data.duration,
@@ -1236,11 +1498,9 @@ function AdminDashboard() {
       company: data.company || "TechLaunchpad",
       category: data.category || "General",
     };
-
     if (selectedInternship?.id) {
       internshipData.id = selectedInternship.id;
     }
-
     const { error } = await supabase.from("internships").upsert(internshipData);
     if (!error) { 
       toast.success("Domain Saved!"); 
@@ -1250,13 +1510,10 @@ function AdminDashboard() {
       toast.error("Error: " + error.message);
     }
   }
-
   async function handleUniSelect(id: string) { setActiveUni(id); setActiveCol(""); const { data } = await supabase.from("colleges").select("*").eq("university_id", id); setFilteredColleges(data || []); }
   async function handleColSelect(id: string) { setActiveCol(id); const { data } = await supabase.from("academic_structures").select("*").eq("college_id", id); setActiveStructures(data || []); }
-
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-[1400px] mx-auto pb-10">
-      
       {/* COMPACT HEADER */}
       <div className="flex flex-wrap items-center justify-between gap-4 no-print border-b pb-4">
          <div>
@@ -1278,6 +1535,7 @@ function AdminDashboard() {
                {view === "leads" && "Student Leads"}
                {view === "marketing" && "Marketing Mailer"}
                {view === "trainings" && "Training Management"}
+               {view === "sales" && "Sales Team Management"}
             </h1>
          </div>
          <div className="flex gap-2">
@@ -1298,7 +1556,6 @@ function AdminDashboard() {
             </Button>
          </div>
       </div>
-
       {/* COMPACT STATS */}
       {view === "overview" && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -1320,7 +1577,6 @@ function AdminDashboard() {
            ))}
         </div>
       )}
-
       {/* COMPACT REGISTRY (STUDENTS) */}
       {view === "students" && (
         <div className="space-y-4">
@@ -1336,7 +1592,6 @@ function AdminDashboard() {
                  </Button>
               </div>
            </div>
-
            <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
               <Table>
                  <TableHeader className="bg-secondary/5">
@@ -1395,7 +1650,6 @@ function AdminDashboard() {
            </div>
         </div>
       )}
-
       {/* COMPACT STAGING (PRE-REG) */}
       {view === "pre-reg" && (
         <div className="space-y-4">
@@ -1467,7 +1721,6 @@ function AdminDashboard() {
             </div>
         </div>
       )}
-
       {/* HIERARCHICAL ACADEMIC NETWORK */}
       {view === "institutes" && (
          <div className="space-y-4">
@@ -1504,14 +1757,12 @@ function AdminDashboard() {
                   {explorerUni && !explorerCol && <Button variant="outline" className="h-9 px-5 rounded-xl text-[9px] font-black uppercase" onClick={() => setIsBulkCollegeOpen(true)}>Bulk Col</Button>}
                </div>
             </div>
-
             <div className="bg-white p-3 rounded-2xl border shadow-sm">
                <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
                   <input placeholder={!explorerUni ? "Search Universities..." : "Search Colleges..."} className="w-full h-10 bg-slate-50 pl-10 pr-4 rounded-xl border-none font-bold text-xs" value={!explorerUni ? uniSearch : colSearch} onChange={(e) => !explorerUni ? setUniSearch(e.target.value) : setColSearch(e.target.value)} />
                </div>
             </div>
-
             {activeUniData && !explorerCol && (
                <div className="bg-white p-6 rounded-2xl border shadow-sm space-y-6 mb-6">
                   <div className="border-b pb-4 flex items-center justify-between">
@@ -1522,7 +1773,6 @@ function AdminDashboard() {
                         </p>
                      </div>
                   </div>
-                  
                   <div className="grid md:grid-cols-3 gap-6">
                      {/* Courses */}
                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
@@ -1546,7 +1796,6 @@ function AdminDashboard() {
                            {Array.from(new Set((activeUniData.colleges || []).flatMap((c: any) => c.academic_structures || []).map((s: any) => s.degree))).filter(d => d && d !== "General").map((degree: any) => (
                               <span key={degree} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white border text-[9px] font-bold text-slate-600">
                                  {degree}
-                                 <button onClick={() => deleteUniversityCourse(degree)} className="text-slate-400 hover:text-red-500 font-bold ml-1">✕</button>
                               </span>
                            ))}
                            {Array.from(new Set((activeUniData.colleges || []).flatMap((c: any) => c.academic_structures || []).map((s: any) => s.degree))).filter(d => d && d !== "General").length === 0 && (
@@ -1554,7 +1803,6 @@ function AdminDashboard() {
                            )}
                         </div>
                      </div>
-
                      {/* Departments */}
                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
                         <div className="flex items-center justify-between">
@@ -1577,7 +1825,6 @@ function AdminDashboard() {
                            {Array.from(new Set((activeUniData.colleges || []).flatMap((c: any) => c.academic_structures || []).map((s: any) => s.department))).filter(d => d && d !== "General").map((dept: any) => (
                               <span key={dept} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white border text-[9px] font-bold text-slate-600">
                                  {dept}
-                                 <button onClick={() => deleteUniversityDepartment(dept)} className="text-slate-400 hover:text-red-500 font-bold ml-1">✕</button>
                               </span>
                            ))}
                            {Array.from(new Set((activeUniData.colleges || []).flatMap((c: any) => c.academic_structures || []).map((s: any) => s.department))).filter(d => d && d !== "General").length === 0 && (
@@ -1585,7 +1832,6 @@ function AdminDashboard() {
                            )}
                         </div>
                      </div>
-
                      {/* Sessions */}
                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
                         <div className="flex items-center justify-between">
@@ -1608,7 +1854,6 @@ function AdminDashboard() {
                            {Array.from(new Set((activeUniData.colleges || []).flatMap((c: any) => c.academic_structures || []).map((s: any) => s.session))).filter(s => s && s !== "2024-28").map((session: any) => (
                               <span key={session} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white border text-[9px] font-bold text-slate-600">
                                  {session}
-                                 <button onClick={() => deleteUniversitySession(session)} className="text-slate-400 hover:text-red-500 font-bold ml-1">✕</button>
                               </span>
                            ))}
                            {Array.from(new Set((activeUniData.colleges || []).flatMap((c: any) => c.academic_structures || []).map((s: any) => s.session))).filter(s => s && s !== "2024-28").length === 0 && (
@@ -1619,7 +1864,6 @@ function AdminDashboard() {
                   </div>
                </div>
             )}
-
             <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
                {!explorerUni ? (
                   <div className="divide-y">
@@ -1635,7 +1879,6 @@ function AdminDashboard() {
                                     <div className="text-sm font-black text-slate-800 uppercase tracking-tight">{uni.name}</div>
                                     {uni.state && (
                                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-100 text-[#1e40af] border border-blue-200">
-                                        📍 {uni.state}
                                       </span>
                                     )}
                                   </div>
@@ -1705,7 +1948,6 @@ function AdminDashboard() {
                   <div className="p-10 text-center"><Button onClick={() => setExplorerCol(null)}>Back to Colleges</Button></div>
                )}
             </div>
-
             {explorerUni && !explorerCol && (
                <div className="bg-white p-6 rounded-2xl border shadow-sm">
                   <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Bulk Add Colleges to {explorerUni.name}</h4>
@@ -1730,10 +1972,8 @@ function AdminDashboard() {
            <DialogHeader>
              <DialogTitle className="text-lg font-black text-[#1e40af] uppercase">Bulk Add Universities</DialogTitle>
             <DialogDescription className="text-sm font-medium text-gray-600">
-              Paste CSV data (columns: name, state) – one university per line.
             </DialogDescription>
              <DialogDescription className="text-sm font-medium text-gray-600">
-               Paste CSV data (columns: name, state, city) – one university per line.
              </DialogDescription>
            </DialogHeader>
            <Textarea
@@ -1759,14 +1999,12 @@ function AdminDashboard() {
            </DialogFooter>
          </DialogContent>
        </Dialog>
-
        {/* Bulk College Dialog */}
        <Dialog open={isBulkCollegeOpen} onOpenChange={setIsBulkCollegeOpen}>
   <DialogContent className="max-w-lg bg-white rounded-3xl p-6 border-none shadow-2xl">
     <DialogHeader>
       <DialogTitle className="text-lg font-black text-[#1e40af] uppercase">Bulk Add Colleges</DialogTitle>
       <DialogDescription className="text-sm font-medium text-gray-600">
-        Select a university above, then paste CSV data (columns: name, address) – one college per line.
       </DialogDescription>
     </DialogHeader>
     {/* University selector */}
@@ -1780,7 +2018,6 @@ function AdminDashboard() {
         }}
       >
         <SelectTrigger id="bulk-college-university" className="w-full">
-          <SelectValue placeholder="Select a university…" />
         </SelectTrigger>
         <SelectContent>
           {universities.map((u) => (
@@ -1812,7 +2049,6 @@ function AdminDashboard() {
     </DialogFooter>
   </DialogContent>
 </Dialog>
-
       {/* COMPACT PORTFOLIO (INTERNSHIPS) */}
       {view === "internships" && (
         <div className="space-y-6">
@@ -1846,7 +2082,6 @@ function AdminDashboard() {
            </div>
         </div>
       )}
-
       {/* COMPACT ATTENDANCE CONTROL */}
       {view === "attendance" && (
         <div className="space-y-4">
@@ -1876,7 +2111,6 @@ function AdminDashboard() {
                  </Button>
               </div>
            </div>
-
            <div className="bg-white p-4 rounded-2xl border shadow-sm">
               <div className="relative">
                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -1888,7 +2122,6 @@ function AdminDashboard() {
                  />
               </div>
            </div>
-
            <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
               <Table>
                  <TableHeader className="bg-secondary/5">
@@ -1907,7 +2140,6 @@ function AdminDashboard() {
                        const totalPossible = 30; 
                        const percent = Math.round((count / totalPossible) * 100);
                        const isAtRisk = percent < minAttendancePercent;
-
                        return (
                           <TableRow key={s.id} className="hover:bg-gold/5 transition-all border-b last:border-0 h-16">
                              <TableCell className="px-6">
@@ -1958,7 +2190,6 @@ function AdminDashboard() {
            </div>
         </div>
       )}
-
       {/* COMPACT ASSIGNMENT HUB */}
       {view === "assignments" && (
         <div className="space-y-6">
@@ -1982,7 +2213,6 @@ function AdminDashboard() {
                  </Button>
               </div>
            </div>
-
            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {allAssignments.filter(a => a.title.toLowerCase().includes(assignmentSearch.toLowerCase())).map(task => (
                  <div key={task.id} className="bg-white rounded-3xl border hover:border-gold/50 p-6 shadow-sm transition-all group relative overflow-hidden flex flex-col">
@@ -2019,7 +2249,6 @@ function AdminDashboard() {
            </div>
         </div>
       )}
-
       {/* COMPACT TRANSACTIONS */}
       {view === "transactions" && (
         <div className="space-y-6">
@@ -2040,7 +2269,6 @@ function AdminDashboard() {
                  </div>
               </div>
            </div>
-
            <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
               <Table>
                  <TableHeader className="bg-secondary/5">
@@ -2097,7 +2325,6 @@ function AdminDashboard() {
            </div>
         </div>
       )}
-
       {/* COMPACT PORTAL SETTINGS */}
       {view === "settings" && (
          <div className="space-y-6">
@@ -2107,7 +2334,6 @@ function AdminDashboard() {
                   e.preventDefault();
                   const fd = new FormData(e.currentTarget);
                   const rawData = Object.fromEntries(fd);
-                  
                   // Construct college-wise fees object
                   const collegeFeesObj: Record<string, number> = {};
                   for (const key in rawData) {
@@ -2119,7 +2345,6 @@ function AdminDashboard() {
                         }
                      }
                   }
-
                   const payload = {
                      id: 'global',
                      company_name: rawData.company_name,
@@ -2131,13 +2356,11 @@ function AdminDashboard() {
                      registration_fee: Number(rawData.registration_fee || 150),
                      college_fees: collegeFeesObj
                   };
-
                   setBusy(true);
                   const { error } = await supabase.from("portal_settings").upsert(payload);
                   setBusy(false);
                   if(!error) { toast.success("Settings Updated!"); fetchData(); }
                }} className="space-y-8">
-                  
                   <div className="grid md:grid-cols-2 gap-8">
                      {/* Company Details */}
                      <div className="space-y-4">
@@ -2163,7 +2386,6 @@ function AdminDashboard() {
                            </div>
                         </div>
                      </div>
-
                      {/* Authentication Details */}
                      <div className="space-y-4">
                         <h3 className="text-[10px] font-black uppercase text-gold tracking-[0.2em] border-b pb-2">Document Authentication</h3>
@@ -2185,7 +2407,6 @@ function AdminDashboard() {
                         </div>
                      </div>
                   </div>
-
                   {/* Fee Configurations */}
                   <div className="space-y-4 border-t pt-6">
                      <h3 className="text-[10px] font-black uppercase text-gold tracking-[0.2em] border-b pb-2">Registration Fee Configurations</h3>
@@ -2202,7 +2423,6 @@ function AdminDashboard() {
                            <p className="text-[9px] font-medium text-slate-400">Used as fallback if college-wise fee is not set.</p>
                         </div>
                      </div>
-
                      <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4 mt-4">
                         <div>
                            <h4 className="text-xs font-black text-navy uppercase tracking-tight">College-wise Fee Customization</h4>
@@ -2210,7 +2430,6 @@ function AdminDashboard() {
                               Set specific registration fees per institution. Leave empty to use the default fee.
                            </p>
                         </div>
-
                         <div className="grid md:grid-cols-2 gap-4 max-h-[300px] overflow-y-auto pr-2">
                            {universities.map(uni => (
                               <div key={uni.id} className="bg-white p-4 rounded-xl border space-y-3">
@@ -2239,7 +2458,6 @@ function AdminDashboard() {
                         </div>
                      </div>
                   </div>
-
                   <div className="pt-6 border-t flex justify-end">
                      <Button type="submit" disabled={busy} className="bg-navy text-white px-12 h-12 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-2">
                         {busy ? <Loader2 className="animate-spin" /> : <><CheckCircle2 size={18} /> Save Portal Configuration</>}
@@ -2249,7 +2467,6 @@ function AdminDashboard() {
             </div>
          </div>
       )}
-
       {/* ONLINE LECTURES PANEL */}
       {/* ============ STUDENT LEADS VIEW ============ */}
       {view === "leads" && (() => {
@@ -2261,19 +2478,15 @@ function AdminDashboard() {
             (lead.university_roll_number||"").toLowerCase().includes(q) ||
             (lead.college_name||"").toLowerCase().includes(q) ||
             (lead.program||"").toLowerCase().includes(q);
-          
           let matchStatus = true;
           if (leadsStatusFilter === "paid") matchStatus = !!lead.is_claimed;
           else if (leadsStatusFilter === "pending") matchStatus = !lead.is_claimed;
-
           return matchSearch && matchStatus;
         });
-
         const totalLeads = leads.length;
         const paidLeads = leads.filter(l => l.is_claimed).length;
         const pendingLeads = leads.filter(l => !l.is_claimed).length;
         const paymentsForLeads = payments.filter(p => p.status === "Paid").length;
-
         return (
           <div className="space-y-5">
             {/* Stats Cards */}
@@ -2295,7 +2508,6 @@ function AdminDashboard() {
                 </div>
               ))}
             </div>
-
             {/* Toolbar */}
             <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-base font-black text-navy-deep uppercase tracking-tight">All Registration Leads</h2>
@@ -2348,7 +2560,6 @@ function AdminDashboard() {
                 </Button>
               </div>
             </div>
-
             {/* Leads Table */}
             <div className="bg-white rounded-2xl border shadow-sm overflow-hidden overflow-x-auto">
               <Table>
@@ -2465,7 +2676,6 @@ function AdminDashboard() {
                 </TableBody>
               </Table>
             </div>
-
             {/* Footer Count */}
             <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
               Showing {filteredLeads.length} of {totalLeads} lead records
@@ -2473,12 +2683,10 @@ function AdminDashboard() {
           </div>
         );
       })()}
-
       {view === "marketing" && (
         <div className="space-y-6">
           {/* Main Layout Grid */}
           <div className="grid md:grid-cols-2 gap-6">
-            
             {/* LEFT COLUMN: DRAFT TEMPLATE */}
             <div className="bg-white p-6 rounded-2xl border shadow-sm space-y-4">
               <div>
@@ -2489,7 +2697,6 @@ function AdminDashboard() {
                   Draft your email campaign with dynamic variable support
                 </p>
               </div>
-
               <div className="space-y-1">
                 <Label className="font-black text-[9px] uppercase tracking-widest">Email Subject *</Label>
                 <Input
@@ -2500,7 +2707,6 @@ function AdminDashboard() {
                   disabled={queueStatus === "sending"}
                 />
               </div>
-
               <div className="space-y-1">
                 <Label className="font-black text-[9px] uppercase tracking-widest">Message Body (Plain Text or HTML) *</Label>
                 <Textarea
@@ -2511,7 +2717,6 @@ function AdminDashboard() {
                   disabled={queueStatus === "sending"}
                 />
               </div>
-
               {/* Variable Placeholders Helper Box */}
               <div className="bg-slate-50 p-4 rounded-xl border border-dashed">
                 <h3 className="text-[9.5px] font-black text-navy uppercase mb-2 flex items-center gap-1.5">
@@ -2545,10 +2750,8 @@ function AdminDashboard() {
                 )}
               </div>
             </div>
-
             {/* RIGHT COLUMN: RECIPIENTS & PREVIEW */}
             <div className="space-y-6">
-              
               {/* CSV Upload Card */}
               <div className="bg-white p-6 rounded-2xl border shadow-sm space-y-4">
                 <div>
@@ -2559,7 +2762,6 @@ function AdminDashboard() {
                     Upload a CSV containing your subscribers' details
                   </p>
                 </div>
-
                 <div className="relative border-2 border-dashed border-slate-200 rounded-2xl hover:border-gold transition-all duration-300 group">
                   <input
                     type="file"
@@ -2600,7 +2802,6 @@ function AdminDashboard() {
                     </div>
                   </div>
                 </div>
-
                 {csvData.length > 0 && (
                   <div className="space-y-2 pt-2 border-t border-slate-100">
                     <div className="flex items-center justify-between">
@@ -2624,7 +2825,6 @@ function AdminDashboard() {
                         Clear List
                       </Button>
                     </div>
-                    
                     <div className="border rounded-xl overflow-hidden max-h-32 overflow-y-auto">
                       <Table>
                         <TableHeader className="bg-slate-50 sticky top-0 z-20">
@@ -2657,7 +2857,6 @@ function AdminDashboard() {
                   </div>
                 )}
               </div>
-
               {/* Template Live Preview Card */}
               {csvData.length > 0 && (
                 <div className="bg-white p-6 rounded-2xl border shadow-sm space-y-4">
@@ -2670,7 +2869,6 @@ function AdminDashboard() {
                         Preview personalized email compilation
                       </p>
                     </div>
-                    
                     {/* Navigation Controls */}
                     <div className="flex items-center gap-1">
                       <Button
@@ -2680,7 +2878,6 @@ function AdminDashboard() {
                         onClick={() => setPreviewIndex(prev => Math.max(0, prev - 1))}
                         disabled={previewIndex === 0}
                       >
-                        ◀
                       </Button>
                       <span className="text-[10px] font-black text-navy-deep font-mono px-2">
                         {previewIndex + 1} / {csvData.length}
@@ -2692,11 +2889,9 @@ function AdminDashboard() {
                         onClick={() => setPreviewIndex(prev => Math.min(csvData.length - 1, prev + 1))}
                         disabled={previewIndex === csvData.length - 1}
                       >
-                        ▶
                       </Button>
                     </div>
                   </div>
-
                   <div className="bg-slate-50 border rounded-2xl overflow-hidden shadow-inner">
                     {/* Simulated Header */}
                     <div className="bg-navy-deep p-4 text-white border-b border-slate-100 flex items-center justify-between">
@@ -2714,7 +2909,6 @@ function AdminDashboard() {
                         Preview Mode
                       </span>
                     </div>
-
                     <div className="p-5 space-y-4">
                       {/* Subject Preview */}
                       <div className="space-y-0.5 border-b pb-3 border-slate-200/50">
@@ -2723,7 +2917,6 @@ function AdminDashboard() {
                           {compileTemplate(mailSubject, csvData[previewIndex]) || "(Enter a subject)"}
                         </h4>
                       </div>
-
                       {/* Body Preview */}
                       <div className="space-y-1 min-h-[140px] text-xs text-slate-700 leading-relaxed font-medium whitespace-pre-line">
                         {compileTemplate(mailTemplate, csvData[previewIndex]) || "(Enter a message template)"}
@@ -2734,11 +2927,9 @@ function AdminDashboard() {
               )}
             </div>
           </div>
-
           {/* FULL-WIDTH BOTTOM CARD: CAMPAIGN LAUNCHPAD & REPORT */}
           {csvData.length > 0 && (
             <div className="bg-white p-6 rounded-2xl border shadow-sm space-y-6">
-              
               {/* Campaign Controls */}
               <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-5 border-slate-100">
                 <div className="space-y-1">
@@ -2749,7 +2940,6 @@ function AdminDashboard() {
                     Coordinate bulk email distribution
                   </p>
                 </div>
-
                 <div className="flex items-center gap-3">
                   {queueStatus === "idle" && (
                     <Button
@@ -2763,10 +2953,8 @@ function AdminDashboard() {
                       }}
                       className="h-10 px-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg flex items-center gap-2"
                     >
-                      🚀 Start Campaign
                     </Button>
                   )}
-
                   {queueStatus === "sending" && (
                     <Button
                       onClick={() => {
@@ -2775,10 +2963,8 @@ function AdminDashboard() {
                       }}
                       className="h-10 px-8 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg flex items-center gap-2"
                     >
-                      ⏸ Pause Campaign
                     </Button>
                   )}
-
                   {queueStatus === "paused" && (
                     <Button
                       onClick={() => {
@@ -2787,10 +2973,8 @@ function AdminDashboard() {
                       }}
                       className="h-10 px-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg flex items-center gap-2"
                     >
-                      ▶ Resume Campaign
                     </Button>
                   )}
-
                   {(queueStatus === "sending" || queueStatus === "paused" || queueStatus === "completed") && (
                     <Button
                       onClick={() => {
@@ -2803,15 +2987,12 @@ function AdminDashboard() {
                       variant="outline"
                       className="h-10 px-6 border-2 rounded-xl text-navy hover:bg-gold/10 font-black uppercase text-[10px] tracking-widest"
                     >
-                      🔄 Reset Queue
                     </Button>
                   )}
                 </div>
               </div>
-
               {/* Progress Panel */}
               <div className="grid md:grid-cols-4 gap-6">
-                
                 {/* Stats Counters */}
                 <div className="md:col-span-1 grid grid-cols-3 gap-2">
                   <div className="bg-slate-50 border p-3 rounded-xl text-center">
@@ -2833,7 +3014,6 @@ function AdminDashboard() {
                     </div>
                   </div>
                 </div>
-
                 {/* Progress bar */}
                 <div className="md:col-span-3 space-y-2 flex flex-col justify-center">
                   <div className="flex justify-between items-center text-[10px] font-black text-navy-deep uppercase tracking-widest">
@@ -2850,7 +3030,6 @@ function AdminDashboard() {
                   </div>
                 </div>
               </div>
-
               {/* Delivery Logs */}
               {queueResults.length > 0 && (
                 <div className="space-y-3 pt-3 border-t">
@@ -2925,7 +3104,6 @@ function AdminDashboard() {
                   </Button>
                </div>
             </div>
-
             {loadingTrainings ? (
                <div className="text-center py-20 bg-white rounded-2xl border shadow-sm">
                   <Loader2 className="animate-spin size-8 text-gold mx-auto mb-2" />
@@ -2949,7 +3127,6 @@ function AdminDashboard() {
                            <h3 className="font-display font-black text-navy-deep text-sm uppercase tracking-tight mb-2">{t.name}</h3>
                            <div className="text-[10px] font-bold text-slate-400 mb-2 flex items-center gap-1"><Calendar className="size-3"/> {t.start_date ? new Date(t.start_date).toLocaleDateString() : 'TBA'} - {t.end_date ? new Date(t.end_date).toLocaleDateString() : 'TBA'}</div>
                            <div className="text-[11px] font-black text-green-600 mb-4">₹{(t.fee ?? 999).toLocaleString('en-IN')} <span className="text-slate-400 font-medium text-[9px]">/enrollment</span></div>
-                           
                            <div className="mt-auto pt-4 border-t flex items-center justify-between">
                               <Button size="sm" variant="outline" className="h-8 text-[9px] font-black uppercase tracking-widest" onClick={() => { setViewingTraining(t); fetchTrainingLecturesForAdmin(t.id); }}>
                                  Sessions
@@ -3049,7 +3226,6 @@ function AdminDashboard() {
             )}
          </div>
       )}
-
       {view === "lectures" && (
          <div className="space-y-6">
             <div className="bg-white p-5 rounded-2xl border shadow-sm flex flex-wrap items-center justify-between gap-4">
@@ -3071,7 +3247,6 @@ function AdminDashboard() {
                   <Plus size={16} /> New Lecture
                </Button>
             </div>
-
             {loadingLectures ? (
                <div className="text-center py-20 bg-white rounded-2xl border shadow-sm">
                   <Loader2 className="animate-spin size-8 text-gold mx-auto mb-2" />
@@ -3101,9 +3276,7 @@ function AdminDashboard() {
                      } catch (e) {
                         // Fallback for raw string description
                      }
-
                      const ytVideoId = getYouTubeId(l.link);
-
                      return (
                         <div key={l.id} className="group overflow-hidden rounded-2xl border bg-white shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-full">
                            <div>
@@ -3123,26 +3296,22 @@ function AdminDashboard() {
                                        <span className="text-[10px] font-mono text-muted-foreground block truncate max-w-[200px]">{l.link}</span>
                                     </div>
                                  )}
-
                                  {modeName && (
                                     <div className="absolute top-3 right-3 rounded-md bg-navy/80 px-2 py-0.5 text-[9px] font-bold text-white uppercase tracking-wider">
                                        {modeName}
                                     </div>
                                  )}
-
                                  {domainName && (
                                     <div className="absolute bottom-3 left-3 rounded-md bg-gold px-2 py-0.5 text-[9px] font-black text-navy-deep uppercase tracking-wider">
                                        {domainName}
                                     </div>
                                  )}
                               </div>
-
                               <div className="p-5 space-y-2">
                                  <h3 className="font-display font-black text-navy-deep text-sm line-clamp-1 uppercase tracking-tight">{l.title}</h3>
                                  <p className="text-xs text-slate-500 line-clamp-3 leading-relaxed">{descText || "No description provided."}</p>
                               </div>
                            </div>
-
                            <div className="p-5 pt-0 mt-2 space-y-4">
                               {(pdfUrl || materialLink) && (
                                  <div className="flex flex-wrap gap-2 border-t pt-3 border-slate-50">
@@ -3158,7 +3327,6 @@ function AdminDashboard() {
                                     )}
                                  </div>
                               )}
-
                               <div className="flex items-center justify-between border-t pt-3 border-slate-100">
                                  <div className="text-[9px] font-bold text-slate-400">
                                     {new Date(l.created_at).toLocaleDateString()}
@@ -3180,7 +3348,6 @@ function AdminDashboard() {
                                        } catch (e) {
                                           // fallback
                                        }
-
                                        setSelectedLecture(l);
                                        setEditLectureTitle(l.title || "");
                                        setEditLectureDomain(domainName);
@@ -3189,7 +3356,6 @@ function AdminDashboard() {
                                        setEditLectureExistingPdfUrl(pdfUrl);
                                        setEditLectureMaterialLink(materialLink);
                                        setEditLectureMaterialPdf(null);
-
                                        const standardModes = ["Online", "YouTube", "Google Meet"];
                                        if (standardModes.includes(modeName)) {
                                           setEditLectureMode(modeName);
@@ -3198,7 +3364,6 @@ function AdminDashboard() {
                                           setEditLectureMode("Other");
                                           setEditLectureModeCustom(modeName);
                                        }
-
                                        setIsEditLectureOpen(true);
                                     }}>
                                        Edit
@@ -3216,7 +3381,6 @@ function AdminDashboard() {
             )}
          </div>
       )}
-
       {/* Student Form Dialog */}
       <Dialog open={isAddDialogOpen || isEditDialogOpen} onOpenChange={(o) => { if(!o) { setIsAddDialogOpen(false); setIsEditDialogOpen(false); setSelectedStudent(null); } }}>
          <DialogContent className="max-w-5xl rounded-3xl p-0 border-none shadow-2xl overflow-hidden bg-white">
@@ -3226,7 +3390,6 @@ function AdminDashboard() {
                   <h2 className="text-3xl font-black uppercase tracking-tighter leading-none mb-1">{selectedStudent ? "Update Record" : "Enrollment Control"}</h2>
                   <p className="text-[10px] font-bold text-gold uppercase tracking-[0.3em] opacity-80">Manual Student Provisioning System</p>
                </div>
-               <Button size="icon" variant="ghost" className="text-white/40 hover:text-white relative z-10" onClick={() => { setIsAddDialogOpen(false); setIsEditDialogOpen(false); }}>✕</Button>
             </div>
             <form onSubmit={onSaveStudent} className="grid md:grid-cols-3 gap-6 p-10 max-h-[70vh] overflow-y-auto">
                 <div className="space-y-1"><Label className="font-black text-[9px] uppercase">Name *</Label><Input name="full_name" defaultValue={selectedStudent?.full_name} required className="h-10 rounded-xl font-bold bg-secondary/5 text-xs" /></div>
@@ -3235,7 +3398,6 @@ function AdminDashboard() {
                 <div className="space-y-1"><Label className="font-black text-[9px] uppercase">Gender</Label><select name="gender" defaultValue={selectedStudent?.gender} className="w-full h-10 border rounded-xl px-3 font-bold text-xs bg-secondary/5"><option value="Male">MALE</option><option value="Female">FEMALE</option></select></div>
                 <div className="space-y-1"><Label className="font-black text-[9px] uppercase">Parent</Label><Input name="parent_name" defaultValue={selectedStudent?.parent_name} className="h-10 border rounded-xl font-bold bg-secondary/5 text-xs" /></div>
                 <div className="space-y-1">
-                   <Label className="font-black text-[9px] uppercase text-slate-500">State (राज्य) *</Label>
                    <select
                      className="w-full h-10 border rounded-xl px-3 font-black text-xs bg-secondary/5"
                      value={studentStateFilter}
@@ -3254,7 +3416,6 @@ function AdminDashboard() {
                 <div className="space-y-1"><Label className="font-black text-[9px] uppercase">Roll No *</Label><Input name="university_roll_number" defaultValue={selectedStudent?.university_roll_number} required className="h-10 rounded-xl font-mono text-xs" /></div>
                 <div className="space-y-1"><Label className="font-black text-[9px] uppercase">Semester *</Label><Input name="semester" defaultValue={selectedStudent?.semester} required placeholder="e.g. 4th" className="h-10 rounded-xl text-xs" /></div>
                 <div className="space-y-1"><Label className="font-black text-[9px] uppercase text-navy">Internship *</Label><select name="program" defaultValue={selectedStudent?.program} className="w-full h-10 border-2 border-navy/20 rounded-xl px-3 font-black text-xs bg-navy/5">{internships.map(i => <option key={i.id} value={i.title}>{i.title}</option>)}</select></div>
-                <div className="space-y-1"><Label className="font-black text-[9px] uppercase">Password</Label><Input name="password" type="password" placeholder="••••••••" className="h-10 rounded-xl text-xs" /></div>
                 <div className="pt-6 md:col-span-3 flex justify-end gap-3 border-t">
                   <Button type="button" variant="ghost" onClick={() => { setIsAddDialogOpen(false); setIsEditDialogOpen(false); }} className="px-6 text-[10px] uppercase font-black" disabled={busy}>Abort</Button>
                   <Button type="submit" disabled={busy} className="bg-navy text-white px-10 h-11 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl">
@@ -3264,7 +3425,6 @@ function AdminDashboard() {
              </form>
          </DialogContent>
       </Dialog>
-
       {/* Manual Modal (Staging) */}
       <Dialog open={isAddPreRegOpen || isEditPreRegOpen} onOpenChange={(o) => { if(!o) { setIsAddPreRegOpen(false); setIsEditPreRegOpen(false); setSelectedPreReg(null); } }}>
          <DialogContent className="max-w-4xl rounded-2xl p-6">
@@ -3288,18 +3448,14 @@ function AdminDashboard() {
                   </select>
                </div>
                <div className="space-y-1"><Label className="text-[9px] uppercase">Father's Name *</Label><Input name="parent_name" defaultValue={selectedPreReg?.parent_name} required className="h-9 rounded-xl text-xs" /></div>
-               
                <div className="space-y-1"><Label className="text-[9px] uppercase">Mobile No *</Label><Input name="contact_number" defaultValue={selectedPreReg?.contact_number} required className="h-9 rounded-xl text-xs" /></div>
                <div className="space-y-1"><Label className="text-[9px] uppercase">Email Address *</Label><Input name="email" defaultValue={selectedPreReg?.email} type="email" required className="h-9 rounded-xl text-xs" /></div>
                <div className="space-y-1"><Label className="text-[9px] uppercase">University Name *</Label><Input name="university_name" defaultValue={selectedPreReg?.university_name} required className="h-9 rounded-xl text-xs" /></div>
-               
                <div className="space-y-1"><Label className="text-[9px] uppercase">College Name *</Label><Input name="college_name" defaultValue={selectedPreReg?.college_name} required className="h-9 rounded-xl text-xs" /></div>
                <div className="space-y-1"><Label className="text-[9px] uppercase">Branch *</Label><Input name="department" defaultValue={selectedPreReg?.department} required className="h-9 rounded-xl text-xs" /></div>
                <div className="space-y-1"><Label className="text-[9px] uppercase">Degree *</Label><Input name="degree" defaultValue={selectedPreReg?.degree} required className="h-9 rounded-xl text-xs" /></div>
-               
                <div className="space-y-1"><Label className="text-[9px] uppercase">Roll Number *</Label><Input name="university_roll_number" defaultValue={selectedPreReg?.university_roll_number} required className="h-9 rounded-xl text-xs font-mono" /></div>
                <div className="space-y-1"><Label className="text-[9px] uppercase">Semester *</Label><Input name="semester" defaultValue={selectedPreReg?.semester} required className="h-9 rounded-xl text-xs" /></div>
-               
                <div className="pt-6 md:col-span-3 flex justify-end gap-3 border-t">
                   <Button type="button" variant="ghost" onClick={() => { setIsAddPreRegOpen(false); setIsEditPreRegOpen(false); }} className="text-xs uppercase font-black">Cancel</Button>
                   <Button type="submit" className="bg-navy text-white px-8 h-10 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg">COMMIT TO STAGING</Button>
@@ -3307,7 +3463,6 @@ function AdminDashboard() {
             </form>
          </DialogContent>
       </Dialog>
-
       <Dialog open={isAddUniOpen || isEditUniOpen} onOpenChange={(o) => { if(!o) { setIsAddUniOpen(false); setIsEditUniOpen(false); setSelectedUniForCollege(null); setUniStateForDialog(""); } }}>
          <DialogContent className="max-w-md rounded-2xl p-6">
             <DialogHeader><DialogTitle className="text-lg font-black text-[#1e40af] uppercase">{selectedUniForCollege ? "Edit University" : "Add University"}</DialogTitle></DialogHeader>
@@ -3327,7 +3482,6 @@ function AdminDashboard() {
                  <Input name="name" defaultValue={selectedUniForCollege?.name} required className="h-10 rounded-xl text-xs" />
                </div>
                <div className="space-y-1">
-                 <Label className="text-[9px] uppercase font-black text-[#1e40af]">State (राज्य) *</Label>
                  <select
                    value={uniStateForDialog}
                    onChange={(e) => setUniStateForDialog(e.target.value)}
@@ -3345,7 +3499,6 @@ function AdminDashboard() {
             </form>
          </DialogContent>
       </Dialog>
-
       <Dialog open={isAddCollegeOpen || isEditColOpen} onOpenChange={(o) => { if(!o) { setIsAddCollegeOpen(false); setIsEditColOpen(false); setSelectedColForStructure(null); } }}>
          <DialogContent className="max-w-md rounded-2xl p-6">
             <DialogHeader><DialogTitle className="text-lg font-black text-[#1e40af] uppercase">{selectedColForStructure ? "Edit College" : "Add College"}</DialogTitle></DialogHeader>
@@ -3362,7 +3515,6 @@ function AdminDashboard() {
             </form>
          </DialogContent>
       </Dialog>
-
       <Dialog open={isAddCourseOpen} onOpenChange={setIsAddCourseOpen}>
          <DialogContent className="max-w-4xl rounded-3xl p-0 border-4 border-gold/5 shadow-2xl overflow-hidden bg-white">
             <div className="bg-navy p-6 text-white flex items-center justify-between">
@@ -3370,7 +3522,6 @@ function AdminDashboard() {
                   <h2 className="text-xl font-black uppercase tracking-tighter">Academic Management</h2>
                   <p className="text-[10px] font-bold text-gold uppercase tracking-widest">{selectedColForStructure?.name}</p>
                </div>
-               <Button size="icon" variant="ghost" className="text-white/40 hover:text-white" onClick={() => setIsAddCourseOpen(false)}>✕</Button>
             </div>
             <div className="p-8 grid md:grid-cols-3 gap-6">
                 <div className="space-y-4 bg-secondary/5 p-5 rounded-2xl border">
@@ -3432,7 +3583,6 @@ function AdminDashboard() {
             <div className="p-6 bg-secondary/5 border-t flex justify-end"><Button onClick={() => setIsAddCourseOpen(false)} className="bg-navy text-white px-10 h-10 rounded-xl font-black text-[10px] uppercase tracking-widest">Close</Button></div>
          </DialogContent>
       </Dialog>
-
       <Dialog open={isInternshipDialogOpen} onOpenChange={setIsInternshipDialogOpen}>
          <DialogContent className="max-w-xl bg-white rounded-2xl p-6">
             <DialogHeader><DialogTitle className="text-xl font-black text-navy-deep border-b pb-2 uppercase tracking-tighter">{selectedInternship ? "Update Domain" : "New Domain"}</DialogTitle></DialogHeader>
@@ -3446,7 +3596,6 @@ function AdminDashboard() {
             </form>
          </DialogContent>
       </Dialog>
-
       <Dialog open={!!viewingPreReg} onOpenChange={(o) => !o && setViewingPreReg(null)}>
          <DialogContent className="max-w-3xl rounded-2xl p-0 overflow-hidden border-none shadow-2xl bg-white">
             <DialogHeader className="sr-only">
@@ -3458,7 +3607,6 @@ function AdminDashboard() {
                   <h2 className="text-xl font-black uppercase tracking-tighter">Staging Record Details</h2>
                   <p className="text-[9px] font-bold text-gold uppercase tracking-widest mt-1">Status: {viewingPreReg?.is_claimed ? "Claimed" : "Pending Registration"}</p>
                </div>
-               <Button size="icon" variant="ghost" className="text-white/40 hover:text-white" onClick={() => setViewingPreReg(null)}>✕</Button>
             </div>
             {viewingPreReg && (
                <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
@@ -3475,7 +3623,6 @@ function AdminDashboard() {
                         <div className="text-[8px] font-black opacity-40 uppercase tracking-widest mb-1">Father's Name</div>
                         <div className="text-xs font-bold text-navy-deep uppercase">{viewingPreReg.parent_name || "—"}</div>
                      </div>
-
                      <div className="bg-secondary/5 p-3 rounded-xl border">
                         <div className="text-[8px] font-black opacity-40 uppercase tracking-widest mb-1">Mobile No</div>
                         <div className="text-xs font-bold text-navy-deep font-mono">{viewingPreReg.contact_number || "—"}</div>
@@ -3484,7 +3631,6 @@ function AdminDashboard() {
                         <div className="text-[8px] font-black opacity-40 uppercase tracking-widest mb-1">Email Address</div>
                         <div className="text-xs font-bold text-navy-deep">{viewingPreReg.email || "—"}</div>
                      </div>
-
                      <div className="bg-secondary/5 p-3 rounded-xl border col-span-2">
                         <div className="text-[8px] font-black opacity-40 uppercase tracking-widest mb-1">University Name</div>
                         <div className="text-xs font-bold text-slate-600 uppercase">{viewingPreReg.university_name || "—"}</div>
@@ -3493,7 +3639,6 @@ function AdminDashboard() {
                         <div className="text-[8px] font-black opacity-40 uppercase tracking-widest mb-1">Degree</div>
                         <div className="text-xs font-bold text-navy-deep uppercase">{viewingPreReg.degree || "—"}</div>
                      </div>
-
                      <div className="bg-secondary/5 p-3 rounded-xl border col-span-2">
                         <div className="text-[8px] font-black opacity-40 uppercase tracking-widest mb-1">College Name</div>
                         <div className="text-xs font-bold text-slate-600 uppercase">{viewingPreReg.college_name || "—"}</div>
@@ -3502,7 +3647,6 @@ function AdminDashboard() {
                         <div className="text-[8px] font-black opacity-40 uppercase tracking-widest mb-1">Branch</div>
                         <div className="text-xs font-bold text-navy-deep uppercase">{viewingPreReg.department || "—"}</div>
                      </div>
-
                      <div className="bg-secondary/5 p-3 rounded-xl border">
                         <div className="text-[8px] font-black opacity-40 uppercase tracking-widest mb-1">Roll Number</div>
                         <div className="text-xs font-black text-gold font-mono">{viewingPreReg.university_roll_number}</div>
@@ -3521,7 +3665,6 @@ function AdminDashboard() {
             )}
          </DialogContent>
       </Dialog>
-
       {/* View Student Full Profile Dialog */}
       <Dialog open={!!viewingStudent} onOpenChange={(o) => !o && setViewingStudent(null)}>
          <DialogContent className="max-w-4xl rounded-3xl p-0 overflow-hidden border-none shadow-2xl bg-white max-h-[90vh] flex flex-col">
@@ -3543,7 +3686,6 @@ function AdminDashboard() {
                   </p>
                </div>
             </div>
-
             <div className="p-8 overflow-y-auto flex-1 space-y-8">
                {/* 01 — Personal & Academic Overview */}
                <div className="grid md:grid-cols-2 gap-8">
@@ -3568,7 +3710,6 @@ function AdminDashboard() {
                         </div>
                      </div>
                   </div>
-
                   <div className="space-y-4">
                      <h3 className="text-[10px] font-black uppercase text-navy/40 border-b pb-1">Academic Credentials</h3>
                      <div className="space-y-3">
@@ -3597,7 +3738,6 @@ function AdminDashboard() {
                      </div>
                   </div>
                </div>
-
                {/* 02 — Professional & Location */}
                <div className="grid md:grid-cols-2 gap-8">
                   <div className="space-y-4">
@@ -3633,7 +3773,6 @@ function AdminDashboard() {
                         </div>
                      </div>
                   </div>
-
                   <div className="space-y-4">
                      <h3 className="text-[10px] font-black uppercase text-navy/40 border-b pb-1">Address Details</h3>
                      <div className="space-y-3">
@@ -3659,7 +3798,6 @@ function AdminDashboard() {
                   </div>
                </div>
             </div>
-
             <div className="p-6 bg-secondary/5 border-t flex justify-between items-center flex-shrink-0">
                <div className="flex items-center gap-2 text-[10px] font-black uppercase text-navy/40">
                   <Clock size={14} /> Record created on {new Date(viewingStudent?.created_at).toLocaleDateString()}
@@ -3671,7 +3809,6 @@ function AdminDashboard() {
             </div>
          </DialogContent>
       </Dialog>
-
       {/* Bulk Attendance Dialog */}
       <Dialog open={isBulkAttendanceOpen} onOpenChange={setIsBulkAttendanceOpen}>
          <DialogContent className="max-w-4xl rounded-3xl p-0 overflow-hidden border-none shadow-2xl bg-white">
@@ -3680,29 +3817,23 @@ function AdminDashboard() {
                   <h2 className="text-2xl font-black uppercase tracking-tighter leading-none mb-1">Bulk Presence Control</h2>
                   <p className="text-[10px] font-bold text-gold uppercase tracking-widest opacity-80">Mark multiple students present for a specific date</p>
                </div>
-               <Button size="icon" variant="ghost" className="text-white/40 hover:text-white" onClick={() => setIsBulkAttendanceOpen(false)}>✕</Button>
             </div>
-            
             <form onSubmit={async (e) => {
                e.preventDefault();
                const fd = new FormData(e.currentTarget);
                const date = fd.get("date") as string;
                const selectedIds = Array.from(fd.getAll("student_ids")).map(String);
-               
                if(!date || selectedIds.length === 0) {
                   toast.error("Select date and at least one student!");
                   return;
                }
-
                setBusy(true);
                const records = selectedIds.map(id => ({
                   student_id: id,
                   date,
                   status: "present"
                }));
-
                const { error } = await supabase.from("attendance").upsert(records, { onConflict: 'student_id,date' });
-               
                setBusy(false);
                if(!error) {
                   toast.success(`Success! Marked ${selectedIds.length} students present.`);
@@ -3724,7 +3855,6 @@ function AdminDashboard() {
                      </div>
                   </div>
                </div>
-
                <div className="space-y-4">
                   <div className="flex items-center justify-between">
                      <Label className="text-[10px] font-black uppercase tracking-widest text-navy/40">2. Select Students ({students.length})</Label>
@@ -3739,7 +3869,6 @@ function AdminDashboard() {
                         }}>Deselect All</Button>
                      </div>
                   </div>
-                  
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-[30vh] overflow-y-auto p-4 bg-navy/5 rounded-2xl border">
                      {students.map(s => (
                         <label key={s.id} className="flex items-center gap-3 p-3 bg-white rounded-xl border hover:border-gold cursor-pointer transition-all group">
@@ -3752,7 +3881,6 @@ function AdminDashboard() {
                      ))}
                   </div>
                </div>
-
                <div className="flex justify-end gap-3 pt-6 border-t">
                   <Button type="button" variant="ghost" onClick={() => setIsBulkAttendanceOpen(false)} className="px-10 h-12 rounded-xl font-black uppercase text-[10px]">Cancel</Button>
                   <Button type="submit" disabled={busy} className="bg-navy text-white px-12 h-12 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-2">
@@ -3762,7 +3890,6 @@ function AdminDashboard() {
             </form>
          </DialogContent>
       </Dialog>
-
       {/* Assignment Creator Dialog */}
       <Dialog open={isAssignmentDialogOpen} onOpenChange={setIsAssignmentDialogOpen}>
          <DialogContent className="max-w-2xl rounded-3xl p-0 overflow-hidden border-none shadow-2xl bg-white">
@@ -3778,7 +3905,6 @@ function AdminDashboard() {
                e.preventDefault();
                const fd = new FormData(e.currentTarget);
                const data = Object.fromEntries(fd);
-               
                setBusy(true);
                const payload: any = {
                   title: data.title,
@@ -3786,11 +3912,8 @@ function AdminDashboard() {
                   due_date: data.due_date,
                   domain: data.domain || "Global",
                };
-
                if (selectedAssignment) payload.id = selectedAssignment.id;
-
                const { error } = await supabase.from("assignments").upsert(payload);
-               
                setBusy(false);
                if (!error) {
                   toast.success(selectedAssignment ? "Assignment Updated!" : "Task Deployed to Students!");
@@ -3805,7 +3928,6 @@ function AdminDashboard() {
                      <Label className="text-[10px] font-black uppercase tracking-widest text-navy/40">Assignment Title</Label>
                      <Input name="title" defaultValue={selectedAssignment?.title} placeholder="e.g. Final Project Documentation" required className="h-12 rounded-xl font-bold text-navy border-2 focus:border-gold" />
                   </div>
-                  
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase tracking-widest text-navy/40">Target Internship Domain</Label>
                      <Select name="domain" defaultValue={selectedAssignment?.domain || "Global"}>
@@ -3820,12 +3942,10 @@ function AdminDashboard() {
                         </SelectContent>
                      </Select>
                   </div>
-
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase tracking-widest text-navy/40">Due Date</Label>
                      <Input name="due_date" type="date" defaultValue={selectedAssignment?.due_date} required className="h-12 rounded-xl font-bold text-navy border-2 focus:border-gold" />
                   </div>
-
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase tracking-widest text-navy/40">Detailed Instructions</Label>
                      <textarea 
@@ -3837,7 +3957,6 @@ function AdminDashboard() {
                      />
                   </div>
                </div>
-
                <div className="flex justify-end gap-3 pt-6 border-t">
                   <Button type="button" variant="ghost" onClick={() => setIsAssignmentDialogOpen(false)} className="px-10 h-12 rounded-xl font-black uppercase text-[10px]">Cancel</Button>
                   <Button type="submit" disabled={busy} className="bg-navy text-white px-12 h-12 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-2">
@@ -3847,7 +3966,6 @@ function AdminDashboard() {
             </form>
          </DialogContent>
       </Dialog>
-
       {/* Add Lecture Dialog */}
       <Dialog open={isAddLectureOpen} onOpenChange={(o) => !o && setIsAddLectureOpen(false)}>
          <DialogContent className="max-w-xl rounded-3xl p-0 overflow-hidden border-none shadow-2xl bg-white">
@@ -3855,7 +3973,6 @@ function AdminDashboard() {
                <h2 className="text-xl font-black uppercase tracking-tighter leading-none mb-1">Create Lecture</h2>
                <p className="text-[9px] font-bold text-gold uppercase tracking-widest opacity-80">Publish video classes and study materials to students</p>
             </div>
-            
             <form onSubmit={handleCreateLecture} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
                <div className="space-y-1.5">
                   <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">1. Select Internship Domain *</Label>
@@ -3872,7 +3989,6 @@ function AdminDashboard() {
                      ))}
                   </select>
                </div>
-
                <div className="space-y-1.5">
                   <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">2. Lecture Title *</Label>
                   <Input 
@@ -3883,7 +3999,6 @@ function AdminDashboard() {
                      className="h-10 rounded-xl font-bold text-xs border-2"
                   />
                </div>
-
                <div className="space-y-1.5">
                   <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">3. Description / Topic Outline</Label>
                   <textarea 
@@ -3893,7 +4008,6 @@ function AdminDashboard() {
                      className="w-full h-24 border-2 rounded-xl p-3 text-xs font-bold outline-none focus:border-gold"
                   />
                </div>
-
                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                      <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">4. Lecture Type *</Label>
@@ -3909,7 +4023,6 @@ function AdminDashboard() {
                         <option value="Other">Other (Custom)</option>
                      </select>
                   </div>
-
                   {newLectureMode === "Other" && (
                      <div className="space-y-1.5">
                         <Label className="font-black text-[9px] uppercase tracking-wider text-[#1e40af]">Custom Type Name *</Label>
@@ -3923,7 +4036,6 @@ function AdminDashboard() {
                      </div>
                   )}
                </div>
-
                <div className="space-y-1.5">
                   <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">5. Lecture / Stream Link *</Label>
                   <Input 
@@ -3933,7 +4045,6 @@ function AdminDashboard() {
                      required 
                      className="h-10 rounded-xl font-bold text-xs border-2"
                   />
-
                   {/* YouTube Thumbnail Preview */}
                   {getYouTubeId(newLectureLink) && (
                      <div className="mt-2 p-2 bg-slate-100 rounded-xl border border-dashed text-center">
@@ -3946,7 +4057,6 @@ function AdminDashboard() {
                      </div>
                   )}
                </div>
-
                <div className="space-y-1.5 border-t pt-3">
                   <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">6. Upload Study Material PDF (Max 80MB)</Label>
                   <input 
@@ -3966,7 +4076,6 @@ function AdminDashboard() {
                      className="w-full text-xs font-bold bg-slate-50 p-2 border-2 border-dashed rounded-xl cursor-pointer"
                   />
                </div>
-
                <div className="space-y-1.5">
                   <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">7. Additional Reference Link (Optional)</Label>
                   <Input 
@@ -3976,7 +4085,6 @@ function AdminDashboard() {
                      className="h-10 rounded-xl font-bold text-xs border-2"
                   />
                </div>
-
                <div className="flex justify-end gap-3 pt-4 border-t">
                   <Button type="button" variant="ghost" onClick={() => setIsAddLectureOpen(false)} className="px-6 h-10 rounded-xl font-black text-[9px] uppercase">Cancel</Button>
                   <Button type="submit" disabled={savingLecture} className="bg-navy text-white px-10 h-10 rounded-xl font-black text-[9px] uppercase tracking-widest shadow-xl">
@@ -3986,7 +4094,6 @@ function AdminDashboard() {
             </form>
          </DialogContent>
       </Dialog>
-
       {/* Edit Lecture Dialog */}
       <Dialog open={isEditLectureOpen} onOpenChange={(o) => !o && setIsEditLectureOpen(false)}>
          <DialogContent className="max-w-xl rounded-3xl p-0 overflow-hidden border-none shadow-2xl bg-white">
@@ -3994,7 +4101,6 @@ function AdminDashboard() {
                <h2 className="text-xl font-black uppercase tracking-tighter leading-none mb-1">Modify Lecture Details</h2>
                <p className="text-[9px] font-bold text-gold uppercase tracking-widest opacity-80">Edit the video stream details or replace attachments</p>
             </div>
-            
             <form onSubmit={handleUpdateLecture} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
                <div className="space-y-1.5">
                   <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">1. Select Internship Domain *</Label>
@@ -4011,7 +4117,6 @@ function AdminDashboard() {
                      ))}
                   </select>
                </div>
-
                <div className="space-y-1.5">
                   <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">2. Lecture Title *</Label>
                   <Input 
@@ -4022,7 +4127,6 @@ function AdminDashboard() {
                      className="h-10 rounded-xl font-bold text-xs border-2"
                   />
                </div>
-
                <div className="space-y-1.5">
                   <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">3. Description / Topic Outline</Label>
                   <textarea 
@@ -4032,7 +4136,6 @@ function AdminDashboard() {
                      className="w-full h-24 border-2 rounded-xl p-3 text-xs font-bold outline-none focus:border-gold"
                   />
                </div>
-
                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                      <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">4. Lecture Type *</Label>
@@ -4048,7 +4151,6 @@ function AdminDashboard() {
                         <option value="Other">Other (Custom)</option>
                      </select>
                   </div>
-
                   {editLectureMode === "Other" && (
                      <div className="space-y-1.5">
                         <Label className="font-black text-[9px] uppercase tracking-wider text-[#1e40af]">Custom Type Name *</Label>
@@ -4062,7 +4164,6 @@ function AdminDashboard() {
                      </div>
                   )}
                </div>
-
                <div className="space-y-1.5">
                   <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">5. Lecture / Stream Link *</Label>
                   <Input 
@@ -4072,7 +4173,6 @@ function AdminDashboard() {
                      required 
                      className="h-10 rounded-xl font-bold text-xs border-2"
                   />
-
                   {/* YouTube Thumbnail Preview */}
                   {getYouTubeId(editLectureLink) && (
                      <div className="mt-2 p-2 bg-slate-100 rounded-xl border border-dashed text-center">
@@ -4085,12 +4185,10 @@ function AdminDashboard() {
                      </div>
                   )}
                </div>
-
                <div className="space-y-1.5 border-t pt-3">
                   <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">6. Replace Study Material PDF (Max 80MB)</Label>
                   {editLectureExistingPdfUrl && (
                      <div className="text-[10px] text-emerald-700 bg-emerald-50 bg-opacity-10 border border-emerald-100 p-2 rounded-lg flex items-center justify-between mb-2">
-                        <span className="font-bold">✓ Existing material uploaded</span>
                         <a href={editLectureExistingPdfUrl} target="_blank" className="font-black underline hover:text-emerald-800">VIEW PDF</a>
                      </div>
                   )}
@@ -4111,7 +4209,6 @@ function AdminDashboard() {
                      className="w-full text-xs font-bold bg-slate-50 p-2 border-2 border-dashed rounded-xl cursor-pointer"
                   />
                </div>
-
                <div className="space-y-1.5">
                   <Label className="font-black text-[9px] uppercase tracking-wider text-slate-500">7. Additional Reference Link (Optional)</Label>
                   <Input 
@@ -4121,7 +4218,6 @@ function AdminDashboard() {
                      className="h-10 rounded-xl font-bold text-xs border-2"
                   />
                </div>
-
                <div className="flex justify-end gap-3 pt-4 border-t">
                   <Button type="button" variant="ghost" onClick={() => setIsEditLectureOpen(false)} className="px-6 h-10 rounded-xl font-black text-[9px] uppercase">Cancel</Button>
                   <Button type="submit" disabled={savingLecture} className="bg-navy text-white px-10 h-10 rounded-xl font-black text-[9px] uppercase tracking-widest shadow-xl">
@@ -4248,7 +4344,6 @@ function AdminDashboard() {
             </form>
          </DialogContent>
       </Dialog>
-
       <Dialog open={!!viewingTraining} onOpenChange={(o) => !o && setViewingTraining(null)}>
          <DialogContent className="max-w-4xl rounded-3xl p-0 overflow-hidden border-none shadow-2xl bg-white">
             <DialogHeader className="bg-navy p-6 pb-8 flex flex-row items-center justify-between">
@@ -4301,7 +4396,6 @@ function AdminDashboard() {
             </div>
          </DialogContent>
       </Dialog>
-
       <Dialog open={isAddTrainingLectureOpen || isEditTrainingLectureOpen} onOpenChange={(o) => { if(!o) { setIsAddTrainingLectureOpen(false); setIsEditTrainingLectureOpen(false); setSelectedTrainingLecture(null); } }}>
          <DialogContent className="max-w-xl rounded-3xl p-0 overflow-hidden border-none shadow-2xl bg-white">
             <DialogHeader className="bg-navy-deep p-6 pb-8">
@@ -4333,9 +4427,479 @@ function AdminDashboard() {
                   </Button>
                </div>
             </form>
-         </DialogContent>
-      </Dialog>
+          </DialogContent>
+       </Dialog>
+      {/* ============ SALES TEAM MANAGEMENT ============ */}
+      {view === "sales" && (
+        <div className="space-y-6">
+          {/* Top action bar with Team Stats */}
+          <div className="bg-white p-6 rounded-2xl border shadow-sm flex flex-wrap items-center justify-between gap-6">
+            <div>
+              <h2 className="text-xl font-black text-navy-deep uppercase tracking-tight flex items-center gap-2">
+                <TrendingUp className="size-5 text-gold animate-pulse" /> Sales Team Management
+              </h2>
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">
+                Monitor performance, assign leads, and manage sales representatives
+              </p>
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-4">
+              {/* General Team Stats */}
+              <div className="flex gap-4 bg-slate-50 p-2 px-4 rounded-xl border border-slate-100">
+                <div className="text-center pr-4 border-r border-slate-200">
+                  <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Total Reps</div>
+                  <div className="text-base font-black text-navy">{salesUsers.length}</div>
+                </div>
+                <div className="text-center pr-4 border-r border-slate-200">
+                  <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Total Assignments</div>
+                  <div className="text-base font-black text-navy">{salesAssignments.length}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Enrolled Sales</div>
+                  <div className="text-base font-black text-green-600">
+                    {salesAssignments.filter(a => a.status === "enrolled").length}
+                  </div>
+                </div>
+              </div>
+              
+              <Button
+                className="h-10 px-6 bg-navy hover:bg-navy/90 text-white rounded-xl font-bold uppercase text-[10px] tracking-widest shadow-md flex items-center gap-2 transition-all active:scale-95"
+                onClick={() => setShowCreateSalesUser(!showCreateSalesUser)}
+              >
+                <UserPlus size={16} /> Create Sales User
+              </Button>
+            </div>
+          </div>
 
+          {/* Create Sales User Inline Form */}
+          {showCreateSalesUser && (
+            <div className="bg-white p-6 rounded-2xl border-2 border-gold/40 shadow-lg animate-in slide-in-from-top duration-300">
+              <h3 className="text-sm font-black text-navy uppercase tracking-tight mb-4 flex items-center gap-2">
+                <UserPlus className="size-4 text-gold" /> New Sales Team Member
+              </h3>
+              <form onSubmit={handleCreateSalesUser} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase text-slate-500">Full Name *</Label>
+                  <Input required value={newSalesName} onChange={e => setNewSalesName(e.target.value)} placeholder="Raj Sharma" className="h-10 rounded-xl font-bold text-xs border-2" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase text-slate-500">Email *</Label>
+                  <Input required type="email" value={newSalesEmail} onChange={e => setNewSalesEmail(e.target.value)} placeholder="sales@example.com" className="h-10 rounded-xl font-bold text-xs border-2" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase text-slate-500">Password *</Label>
+                  <Input required type="password" value={newSalesPassword} onChange={e => setNewSalesPassword(e.target.value)} placeholder="Min 6 characters" className="h-10 rounded-xl font-bold text-xs border-2" />
+                </div>
+                <div className="md:col-span-3 flex gap-3">
+                  <Button type="submit" disabled={creatingSalesUser} className="bg-gold hover:bg-gold/90 text-navy-deep px-8 h-10 rounded-xl font-black text-[9px] uppercase tracking-widest shadow-lg transition-all active:scale-95">
+                    {creatingSalesUser ? <Loader2 className="animate-spin size-4" /> : "Create Sales User"}
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={() => setShowCreateSalesUser(false)} className="h-10 px-6 rounded-xl font-black text-[9px] uppercase">Cancel</Button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Main Dashboard Layout Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Left Column: Team Directory & Manual Assignment */}
+            <div className="lg:col-span-1 space-y-6">
+              
+              {/* Sales Rep Directory */}
+              <div className="bg-white p-5 rounded-2xl border shadow-sm space-y-4">
+                <h3 className="text-xs font-black text-navy uppercase tracking-tight flex items-center gap-2 border-b pb-2">
+                  <Users className="size-4 text-gold" /> Sales Team Directory
+                </h3>
+                
+                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1 animate-in fade-in duration-300">
+                  {loadingSalesUsers ? (
+                    <div className="flex justify-center py-8"><LogoLoader size="sm" /></div>
+                  ) : salesUsers.length === 0 ? (
+                    <p className="text-center py-8 text-muted-foreground font-bold text-xs">
+                      No sales team members yet.
+                    </p>
+                  ) : salesUsers.map(rep => {
+                    const repAssignments = salesAssignments.filter(a => a.sales_rep_id === rep.id);
+                    const isSelected = selectedSalesRep?.id === rep.id;
+                    return (
+                      <div
+                        key={rep.id}
+                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all hover:shadow-md ${isSelected ? "border-gold bg-gold/5 shadow-sm ring-1 ring-gold/20" : "border-slate-100 hover:border-slate-350 bg-white"}`}
+                        onClick={() => { setSelectedSalesRep(rep); setSalesRepHistory([]); fetchSalesRepHistory(rep.id); }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`size-9 rounded-lg grid place-items-center font-black text-sm text-white shadow-md ${isSelected ? "bg-gold text-navy-deep" : "bg-navy"}`}>
+                            {rep.full_name?.charAt(0) || "S"}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-black text-navy-deep uppercase tracking-tight text-xs truncate">{rep.full_name}</div>
+                            <div className="text-[9px] text-muted-foreground font-bold truncate">{rep.email}</div>
+                          </div>
+                        </div>
+                        <div className="flex gap-1.5 mt-3">
+                          <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${isSelected ? "bg-gold/20 text-amber-800 border-gold/30" : "bg-blue-50 text-blue-700 border-blue-200"}`}>
+                            {repAssignments.length} Leads
+                          </span>
+                          <span className="bg-slate-100 text-slate-600 text-[8px] font-black uppercase px-2 py-0.5 rounded-full border border-slate-200">
+                            Rep
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Assign Individual Student to Sales Rep */}
+              <div className="bg-white p-5 rounded-2xl border shadow-sm space-y-4">
+                <h3 className="text-xs font-black text-navy uppercase tracking-tight flex items-center gap-2 border-b pb-2">
+                  <UserPlus className="size-4 text-gold" /> Manual Lead Assignment
+                </h3>
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-black uppercase text-slate-500">Select Student</Label>
+                    <select
+                      className="w-full h-10 rounded-xl border-2 font-bold text-xs px-3 bg-white focus:border-gold outline-none"
+                      value={assignStudentId}
+                      onChange={e => setAssignStudentId(e.target.value)}
+                    >
+                      <option value="">-- Choose a student --</option>
+                      {salesStudents.map(s => (
+                        <option key={s.id} value={s.id}>{s.full_name} ({s.email})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-black uppercase text-slate-500">Assign to Sales Rep</Label>
+                    <select
+                      className="w-full h-10 rounded-xl border-2 font-bold text-xs px-3 bg-white focus:border-gold outline-none"
+                      value={assignSalesRepId}
+                      onChange={e => setAssignSalesRepId(e.target.value)}
+                    >
+                      <option value="">-- Choose a sales rep --</option>
+                      {salesUsers.map(u => (
+                        <option key={u.id} value={u.id}>{u.full_name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <Button
+                    onClick={handleAssignStudent}
+                    disabled={assigningStudent}
+                    className="w-full h-10 bg-navy hover:bg-navy/95 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-md transition-all active:scale-95"
+                  >
+                    {assigningStudent ? <Loader2 className="animate-spin size-4 mx-auto" /> : "Assign Student"}
+                  </Button>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Right Column: Performance detail pane & Bulk distributor */}
+            <div className="lg:col-span-2 space-y-6">
+              
+              {/* Sales Rep Performance Details Panel */}
+              {selectedSalesRep ? (
+                <div className="bg-white rounded-2xl border shadow-sm overflow-hidden transition-all duration-300">
+                  <div className="bg-gradient-to-r from-navy to-blue-800 p-5 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="size-11 rounded-xl bg-white/20 text-white grid place-items-center font-black text-lg">
+                        {selectedSalesRep.full_name?.charAt(0)}
+                      </div>
+                      <div>
+                        <div className="text-white font-black text-sm uppercase tracking-tight">{selectedSalesRep.full_name}</div>
+                        <div className="text-white/60 text-[9px] font-bold">{selectedSalesRep.email}</div>
+                      </div>
+                    </div>
+                    <span className="bg-gold px-2.5 py-0.5 rounded-full text-[8px] font-black text-navy-deep uppercase tracking-widest">
+                      Active Rep Performance
+                    </span>
+                  </div>
+
+                  {/* Date Filter for History */}
+                  <div className="p-4 border-b bg-slate-50 flex flex-wrap gap-4 items-end">
+                    <div className="space-y-1">
+                      <Label className="text-[9px] font-black uppercase text-slate-500">From Date</Label>
+                      <Input type="date" value={salesHistoryStart} onChange={e => { setSalesHistoryStart(e.target.value); fetchSalesRepHistory(selectedSalesRep.id); }} className="h-9 rounded-xl text-xs font-bold border-2 w-36" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[9px] font-black uppercase text-slate-500">To Date</Label>
+                      <Input type="date" value={salesHistoryEnd} onChange={e => { setSalesHistoryEnd(e.target.value); fetchSalesRepHistory(selectedSalesRep.id); }} className="h-9 rounded-xl text-xs font-bold border-2 w-36" />
+                    </div>
+                    <Button variant="outline" className="h-9 px-4 rounded-xl font-black text-[9px] uppercase border-2" onClick={() => { setSalesHistoryStart(""); setSalesHistoryEnd(""); fetchSalesRepHistory(selectedSalesRep.id); }}>
+                      Clear
+                    </Button>
+                  </div>
+
+                  {/* Rep KPIs */}
+                  <div className="grid grid-cols-3 gap-0 divide-x border-b">
+                    {[
+                      { label: "Transactions", value: salesRepHistory.length, icon: TrendingUp },
+                      { label: "Revenue Earned", value: `₹${salesRepHistory.reduce((s, t) => s + (Number(t.amount) || 0), 0).toLocaleString()}`, icon: DollarSign },
+                      { label: "Courses Sold", value: Array.from(new Set(salesRepHistory.map((t: any) => t.training_enrollments?.trainings?.name).filter(Boolean))).length, icon: BookOpen },
+                    ].map(kpi => (
+                      <div key={kpi.label} className="p-4 flex items-center gap-3">
+                        <div className="size-8 rounded-lg bg-gold/10 text-gold grid place-items-center flex-shrink-0">
+                          <kpi.icon size={16} />
+                        </div>
+                        <div>
+                          <div className="text-base font-black text-navy-deep leading-none mb-1">{kpi.value}</div>
+                          <div className="text-[8px] font-black uppercase text-muted-foreground tracking-wider">{kpi.label}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Transaction History Table */}
+                  <div className="p-5">
+                    <h4 className="text-[10px] font-black text-navy uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <Activity className="size-3 text-gold" /> Sales Transaction Log
+                    </h4>
+                    
+                    {loadingSalesHistory ? (
+                      <div className="flex justify-center py-8"><LogoLoader size="sm" /></div>
+                    ) : salesRepHistory.length === 0 ? (
+                      <p className="text-center py-8 text-muted-foreground font-bold text-xs italic bg-slate-50 rounded-xl border border-dashed">
+                        No transactions found for the selected period.
+                      </p>
+                    ) : (
+                      <div className="border rounded-xl overflow-hidden max-h-60 overflow-y-auto">
+                        <Table>
+                          <TableHeader className="bg-slate-50 sticky top-0 z-10">
+                            <TableRow>
+                              <TableHead className="h-8 font-black uppercase text-[8px] tracking-widest text-navy/40">Date</TableHead>
+                              <TableHead className="h-8 font-black uppercase text-[8px] tracking-widest text-navy/40">Student</TableHead>
+                              <TableHead className="h-8 font-black uppercase text-[8px] tracking-widest text-navy/40">Course</TableHead>
+                              <TableHead className="h-8 font-black uppercase text-[8px] tracking-widest text-navy/40">Amount</TableHead>
+                              <TableHead className="h-8 font-black uppercase text-[8px] tracking-widest text-navy/40">Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {salesRepHistory.map((tx: any) => (
+                              <TableRow key={tx.id} className="hover:bg-gold/5 transition-all border-b last:border-0 h-10">
+                                <TableCell className="font-mono text-[9px] font-bold">
+                                  {tx.created_at ? new Date(tx.created_at).toLocaleDateString("en-IN") : "-"}
+                                </TableCell>
+                                <TableCell className="font-bold text-[10px] uppercase truncate max-w-[100px]">
+                                  {tx.training_enrollments?.profiles?.full_name || "-"}
+                                </TableCell>
+                                <TableCell className="truncate max-w-[120px]">
+                                  <span className="bg-navy/10 text-navy px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider">
+                                    {tx.training_enrollments?.trainings?.name || "-"}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="font-black text-xs text-green-700">
+                                  ₹{Number(tx.amount || 0).toLocaleString()}
+                                </TableCell>
+                                <TableCell>
+                                  <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${
+                                    tx.status === "captured" ? "bg-green-100 text-green-700" :
+                                    tx.status === "pending" ? "bg-yellow-100 text-yellow-700" :
+                                    "bg-slate-100 text-slate-600"
+                                  }`}>
+                                    {tx.status || "unknown"}
+                                  </span>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-50 border-2 border-dashed rounded-2xl p-10 text-center flex flex-col items-center justify-center min-h-[220px]">
+                  <Users className="size-10 text-slate-300 mb-2 animate-bounce" />
+                  <h4 className="font-black text-xs text-navy-deep uppercase">No Sales Rep Selected</h4>
+                  <p className="text-[10px] text-slate-400 mt-1 max-w-xs leading-relaxed uppercase font-semibold">
+                    Select a representative from the directory on the left to monitor transaction history and KPIs.
+                  </p>
+                </div>
+              )}
+
+              {/* Bulk CSV Import & Equal Distribution */}
+              <div className="bg-white p-5 rounded-2xl border shadow-sm space-y-4">
+                <div className="flex items-center gap-3 border-b pb-2">
+                  <div className="size-8 rounded-xl bg-gold/10 text-gold grid place-items-center flex-shrink-0">
+                    <Upload size={16} />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-black text-navy uppercase tracking-tight">Bulk Lead Distributor</h3>
+                    <p className="text-[8px] text-muted-foreground font-black uppercase tracking-wider">
+                      Distribute uploaded student records equally among checked reps
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <Label className="text-[9px] font-black uppercase text-slate-500">Upload CSV file</Label>
+                      <Input
+                        id="bulk_sales_csv_input"
+                        type="file"
+                        accept=".csv"
+                        onChange={handleSalesCSVFileChange}
+                        className="h-10 rounded-xl font-bold text-xs border-2 cursor-pointer bg-white"
+                      />
+                      <p className="text-[8px] text-slate-400 font-bold uppercase mt-1 leading-normal">
+                        Required: full_name, email — Optional: contact_number, university_name, college_name, department
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label className="text-[9px] font-black uppercase text-slate-500">Reps to Assign ({selectedRepsForCSV.length} selected)</Label>
+                      {salesUsers.length === 0 ? (
+                        <p className="text-xs text-muted-foreground italic">No sales reps found.</p>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2 border rounded-xl p-2.5 max-h-32 overflow-y-auto bg-slate-50">
+                          {salesUsers.map(rep => (
+                            <label key={rep.id} className="flex items-center gap-2 text-[10px] font-bold text-slate-700 cursor-pointer hover:text-navy p-1 rounded hover:bg-white transition-colors">
+                              <input
+                                type="checkbox"
+                                checked={selectedRepsForCSV.includes(rep.id)}
+                                onChange={e => {
+                                  if (e.target.checked) {
+                                    setSelectedRepsForCSV(prev => [...prev, rep.id]);
+                                  } else {
+                                    setSelectedRepsForCSV(prev => prev.filter(id => id !== rep.id));
+                                  }
+                                }}
+                                className="rounded text-gold focus:ring-gold"
+                              />
+                              <span className="truncate">{rep.full_name}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 p-4 rounded-xl border flex flex-col justify-between">
+                    <div className="space-y-3">
+                      <h4 className="text-[9px] font-black text-navy uppercase tracking-wider border-b pb-1">Distribution Preview</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-white p-2.5 rounded-lg border shadow-sm">
+                          <div className="text-[8px] text-slate-400 font-black uppercase">CSV Records</div>
+                          <div className="text-xl font-black text-navy-deep">{parsedCSVStudentsCount}</div>
+                        </div>
+                        <div className="bg-white p-2.5 rounded-lg border shadow-sm">
+                          <div className="text-[8px] text-slate-400 font-black uppercase">Active Reps</div>
+                          <div className="text-xl font-black text-navy-deep">{selectedRepsForCSV.length}</div>
+                        </div>
+                      </div>
+                      
+                      {parsedCSVStudentsCount > 0 && selectedRepsForCSV.length > 0 && (
+                        <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg text-[9px] text-blue-700 font-bold uppercase tracking-wide">
+                          Ratio: ≈ {Math.ceil(parsedCSVStudentsCount / selectedRepsForCSV.length)} per rep.
+                        </div>
+                      )}
+                      
+                      {importCSVProgress && (
+                        <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-1.5 text-[9px] text-amber-700 font-bold uppercase">
+                          <Loader2 className="animate-spin size-3 flex-shrink-0" />
+                          <span className="truncate">{importCSVProgress}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <Button
+                      onClick={handleDistributeAndAssignCSV}
+                      disabled={importingCSV || parsedCSVStudentsCount === 0 || selectedRepsForCSV.length === 0}
+                      className="w-full h-10 mt-4 bg-gold hover:bg-gold/90 text-navy-deep rounded-xl font-black text-[9px] uppercase tracking-widest shadow-md flex items-center justify-center gap-2 transition-all active:scale-95"
+                    >
+                      {importingCSV
+                        ? <><Loader2 className="animate-spin size-4" /> Distributing...</>
+                        : <><Upload size={14} /> Run Distribution</>
+                      }
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+          {/* Bottom Row: Active Student Assignments Grid */}
+          <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+            <div className="p-5 border-b flex items-center justify-between bg-slate-50">
+              <div>
+                <h3 className="text-sm font-black text-navy-deep uppercase tracking-tight flex items-center gap-2">
+                  <PhoneCall className="size-4 text-gold" /> Master Lead Assignments Register
+                </h3>
+                <p className="text-[8px] text-muted-foreground font-black uppercase tracking-wider mt-0.5">
+                  Real-time status tracking of all assigned student leads
+                </p>
+              </div>
+              <span className="text-[10px] font-black uppercase bg-gold/10 text-amber-700 px-3 py-1 rounded-full border border-amber-200 font-mono">
+                {salesAssignments.length} total assignments
+              </span>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-slate-50/50">
+                  <TableRow>
+                    <TableHead className="font-black uppercase text-[9px] tracking-widest text-navy/40">Student</TableHead>
+                    <TableHead className="font-black uppercase text-[9px] tracking-widest text-navy/40">Contact Info</TableHead>
+                    <TableHead className="font-black uppercase text-[9px] tracking-widest text-navy/40">Assigned Representative</TableHead>
+                    <TableHead className="font-black uppercase text-[9px] tracking-widest text-navy/40">Call Status</TableHead>
+                    <TableHead className="font-black uppercase text-[9px] tracking-widest text-navy/40">Log / Remarks</TableHead>
+                    <TableHead className="font-black uppercase text-[9px] tracking-widest text-navy/40">Assigned On</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {salesAssignments.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-12 text-slate-400 italic text-xs font-bold">
+                        No lead assignments recorded in the database.
+                      </TableCell>
+                    </TableRow>
+                  ) : salesAssignments.map((a: any) => (
+                    <TableRow key={a.id} className="hover:bg-gold/5 transition-all border-b last:border-0 h-14">
+                      <TableCell className="py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="size-8 rounded-lg bg-navy/10 text-navy grid place-items-center font-black text-xs">
+                            {a.profile?.full_name?.charAt(0) || "?"}
+                          </div>
+                          <div className="font-black text-xs text-navy-deep uppercase tracking-tight">{a.profile?.full_name || "-"}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-3">
+                        <div className="text-[10px] font-bold text-slate-600">{a.profile?.email || "-"}</div>
+                        <div className="font-mono text-[9px] text-slate-400">{a.profile?.contact_number || "-"}</div>
+                      </TableCell>
+                      <TableCell className="py-3">
+                        <span className="bg-blue-50 text-blue-700 text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full border border-blue-200">
+                          {a.rep?.full_name || "-"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-3">
+                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${
+                          a.status === "enrolled" ? "bg-green-100 text-green-700 border border-green-200" :
+                          a.status === "called" ? "bg-blue-100 text-blue-700 border border-blue-200" :
+                          "bg-yellow-100 text-yellow-700 border border-yellow-200"
+                        }`}>
+                          {a.status || "assigned"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-xs text-slate-500 max-w-[200px] truncate py-3" title={a.remark}>
+                        {a.remark || <span className="italic text-slate-400">—</span>}
+                      </TableCell>
+                      <TableCell className="font-mono text-[10px] text-slate-400 py-3">
+                        {a.created_at ? new Date(a.created_at).toLocaleDateString("en-IN") : "-"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+        </div>
+      )}
     </div>
   );
 }

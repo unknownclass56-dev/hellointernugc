@@ -34,6 +34,7 @@ export function SiteFooter() {
               <li><Link to="/internships" className="hover:text-gold">Internships</Link></li>
               <li><Link to="/internship/login" className="hover:text-gold text-blue-300">Internship Login</Link></li>
               <li><Link to="/training/login" className="hover:text-gold text-blue-300">Training Login</Link></li>
+              <li><Link to="/sales/login" className="hover:text-gold text-amber-300">Sales Login</Link></li>
               <li><Link to="/admin/login" className="hover:text-gold text-red-300">Admin Login</Link></li>
             </ul>
           </div>

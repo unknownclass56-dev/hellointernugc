@@ -68,6 +68,7 @@ const NAV = [
   { to: "/verify", label: "Verify Certificate" },
   { to: "/blog", label: "Blog" },
   { to: "/contact", label: "Contact" },
+  { to: "/sales", label: "Sales" },
 ] as const;
 
 export function SiteHeader() {
@@ -75,7 +76,10 @@ export function SiteHeader() {
   const { pathname } = useRouterState({ select: (s) => s.location });
   const { session, role } = useAuth();
   const dashboard =
-    role === "admin" ? "/dashboard/admin" : role === "company" ? "/dashboard/company" : "/dashboard/student";
+    role === "admin" ? "/dashboard/admin"
+    : role === "company" ? "/dashboard/company"
+    : role === "sales" ? "/dashboard/sales"
+    : "/dashboard/student";
 
   const [hostname, setHostname] = useState<string>("");
 
