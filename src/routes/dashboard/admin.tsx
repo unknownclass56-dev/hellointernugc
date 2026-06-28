@@ -1280,7 +1280,7 @@ function AdminDashboard() {
     const { data: tList } = await supabase.from("trainings").select("*").order("created_at", { ascending: false });
     const { data: lList } = await supabase.from("training_leads").select("*").order("created_at", { ascending: false });
     const { data: eList } = await supabase.from("training_enrollments").select("*, profiles(*), trainings(name)").order("created_at", { ascending: false });
-    const { data: trxList } = await supabase.from("training_transactions").select("*, training_enrollments(*, profiles(*), trainings(name))").order("created_at", { ascending: false });
+    const { data: trxList } = await supabase.from("training_transactions").select("*, training_enrollments(*, profiles(*), trainings(name)), sales_rep:sales_rep_id(full_name)").order("created_at", { ascending: false });
     setTrainings(tList || []);
     setTrainingLeads(lList || []);
     setTrainingEnrollments(eList || []);
@@ -3199,13 +3199,14 @@ function AdminDashboard() {
                   </Table>
                </div>
             ) : (
-               <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+                <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
                   <Table>
                      <TableHeader className="bg-slate-50"><TableRow>
                         <TableHead className="font-black text-[9px] uppercase">Txn ID</TableHead>
                         <TableHead className="font-black text-[9px] uppercase">Student</TableHead>
                         <TableHead className="font-black text-[9px] uppercase">Program</TableHead>
                         <TableHead className="font-black text-[9px] uppercase">Amount</TableHead>
+                        <TableHead className="font-black text-[9px] uppercase">Sales Rep</TableHead>
                         <TableHead className="font-black text-[9px] uppercase">Status</TableHead>
                      </TableRow></TableHeader>
                      <TableBody>
@@ -3215,6 +3216,15 @@ function AdminDashboard() {
                               <TableCell className="text-navy">{tx.training_enrollments?.profiles?.full_name}</TableCell>
                               <TableCell className="text-slate-500">{tx.training_enrollments?.trainings?.name}</TableCell>
                               <TableCell className="text-green-600">₹{tx.amount}</TableCell>
+                              <TableCell className="text-slate-500">
+                                 {tx.sales_rep?.full_name ? (
+                                    <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-[9px] border border-blue-100 font-black uppercase">
+                                       {tx.sales_rep.full_name}
+                                    </span>
+                                 ) : (
+                                    <span className="text-slate-400 italic font-normal">Direct / Organic</span>
+                                 )}
+                              </TableCell>
                               <TableCell>
                                  <span className="px-2 py-0.5 rounded-full text-[8px] uppercase tracking-widest bg-green-100 text-green-700">{tx.status}</span>
                               </TableCell>
