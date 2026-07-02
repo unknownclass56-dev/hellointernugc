@@ -132,14 +132,14 @@ export function ReferralAdminView() {
         throw new Error("This email already exists in the system. Because it is a broken account from earlier, you MUST delete it using the SQL script provided before you can recreate it.");
       }
 
-      // 2. Ensure profile exists and role is explicitly set (bypasses trigger race conditions)
-      await supabase.from("profiles").upsert({
-        id: userId,
-        email: email,
-        full_name: name,
-        phone: phone,
-        role: "referral"
+      // 2. Ensure profile exists and role is explicitly set using RPC (bypasses RLS)
+      const { error: profileError } = await supabase.rpc("admin_update_profile_role", {
+        p_user_id: userId,
+        p_role: "referral"
       });
+      if (profileError) {
+        console.error("Profile role update failed:", profileError);
+      }
 
       // 3. Create the referral agent record
       const { error: agentError } = await supabase.from("referral_agents").insert({
