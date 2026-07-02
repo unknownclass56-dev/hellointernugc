@@ -1,6 +1,6 @@
 -- SQL Script to fix missing database elements causing 400/401/403 console errors
 -- Run this in your Supabase SQL Editor (https://supabase.com/dashboard/project/_/sql)
-
+-- Ensure status column exists
 -- 1. Fix for page_visits 401/403 Error
 -- Create the page_visits table if it doesn't exist
 CREATE TABLE IF NOT EXISTS public.page_visits (
