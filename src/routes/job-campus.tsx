@@ -129,7 +129,6 @@ function JobCampusPage() {
               id: userId,
               full_name: name,
               email: email,
-              phone: phone,
               role: "student",
               raw_password: password,
               created_at: new Date().toISOString()
