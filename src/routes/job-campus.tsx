@@ -1,20 +1,40 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { PageShell } from "@/components/PageShell";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
-import { Briefcase, ArrowRight, Loader2, MapPin, DollarSign, Calendar } from "lucide-react";
+import { Briefcase, ArrowRight, Loader2, DollarSign, Calendar, Eye } from "lucide-react";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/job-campus")({
   component: JobCampusPage,
 });
 
 function JobCampusPage() {
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Modals state
+  const [readMoreJob, setReadMoreJob] = useState<any | null>(null);
+  const [applyJob, setApplyJob] = useState<any | null>(null);
+
+  // Form state
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [course, setCourse] = useState("");
+  const [qualification, setQualification] = useState("");
+  const [college, setCollege] = useState("");
+  const [batch, setBatch] = useState("");
+  const [password, setPassword] = useState("");
+  const [loadingSubmit, setLoadingSubmit] = useState(false);
 
   useEffect(() => {
     async function fetchJobs() {
@@ -27,6 +47,139 @@ function JobCampusPage() {
     }
     fetchJobs();
   }, []);
+
+  const loadRazorpay = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleApply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!applyJob) return;
+    setLoadingSubmit(true);
+
+    try {
+      // 1. Auth check / Sign Up
+      const tempClient = createClient(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_ANON_KEY,
+        { auth: { persistSession: false } }
+      );
+
+      const { data: authData, error: authError } = await tempClient.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+            role: "student",
+            raw_password: password
+          }
+        }
+      });
+
+      if (authError && !authError.message.includes("already registered")) {
+        throw authError;
+      }
+
+      let userId = authData?.user?.id;
+      if (!userId) {
+        // Attempt sign in if already registered
+        const { data: signInData, error: signInError } = await tempClient.auth.signInWithPassword({
+          email, password
+        });
+        if (signInError) throw new Error("Account exists, but password was incorrect. Please use correct password.");
+        userId = signInData.user?.id;
+      }
+
+      if (!userId) throw new Error("Failed to authenticate user.");
+
+      // 2. Load Razorpay
+      const fee = applyJob.training_fee || 999;
+      const loaded = await loadRazorpay();
+      if (!loaded) throw new Error("Failed to load payment gateway");
+
+      const options = {
+        key: "rzp_live_SrD6N9ylebiBCT", 
+        amount: Math.round(fee * 100),
+        currency: "INR",
+        payment_capture: 1,
+        name: "TechLaunchpad",
+        description: `Enrollment for ${applyJob.title}`,
+        handler: async function (response: any) {
+          try {
+            // Upsert profiles
+            await supabase.from("profiles").upsert({
+              id: userId,
+              full_name: name,
+              email: email,
+              role: "student",
+              raw_password: password,
+              created_at: new Date().toISOString()
+            });
+
+            // Upsert internship students
+            await supabase.from("internship_students").upsert({
+              id: userId,
+              full_name: name,
+              email: email,
+              program: course,
+              degree: qualification,
+              college_name: college,
+              academic_session: batch,
+              raw_password: password,
+              created_at: new Date().toISOString()
+            });
+
+            // Insert enrollment
+            const { error: enrollError } = await supabase.from("job_campus_enrollments").insert({
+              candidate_id: userId,
+              posting_id: applyJob.id,
+              status: "enrolled"
+            });
+            if (enrollError) throw enrollError;
+
+            // Log into main session
+            await supabase.auth.signInWithPassword({ email, password });
+
+            toast.success("Payment successful! Redirecting to dashboard...");
+            setApplyJob(null);
+            
+            // Redirect after slight delay
+            setTimeout(() => {
+              navigate({ to: "/dashboard/candidate" });
+            }, 1000);
+
+          } catch (err: any) {
+            toast.error(err.message || "Something went wrong saving enrollment.");
+          }
+        },
+        prefill: {
+          name: name,
+          email: email,
+        },
+        theme: {
+          color: "#0a192f"
+        }
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on("payment.failed", function (response: any) {
+        toast.error(response.error.description || "Payment failed");
+      });
+      rzp.open();
+
+    } catch (error: any) {
+      toast.error(error.message || "An error occurred");
+    } finally {
+      setLoadingSubmit(false);
+    }
+  };
 
   return (
     <PageShell>
@@ -67,31 +220,40 @@ function JobCampusPage() {
               <p className="text-slate-500 mt-2">Check back later for new opportunities!</p>
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {jobs.map((job) => (
-                <div key={job.id} className="bg-white rounded-3xl p-6 shadow-xl shadow-slate-200/50 hover:-translate-y-2 transition-transform duration-300 border border-slate-100 flex flex-col group">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="bg-navy/5 text-navy px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest">
+                <div key={job.id} className="bg-white rounded-2xl p-5 shadow-lg shadow-slate-200/50 hover:-translate-y-1 transition-transform duration-300 border border-slate-100 flex flex-col group">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="bg-navy/5 text-navy px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest">
                       {job.job_id}
                     </div>
-                    <div className="bg-green-50 text-green-600 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
-                      <DollarSign size={12} /> {job.salary}
+                    <div className="bg-green-50 text-green-600 px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
+                      <DollarSign size={10} /> {job.salary}
                     </div>
                   </div>
                   
-                  <h3 className="text-xl font-black text-navy-deep mb-3 line-clamp-2">
+                  <h3 className="text-lg font-black text-navy-deep mb-2 line-clamp-2">
                     {job.title}
                   </h3>
                   
-                  <div className="text-sm text-slate-500 mb-6 flex-grow">
-                    <MarkdownRenderer content={job.description} />
+                  <div className="text-xs text-slate-500 mb-4 line-clamp-3 flex-grow">
+                    {job.description?.replace(/[#*`_~-]/g, '').substring(0, 100)}...
                   </div>
                   
-                  <div className="pt-4 border-t border-slate-100 flex items-center justify-between mt-auto">
-                    <div className="text-xs font-bold text-slate-400 flex items-center gap-1">
-                      <Calendar size={14} /> {new Date(job.created_at).toLocaleDateString()}
-                    </div>
-                    <Button className="bg-gold text-navy-deep hover:bg-gold/90 hover:scale-105 transition-all font-bold text-xs uppercase rounded-xl h-9 px-4">
+                  <div className="flex flex-col gap-2 mt-auto">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setReadMoreJob(job)}
+                      className="w-full text-xs font-bold"
+                    >
+                      <Eye size={14} className="mr-1" /> Read More
+                    </Button>
+                    <Button 
+                      onClick={() => setApplyJob(job)}
+                      size="sm"
+                      className="bg-gold text-navy-deep hover:bg-gold/90 transition-all font-bold text-xs uppercase w-full"
+                    >
                       Apply Now <ArrowRight size={14} className="ml-1" />
                     </Button>
                   </div>
@@ -101,6 +263,96 @@ function JobCampusPage() {
           )}
         </div>
       </section>
+
+      {/* Read More Dialog */}
+      <Dialog open={!!readMoreJob} onOpenChange={(open) => !open && setReadMoreJob(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-navy-deep">{readMoreJob?.title}</DialogTitle>
+            <DialogDescription>
+              Job ID: {readMoreJob?.job_id} | Salary: {readMoreJob?.salary}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 text-sm text-slate-700">
+            {readMoreJob?.description && <MarkdownRenderer content={readMoreJob.description} />}
+          </div>
+          <div className="mt-6 flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setReadMoreJob(null)}>Close</Button>
+            <Button 
+              className="bg-gold text-navy-deep hover:bg-gold/90"
+              onClick={() => {
+                const jobToApply = readMoreJob;
+                setReadMoreJob(null);
+                setApplyJob(jobToApply);
+              }}
+            >
+              Apply to this Job
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Apply Form Dialog */}
+      <Dialog open={!!applyJob} onOpenChange={(open) => !open && setApplyJob(null)}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-navy-deep">Apply for {applyJob?.title}</DialogTitle>
+            <DialogDescription>
+              Please fill in your details to proceed with the application.
+              {applyJob?.training_fee ? ` An enrollment fee of ₹${applyJob.training_fee} applies.` : ''}
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleApply} className="space-y-4 mt-4">
+            <div className="space-y-1">
+              <Label htmlFor="name">Full Name</Label>
+              <Input id="name" required value={name} onChange={e => setName(e.target.value)} placeholder="John Doe" />
+            </div>
+            
+            <div className="space-y-1">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="john@example.com" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="course">Course</Label>
+                <Input id="course" required value={course} onChange={e => setCourse(e.target.value)} placeholder="e.g. B.Tech" />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="qualification">Qualification</Label>
+                <Input id="qualification" required value={qualification} onChange={e => setQualification(e.target.value)} placeholder="e.g. CS" />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="college">College Name</Label>
+              <Input id="college" required value={college} onChange={e => setCollege(e.target.value)} placeholder="University Name" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="batch">Batch / Year</Label>
+                <Input id="batch" required value={batch} onChange={e => setBatch(e.target.value)} placeholder="2025" />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="password">Password</Label>
+                <Input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
+              </div>
+            </div>
+
+            <div className="pt-4 flex gap-3">
+              <Button type="button" variant="outline" className="flex-1" onClick={() => setApplyJob(null)} disabled={loadingSubmit}>
+                Cancel
+              </Button>
+              <Button type="submit" className="flex-1 bg-gold text-navy-deep hover:bg-gold/90" disabled={loadingSubmit}>
+                {loadingSubmit ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Proceed to Pay
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </PageShell>
   );
 }
