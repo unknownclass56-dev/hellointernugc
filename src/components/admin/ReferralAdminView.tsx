@@ -127,6 +127,11 @@ export function ReferralAdminView() {
         throw new Error("Failed to get user ID after creation");
       }
 
+      // If identities is empty, it means the email already exists in auth.users
+      if (authData.user?.identities && authData.user.identities.length === 0) {
+        throw new Error("This email already exists in the system. Because it is a broken account from earlier, you MUST delete it using the SQL script provided before you can recreate it.");
+      }
+
       // 2. Ensure profile exists and role is explicitly set (bypasses trigger race conditions)
       await supabase.from("profiles").upsert({
         id: userId,
