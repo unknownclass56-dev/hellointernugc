@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-router";
 import { Toaster } from "sonner";
 import { usePageTracking } from "../hooks/usePageTracking";
+import { useAuthSecurity } from "../hooks/useAuthSecurity";
 
 import appCss from "../styles.css?url";
 
@@ -98,6 +99,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   usePageTracking();
+  useAuthSecurity();
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
