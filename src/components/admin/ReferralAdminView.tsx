@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { 
   Users, Plus, Trash2, ShieldCheck, Mail, Phone, Building2, Key, Link2, DollarSign, Edit
@@ -101,34 +102,62 @@ export function ReferralAdminView() {
     setCreating(true);
 
     try {
-      const { data, error } = await supabase.rpc("admin_create_referral_user", {
-        p_email: email,
-        p_password: password,
-        p_name: name,
-        p_phone: phone,
-        p_bank_account_number: bankAcct,
-        p_ifsc: ifsc,
-        p_bank_name: bankName,
-        p_aadhar_number: aadhar,
-        p_upi_id: upi,
-        p_referral_code: code,
-        p_program: program
+      // 1. Create the user using Supabase Auth directly (prevents 500 errors on login)
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+      const tempClient = createClient(supabaseUrl, supabaseAnonKey, { auth: { persistSession: false } });
+      
+      const { data: authData, error: authError } = await tempClient.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+            role: "referral"
+          }
+        }
       });
 
-      if (error) throw error;
+      if (authError) {
+        throw new Error(`Auth Error: ${authError.message}`);
+      }
       
-      if (!data?.success) {
-        throw new Error(data?.error || "Failed to create user");
+      const userId = authData.user?.id;
+      if (!userId) {
+        throw new Error("Failed to get user ID after creation");
+      }
+
+      // 2. Ensure profile exists and role is explicitly set (bypasses trigger race conditions)
+      await supabase.from("profiles").upsert({
+        id: userId,
+        email: email,
+        full_name: name,
+        phone: phone,
+        role: "referral"
+      });
+
+      // 3. Create the referral agent record
+      const { error: agentError } = await supabase.from("referral_agents").insert({
+        id: userId,
+        name,
+        email,
+        phone,
+        bank_account_number: bankAcct,
+        ifsc,
+        bank_name: bankName,
+        aadhar_number: aadhar,
+        upi_id: upi,
+        referral_code: code,
+        program,
+        raw_password: password
+      });
+
+      if (agentError) {
+        throw new Error(`Failed to save agent details: ${agentError.message}`);
       }
 
       toast.success("Referral Agent created successfully! Sending credentials email...");
       setIsCreateOpen(false);
-
-      // Save raw_password to referral_agents so it can be resent later
-      await supabase
-        .from("referral_agents")
-        .update({ raw_password: password })
-        .eq("email", email);
 
       // Auto-send credentials via SMTP
       await sendCredentialEmail(name, email, password, code);
