@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { createClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
-import { Briefcase, ArrowRight, Loader2, DollarSign, Calendar, Eye } from "lucide-react";
+import { Briefcase, ArrowRight, Loader2, IndianRupee, Calendar, Eye } from "lucide-react";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ function JobCampusPage() {
   const [college, setCollege] = useState("");
   const [batch, setBatch] = useState("");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
   const [loadingSubmit, setLoadingSubmit] = useState(false);
 
   useEffect(() => {
@@ -118,6 +119,7 @@ function JobCampusPage() {
               id: userId,
               full_name: name,
               email: email,
+              phone: phone,
               role: "student",
               raw_password: password,
               created_at: new Date().toISOString()
@@ -128,6 +130,7 @@ function JobCampusPage() {
               id: userId,
               full_name: name,
               email: email,
+              contact_number: phone,
               program: course,
               degree: qualification,
               college_name: college,
@@ -228,7 +231,7 @@ function JobCampusPage() {
                       {job.job_id}
                     </div>
                     <div className="bg-green-50 text-green-600 px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
-                      <DollarSign size={10} /> {job.salary}
+                      <IndianRupee size={10} /> {job.salary}
                     </div>
                   </div>
                   
@@ -311,6 +314,10 @@ function JobCampusPage() {
             
             <div className="space-y-1">
               <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="john@example.com" />
+
+              <Label htmlFor="phone">Mobile Number</Label>
+              <Input id="phone" type="tel" required value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91-XXXXXXXXXX" />
               <Input id="email" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="john@example.com" />
             </div>
 
