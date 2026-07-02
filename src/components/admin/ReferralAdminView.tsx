@@ -103,6 +103,8 @@ export function ReferralAdminView() {
       toast.success("Referral agent deleted.");
       fetchAgents();
     }
+  };
+
   const handleEditClick = (agent: any) => {
     setEditingId(agent.id);
     setName(agent.name || "");
