@@ -35,6 +35,12 @@ function CandidateLoginPage() {
 
     if (error) {
       setBusy(false);
+      if (error.status === 500 || error.message?.toLowerCase().includes('internal')) {
+        return toast.error(
+          "Login failed. Please try again or contact support at support@techlaunchpad.in",
+          { duration: 6000 }
+        );
+      }
       return toast.error(error.message);
     }
 

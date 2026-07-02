@@ -35,11 +35,10 @@ function ReferralLoginPage() {
 
     if (error) {
       setBusy(false);
-      // 500 usually means the DB trigger failed — migration not run yet
       if (error.status === 500 || error.message?.toLowerCase().includes('internal')) {
         return toast.error(
-          "⚠️ Database not set up yet. Please ask your admin to run the fix_referral_login.sql migration in Supabase.",
-          { duration: 8000 }
+          "Login failed. Please try again or contact support at support@techlaunchpad.in",
+          { duration: 6000 }
         );
       }
       return toast.error(error.message);
