@@ -80,6 +80,7 @@ export function SiteHeader() {
     role === "admin" ? "/dashboard/admin"
     : role === "company" ? "/dashboard/company"
     : role === "sales" ? "/dashboard/sales"
+    : role === "candidate" ? "/dashboard/candidate"
     : "/dashboard/student";
 
   const [hostname, setHostname] = useState<string>("");
@@ -170,6 +171,9 @@ export function SiteHeader() {
                 <Button asChild variant="ghost">
                   {loginHref ? <a href={loginHref}>Login</a> : <Link to="/login">Login</Link>}
                 </Button>
+                <Button asChild variant="outline" className="border-gold text-gold hover:bg-gold hover:text-navy-deep font-semibold">
+                  {loginHref ? <a href={`${loginHref}?portal=candidate`}>Candidate Login</a> : <Link to="/login" search={{ portal: "candidate" } as any}>Candidate Login</Link>}
+                </Button>
                 <Button asChild className="bg-gold text-navy-deep hover:bg-gold-soft">
                   {registerHref ? <a href={registerHref}>Register</a> : <Link to="/register">Register</Link>}
                 </Button>
@@ -200,7 +204,7 @@ export function SiteHeader() {
                   {n.label}
                 </a>
               ))}
-              <div className="mt-2 flex gap-2">
+              <div className="mt-2 flex flex-wrap gap-2">
                 {session ? (
                   <Button asChild className="flex-1 bg-navy text-ivory">
                     {dashboardHref ? (
@@ -216,6 +220,13 @@ export function SiteHeader() {
                         <a href={loginHref} onClick={() => setOpen(false)}>Login</a>
                       ) : (
                         <Link to="/login" onClick={() => setOpen(false)}>Login</Link>
+                      )}
+                    </Button>
+                    <Button asChild variant="outline" className="flex-1 border-gold text-gold hover:bg-gold hover:text-navy-deep font-semibold">
+                      {loginHref ? (
+                        <a href={`${loginHref}?portal=candidate`} onClick={() => setOpen(false)}>Candidate Login</a>
+                      ) : (
+                        <Link to="/login" search={{ portal: "candidate" } as any} onClick={() => setOpen(false)}>Candidate Login</Link>
                       )}
                     </Button>
                     <Button asChild className="flex-1 bg-gold text-navy-deep hover:bg-gold-soft">
