@@ -34,9 +34,13 @@ export function useAuthSecurity() {
         .update({ current_session_id: deviceId })
         .eq("id", userId);
 
+      if (realtimeSubscription) {
+        supabase.removeChannel(realtimeSubscription);
+      }
+
       // Subscribe to profile changes
       realtimeSubscription = supabase
-        .channel(`profiles:id=eq.${userId}`)
+        .channel(`profiles_security_${userId}`)
         .on(
           "postgres_changes",
           {

@@ -29,7 +29,8 @@ import {
   FileCheck,
   ClipboardList,
   TrendingUp,
-  UserPlus
+  UserPlus,
+  Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
