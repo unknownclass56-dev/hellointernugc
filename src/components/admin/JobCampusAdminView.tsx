@@ -5,17 +5,19 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Briefcase, Plus, Users, Edit, Trash2, MoreVertical, Eye } from "lucide-react";
+import { Loader2, Briefcase, Plus, Users, Edit, Trash2, MoreVertical, Eye, BookOpen, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export function JobCampusAdminView() {
-  const [tab, setTab] = useState<"postings" | "enrollments" | "transactions">("postings");
+  const [tab, setTab] = useState<"postings" | "enrollments" | "transactions" | "trainings" | "vacancies">("postings");
   const [postings, setPostings] = useState<any[]>([]);
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [trainings, setTrainings] = useState<any[]>([]);
+  const [vacancies, setVacancies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Job Form states
@@ -42,6 +44,25 @@ export function JobCampusAdminView() {
   const [editingEnrollmentId, setEditingEnrollmentId] = useState("");
   const [enrollmentStatus, setEnrollmentStatus] = useState("");
 
+  // Training Form states
+  const [isTrainingOpen, setIsTrainingOpen] = useState(false);
+  const [tTitle, setTTitle] = useState("");
+  const [tType, setTType] = useState("youtube");
+  const [tMode, setTMode] = useState("online");
+  const [tLink, setTLink] = useState("");
+  const [tTargets, setTTargets] = useState<string[]>([]);
+
+  // Vacancy Form states
+  const [isVacancyOpen, setIsVacancyOpen] = useState(false);
+  const [vTitle, setVTitle] = useState("");
+  const [vSalary, setVSalary] = useState("");
+  const [vExp, setVExp] = useState("");
+  const [vDesc, setVDesc] = useState("");
+  const [vLink, setVLink] = useState("");
+  const [vPostDate, setVPostDate] = useState("");
+  const [vEndDate, setVEndDate] = useState("");
+  const [vTargets, setVTargets] = useState<string[]>([]);
+
   useEffect(() => {
     fetchData();
   }, [tab]);
@@ -59,6 +80,16 @@ export function JobCampusAdminView() {
     } else if (tab === "transactions") {
       const { data } = await supabase.from("job_campus_transactions").select("*, job_campus_enrollments(*, profiles(*), job_campus_postings(*))").order("created_at", { ascending: false });
       if (data) setTransactions(data);
+    } else if (tab === "trainings") {
+      const { data } = await supabase.from("job_campus_candidate_trainings").select("*").order("created_at", { ascending: false });
+      if (data) setTrainings(data);
+      const { data: pData } = await supabase.from("job_campus_postings").select("id, title, job_id").order("created_at", { ascending: false });
+      if (pData) setPostings(pData);
+    } else if (tab === "vacancies") {
+      const { data } = await supabase.from("job_campus_candidate_vacancies").select("*").order("created_at", { ascending: false });
+      if (data) setVacancies(data);
+      const { data: pData } = await supabase.from("job_campus_postings").select("id, title, job_id").order("created_at", { ascending: false });
+      if (pData) setPostings(pData);
     }
     setLoading(false);
   };
@@ -181,9 +212,68 @@ export function JobCampusAdminView() {
     }
   };
 
+  const handleSaveTraining = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("job_campus_candidate_trainings").insert({
+        title: tTitle,
+        training_type: tType,
+        mode: tMode,
+        link: tLink,
+        target_postings: tTargets
+      });
+      if (error) throw error;
+      toast.success("Training created successfully!");
+      setIsTrainingOpen(false);
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveVacancy = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("job_campus_candidate_vacancies").insert({
+        job_title: vTitle,
+        salary: vSalary,
+        experience: vExp,
+        description: vDesc,
+        apply_link: vLink,
+        posting_date: vPostDate || null,
+        end_date: vEndDate || null,
+        target_postings: vTargets
+      });
+      if (error) throw error;
+      toast.success("Vacancy created successfully!");
+      setIsVacancyOpen(false);
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteTraining = async (id: string) => {
+    if (!confirm("Are you sure?")) return;
+    const { error } = await supabase.from("job_campus_candidate_trainings").delete().eq("id", id);
+    if (!error) fetchData();
+  };
+
+  const handleDeleteVacancy = async (id: string) => {
+    if (!confirm("Are you sure?")) return;
+    const { error } = await supabase.from("job_campus_candidate_vacancies").delete().eq("id", id);
+    if (!error) fetchData();
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+      <div className="flex items-center justify-between bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex-wrap gap-4">
         <div>
           <h2 className="text-xl font-black text-navy-deep uppercase tracking-tight flex items-center gap-2">
             <Briefcase className="size-5 text-gold" /> Job Campus Administration
@@ -192,10 +282,12 @@ export function JobCampusAdminView() {
             Manage postings, candidates, and payments.
           </p>
         </div>
-        <div className="flex gap-2 bg-slate-50 p-1 rounded-xl">
+        <div className="flex gap-2 bg-slate-50 p-1 rounded-xl flex-wrap">
           <Button variant={tab === "postings" ? "default" : "ghost"} onClick={() => setTab("postings")} className={`rounded-lg ${tab==="postings"?"bg-navy text-white":""}`}>Postings</Button>
           <Button variant={tab === "enrollments" ? "default" : "ghost"} onClick={() => setTab("enrollments")} className={`rounded-lg ${tab==="enrollments"?"bg-navy text-white":""}`}>Enrollments</Button>
           <Button variant={tab === "transactions" ? "default" : "ghost"} onClick={() => setTab("transactions")} className={`rounded-lg ${tab==="transactions"?"bg-navy text-white":""}`}>Transactions</Button>
+          <Button variant={tab === "trainings" ? "default" : "ghost"} onClick={() => setTab("trainings")} className={`rounded-lg ${tab==="trainings"?"bg-navy text-white":""}`}>Trainings</Button>
+          <Button variant={tab === "vacancies" ? "default" : "ghost"} onClick={() => setTab("vacancies")} className={`rounded-lg ${tab==="vacancies"?"bg-navy text-white":""}`}>Vacancies</Button>
         </div>
       </div>
 
@@ -234,6 +326,73 @@ export function JobCampusAdminView() {
                       <div className="flex justify-between font-bold text-sm mt-4">
                         <span className="text-green-600">{p.salary}</span>
                         <span className="text-navy">Fee: ₹{p.training_fee}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tab === "trainings" && (
+            <div className="space-y-4">
+               <div className="flex justify-end">
+                <Button onClick={() => {
+                  setTTitle(""); setTType("youtube"); setTMode("online"); setTLink(""); setTTargets([]);
+                  setIsTrainingOpen(true);
+                }} className="bg-navy hover:bg-navy/90 text-white rounded-xl">
+                  <Plus className="size-4 mr-2" /> Add Training
+                </Button>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                {trainings.map(t => (
+                  <Card key={t.id} className="rounded-2xl shadow-sm">
+                    <CardHeader className="flex flex-row justify-between">
+                      <div>
+                        <CardTitle className="text-lg">{t.title}</CardTitle>
+                        <p className="text-sm text-gray-500 capitalize">{t.training_type} • {t.mode}</p>
+                      </div>
+                      <Button variant="outline" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteTraining(t.id)}>
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-xs text-blue-600 mb-2 truncate"><a href={t.link} target="_blank" rel="noreferrer">{t.link}</a></p>
+                      <p className="text-xs text-gray-500">Targeted to {t.target_postings?.length || 0} job postings</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tab === "vacancies" && (
+            <div className="space-y-4">
+               <div className="flex justify-end">
+                <Button onClick={() => {
+                  setVTitle(""); setVSalary(""); setVExp(""); setVDesc(""); setVLink(""); setVPostDate(""); setVEndDate(""); setVTargets([]);
+                  setIsVacancyOpen(true);
+                }} className="bg-navy hover:bg-navy/90 text-white rounded-xl">
+                  <Plus className="size-4 mr-2" /> Add Vacancy
+                </Button>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                {vacancies.map(v => (
+                  <Card key={v.id} className="rounded-2xl shadow-sm flex flex-col">
+                    <CardHeader className="flex flex-row justify-between">
+                      <div>
+                        <CardTitle className="text-lg">{v.job_title}</CardTitle>
+                        <p className="text-sm text-gray-500">{v.experience} • {v.salary}</p>
+                      </div>
+                      <Button variant="outline" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteVacancy(v.id)}>
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </CardHeader>
+                    <CardContent className="flex-grow flex flex-col">
+                      <p className="text-xs text-gray-700 mb-4 line-clamp-3">{v.description}</p>
+                      <div className="mt-auto">
+                        <p className="text-xs text-blue-600 mb-2 truncate"><a href={v.apply_link} target="_blank" rel="noreferrer">{v.apply_link}</a></p>
+                        <p className="text-xs text-gray-500">Targeted to {v.target_postings?.length || 0} job postings</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -302,8 +461,8 @@ export function JobCampusAdminView() {
           )}
 
           {tab === "transactions" && (
-            <div className="space-y-4">
-              <div className="bg-white p-4 rounded-2xl shadow-sm">
+             <div className="space-y-4">
+              <div className="bg-white p-4 rounded-2xl shadow-sm overflow-x-auto">
                 <table className="w-full text-sm text-left">
                   <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                     <tr>
@@ -332,7 +491,121 @@ export function JobCampusAdminView() {
         </>
       )}
 
-      {/* Add / Edit Job Dialog */}
+      {/* Add Training Dialog */}
+      <Dialog open={isTrainingOpen} onOpenChange={setIsTrainingOpen}>
+        <DialogContent className="rounded-3xl max-w-lg">
+          <DialogHeader><DialogTitle>Create Candidate Training</DialogTitle></DialogHeader>
+          <form onSubmit={handleSaveTraining} className="space-y-4">
+             <div className="space-y-1">
+              <Label>Training Title</Label>
+              <Input required value={tTitle} onChange={e=>setTTitle(e.target.value)} placeholder="e.g. Resume Building Session" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label>Type</Label>
+                <select className="w-full h-10 border rounded-lg px-3" value={tType} onChange={e=>setTType(e.target.value)}>
+                  <option value="youtube">YouTube</option>
+                  <option value="meet">Google Meet</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label>Mode</Label>
+                <select className="w-full h-10 border rounded-lg px-3" value={tMode} onChange={e=>setTMode(e.target.value)}>
+                  <option value="online">Online</option>
+                  <option value="offline">Offline</option>
+                </select>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Link (URL)</Label>
+              <Input value={tLink} onChange={e=>setTLink(e.target.value)} placeholder="https://youtube.com/..." />
+            </div>
+            <div className="space-y-2 pt-2 border-t">
+              <Label>Select Target Enrolled Job Postings (Check to allow)</Label>
+              <div className="max-h-[150px] overflow-y-auto border rounded-lg p-2 bg-slate-50 space-y-2">
+                {postings.map(p => (
+                  <label key={p.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-100 p-1 rounded">
+                    <input type="checkbox" checked={tTargets.includes(p.id)} onChange={(e) => {
+                      if(e.target.checked) setTTargets([...tTargets, p.id]);
+                      else setTTargets(tTargets.filter(id => id !== p.id));
+                    }} />
+                    {p.title} ({p.job_id})
+                  </label>
+                ))}
+                {postings.length === 0 && <span className="text-xs text-gray-500">No job postings found.</span>}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="ghost" onClick={()=>setIsTrainingOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Create Training"}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Vacancy Dialog */}
+      <Dialog open={isVacancyOpen} onOpenChange={setIsVacancyOpen}>
+        <DialogContent className="rounded-3xl max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Create Candidate Job Vacancy</DialogTitle></DialogHeader>
+          <form onSubmit={handleSaveVacancy} className="space-y-4">
+             <div className="space-y-1">
+              <Label>Job Title</Label>
+              <Input required value={vTitle} onChange={e=>setVTitle(e.target.value)} placeholder="e.g. Frontend Developer" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label>Salary</Label>
+                <Input value={vSalary} onChange={e=>setVSalary(e.target.value)} placeholder="e.g. 5-7 LPA" />
+              </div>
+              <div className="space-y-1">
+                <Label>Experience</Label>
+                <Input value={vExp} onChange={e=>setVExp(e.target.value)} placeholder="e.g. 0-2 Years" />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Description</Label>
+              <Textarea value={vDesc} onChange={e=>setVDesc(e.target.value)} rows={3} placeholder="Job description..." />
+            </div>
+            <div className="space-y-1">
+              <Label>Apply Link</Label>
+              <Input required value={vLink} onChange={e=>setVLink(e.target.value)} placeholder="https://forms.google.com/..." />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label>Posting Date</Label>
+                <Input type="date" value={vPostDate} onChange={e=>setVPostDate(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label>End Date</Label>
+                <Input type="date" value={vEndDate} onChange={e=>setVEndDate(e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-2 pt-2 border-t">
+              <Label>Select Target Enrolled Job Postings (Check to allow)</Label>
+              <div className="max-h-[120px] overflow-y-auto border rounded-lg p-2 bg-slate-50 space-y-2">
+                {postings.map(p => (
+                  <label key={p.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-100 p-1 rounded">
+                    <input type="checkbox" checked={vTargets.includes(p.id)} onChange={(e) => {
+                      if(e.target.checked) setVTargets([...vTargets, p.id]);
+                      else setVTargets(vTargets.filter(id => id !== p.id));
+                    }} />
+                    {p.title} ({p.job_id})
+                  </label>
+                ))}
+                {postings.length === 0 && <span className="text-xs text-gray-500">No job postings found.</span>}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="ghost" onClick={()=>setIsVacancyOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Create Vacancy"}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+
+      {/* Existing Dialogs (Job, Enroll, Edit) */}
       <Dialog open={isJobDialogOpen} onOpenChange={setIsJobDialogOpen}>
         <DialogContent className="rounded-3xl max-w-md">
           <DialogHeader>
@@ -369,7 +642,6 @@ export function JobCampusAdminView() {
         </DialogContent>
       </Dialog>
 
-      {/* Enroll Candidate Dialog */}
       <Dialog open={isEnrollOpen} onOpenChange={setIsEnrollOpen}>
         <DialogContent className="rounded-3xl max-w-md">
           <DialogHeader>
@@ -398,7 +670,6 @@ export function JobCampusAdminView() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Enrollment Status Dialog */}
       <Dialog open={isEditEnrollmentOpen} onOpenChange={setIsEditEnrollmentOpen}>
         <DialogContent className="rounded-3xl max-w-sm">
           <DialogHeader>
