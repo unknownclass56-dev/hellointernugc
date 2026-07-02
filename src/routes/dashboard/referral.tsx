@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-
+import { Label } from "@/components/ui/label";
 export const Route = createFileRoute("/dashboard/referral")({
   component: ReferralDashboard,
   validateSearch: (search: Record<string, unknown>) => {
