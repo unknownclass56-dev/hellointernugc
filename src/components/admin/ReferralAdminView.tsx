@@ -141,37 +141,51 @@ export function ReferralAdminView() {
     }
   };
 
-  const handleResetPassword = async (agent: any) => {
-    const agentEmail = agent.email;
-    if (!confirm(`Send password reset link to ${agentEmail}?`)) return;
+  const handleResetPassword = async (agentEmail: string) => {
+    if (!agentEmail) {
+      toast.error("No email address found for this agent.");
+      return;
+    }
+    if (!confirm(`Send password reset link to:\n${agentEmail}?`)) return;
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(agentEmail, {
         redirectTo: `${window.location.origin}/reset-password`
       });
       if (error) {
-        // If Supabase can't send the email (user broken or SMTP not set up),
-        // open the Supabase dashboard directly to fix it
-        if (error.status === 500 || error.status === 422) {
-          const projectRef = import.meta.env.VITE_SUPABASE_URL?.split('//')[1]?.split('.')[0] || '';
-          const dashboardUrl = `https://supabase.com/dashboard/project/${projectRef}/auth/users`;
+        if (error.status === 500 || error.status === 422 || error.status === 400) {
+          // User might not exist in auth.users properly
+          // Open Supabase users page to manually handle it
+          const projectRef = import.meta.env.VITE_SUPABASE_URL
+            ?.replace('https://', '')
+            ?.split('.')?.[0] || '';
           toast.error(
-            `Email failed (server error). Opening Supabase Users dashboard to manually resend.`,
-            { duration: 5000 }
+            `Could not send email to ${agentEmail}. The user may need to be recreated. Opening Supabase dashboard...`,
+            { duration: 6000 }
           );
-          setTimeout(() => window.open(dashboardUrl, '_blank'), 1000);
+          if (projectRef) {
+            setTimeout(() => {
+              window.open(
+                `https://supabase.com/dashboard/project/${projectRef}/auth/users`,
+                '_blank'
+              );
+            }, 1500);
+          }
           return;
         }
         throw error;
       }
-      toast.success(`✅ Password reset link sent to ${agentEmail}`);
+      toast.success(`✅ Password reset link sent to ${agentEmail}`, { duration: 5000 });
     } catch (err: any) {
-      toast.error(err.message || "Failed to send password reset link");
+      toast.error(err.message || 'Failed to send reset email');
     }
   };
 
   const handleResendCredentials = (agent: any) => {
-    // Show the agent their login details via a modal/toast
-    const details = `📋 Referral Agent Credentials:\n\nEmail: ${agent.email}\nCode: ${agent.referral_code}\n\nNote: Password was set at creation time. Use 'Reset Password' to send a new one.`;
+    if (!agent?.email) {
+      toast.error("No email address found for this agent.");
+      return;
+    }
+    const details = `📋 Agent Login Credentials\n\nPortal: ${window.location.origin}/referral/login\nEmail: ${agent.email}\nReferral Code: ${agent.referral_code || 'N/A'}\n\nTo set a new password, use the 🔑 Reset Password button.`;
     alert(details);
   };
 
