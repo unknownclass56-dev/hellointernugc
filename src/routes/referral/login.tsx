@@ -54,7 +54,9 @@ function ReferralLoginPage() {
         .eq("id", data.user.id)
         .maybeSingle();
 
-      const role = profile?.role || "";
+      const profileRole = profile?.role || "";
+      const metaRole = data.user?.user_metadata?.role || "";
+      const role = profileRole || metaRole;
 
       if (role === "admin" || role === "referral") {
         isAllowed = true;
