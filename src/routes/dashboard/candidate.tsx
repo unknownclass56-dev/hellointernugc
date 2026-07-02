@@ -63,36 +63,86 @@ function CandidateDashboard() {
       </div>
 
       {tab === "overview" && (
-        <div className="grid md:grid-cols-3 gap-6">
-          <Card className="border-l-4 border-l-navy shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Enrolled Programs</CardTitle>
-              <Briefcase className="h-4 w-4 text-gold" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{enrollments.length}</div>
-            </CardContent>
-          </Card>
-          
-          <Card className="border-l-4 border-l-gold shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Targeted Vacancies</CardTitle>
-              <AlertCircle className="h-4 w-4 text-gold" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{vacancies.length}</div>
-            </CardContent>
-          </Card>
+        <div className="space-y-8">
+          <div className="grid md:grid-cols-3 gap-6">
+            <Card className="border-l-4 border-l-navy shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Enrolled Programs</CardTitle>
+                <Briefcase className="h-4 w-4 text-gold" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{enrollments.length}</div>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-l-4 border-l-gold shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Targeted Vacancies</CardTitle>
+                <AlertCircle className="h-4 w-4 text-gold" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{vacancies.length}</div>
+              </CardContent>
+            </Card>
 
-           <Card className="border-l-4 border-l-green-500 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Assigned Trainings</CardTitle>
-              <BookOpen className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{trainings.length}</div>
-            </CardContent>
-          </Card>
+            <Card className="border-l-4 border-l-green-500 shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Assigned Trainings</CardTitle>
+                <BookOpen className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{trainings.length}</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div>
+            <h2 className="text-xl font-bold text-navy-deep mb-4 flex items-center gap-2">
+              <Briefcase className="text-gold" /> My Enrolled Programs
+            </h2>
+            {enrollments.length === 0 ? (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>No Enrollments</AlertTitle>
+                <AlertDescription>You have not been enrolled in any Job Campus programs yet.</AlertDescription>
+              </Alert>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {enrollments.map((enc) => (
+                  <Card key={enc.id} className="shadow-sm hover:shadow-md transition-shadow border-t-4 border-t-navy">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg leading-tight text-navy">
+                        {enc.job_campus_postings?.title || "Unknown Program"}
+                      </CardTitle>
+                      {enc.job_campus_postings?.company && (
+                        <CardDescription className="text-sm text-gray-500 font-medium">
+                          {enc.job_campus_postings.company}
+                        </CardDescription>
+                      )}
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-500">Status</span>
+                        <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
+                          enc.status === "enrolled" ? "bg-green-100 text-green-700" :
+                          enc.status === "completed" ? "bg-blue-100 text-blue-700" :
+                          "bg-yellow-100 text-yellow-700"
+                        }`}>
+                          {enc.status || "Pending"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm mt-2">
+                        <span className="text-gray-500">Enrolled On</span>
+                        <span className="font-medium">
+                          {new Date(enc.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
