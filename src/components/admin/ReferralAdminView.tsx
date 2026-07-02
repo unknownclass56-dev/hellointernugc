@@ -141,15 +141,38 @@ export function ReferralAdminView() {
     }
   };
 
-  const handleResetPassword = async (agentEmail: string) => {
+  const handleResetPassword = async (agent: any) => {
+    const agentEmail = agent.email;
     if (!confirm(`Send password reset link to ${agentEmail}?`)) return;
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(agentEmail);
-      if (error) throw error;
-      toast.success(`Password reset link sent to ${agentEmail}`);
+      const { error } = await supabase.auth.resetPasswordForEmail(agentEmail, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+      if (error) {
+        // If Supabase can't send the email (user broken or SMTP not set up),
+        // open the Supabase dashboard directly to fix it
+        if (error.status === 500 || error.status === 422) {
+          const projectRef = import.meta.env.VITE_SUPABASE_URL?.split('//')[1]?.split('.')[0] || '';
+          const dashboardUrl = `https://supabase.com/dashboard/project/${projectRef}/auth/users`;
+          toast.error(
+            `Email failed (server error). Opening Supabase Users dashboard to manually resend.`,
+            { duration: 5000 }
+          );
+          setTimeout(() => window.open(dashboardUrl, '_blank'), 1000);
+          return;
+        }
+        throw error;
+      }
+      toast.success(`✅ Password reset link sent to ${agentEmail}`);
     } catch (err: any) {
       toast.error(err.message || "Failed to send password reset link");
     }
+  };
+
+  const handleResendCredentials = (agent: any) => {
+    // Show the agent their login details via a modal/toast
+    const details = `📋 Referral Agent Credentials:\n\nEmail: ${agent.email}\nCode: ${agent.referral_code}\n\nNote: Password was set at creation time. Use 'Reset Password' to send a new one.`;
+    alert(details);
   };
 
   return (
