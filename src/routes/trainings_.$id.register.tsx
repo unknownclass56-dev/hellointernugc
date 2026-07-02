@@ -111,6 +111,7 @@ function TrainingRegisterPage() {
     if (!form.roll_number)                               e.roll_number = "Roll Number is required";
     if (!form.subject)                                   e.subject    = "Subject/Branch is required";
     if (!form.password || form.password.length < 6)     e.password   = "Password must be at least 6 characters";
+    if (!form.referral_code.trim())                      e.referral_code = "Referral Code is required";
     if (!form.agreed)                                    e.agreed     = "You must agree to the Terms & Conditions";
     return e;
   }
@@ -643,15 +644,17 @@ function TrainingRegisterPage() {
 
               {/* Referral Code */}
               <div className="space-y-1.5 md:col-span-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Referral Code (Optional)</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Referral Code *</label>
                 <div className="relative">
                   <input
+                    required
                     value={form.referral_code}
                     onChange={e => setForm(f => ({ ...f, referral_code: e.target.value.toUpperCase() }))}
                     placeholder="e.g. TLJ2026"
-                    className="w-full h-12 px-4 rounded-xl border-2 font-medium font-mono text-sm uppercase outline-none focus:border-[#0a192f] transition-colors border-slate-200 bg-slate-50"
+                    className={`w-full h-12 px-4 rounded-xl border-2 font-medium font-mono text-sm uppercase outline-none focus:border-[#0a192f] transition-colors ${errors.referral_code ? "border-red-300 bg-red-50" : "border-slate-200 bg-slate-50"}`}
                   />
                 </div>
+                {errors.referral_code && <p className="text-red-500 text-xs font-bold">{errors.referral_code}</p>}
               </div>
 
               {/* Terms */}
