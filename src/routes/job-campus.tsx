@@ -78,7 +78,7 @@ function JobCampusPage() {
         options: {
           data: {
             full_name: name,
-            role: "student",
+            role: "candidate",
             raw_password: password
           }
         }
@@ -130,7 +130,7 @@ function JobCampusPage() {
               full_name: name,
               email: email,
               phone: phone,
-              role: "student",
+              role: "candidate",
               raw_password: password,
               created_at: new Date().toISOString()
             };
@@ -141,8 +141,8 @@ function JobCampusPage() {
               await supabase.from("profiles").update(baseProfile).eq("id", userId);
             }
 
-            // Upsert internship students safely
-            const studentProfile = {
+            // Upsert candidates safely
+            const candidateProfile = {
               id: userId,
               full_name: name,
               email: email,
@@ -151,14 +151,13 @@ function JobCampusPage() {
               degree: qualification,
               college_name: college,
               academic_session: batch,
-              raw_password: password,
               created_at: new Date().toISOString()
             };
-            const { error: profileError } = await supabase.from("internship_students").insert([studentProfile]);
+            const { error: profileError } = await supabase.from("job_campus_candidates").insert([candidateProfile]);
             if (profileError && profileError.code !== '23505' && !profileError.message?.includes('duplicate key')) {
               throw profileError;
             } else if (profileError) {
-              await supabase.from("internship_students").update(studentProfile).eq("id", userId);
+              await supabase.from("job_campus_candidates").update(candidateProfile).eq("id", userId);
             }
 
             // Insert enrollment
