@@ -124,6 +124,12 @@ export function ReferralAdminView() {
       toast.success("Referral Agent created successfully! Sending credentials email...");
       setIsCreateOpen(false);
 
+      // Save raw_password to referral_agents so it can be resent later
+      await supabase
+        .from("referral_agents")
+        .update({ raw_password: password })
+        .eq("email", email);
+
       // Auto-send credentials via SMTP
       await sendCredentialEmail(name, email, password, code);
       
@@ -235,42 +241,69 @@ export function ReferralAdminView() {
       return;
     }
     if (!confirm(`Resend login credentials to ${agent.email}?`)) return;
-    // We don't have the stored password after creation, so send a reset link + info
+
+    // Fetch raw_password from referral_agents table
+    const { data: agentData } = await supabase
+      .from("referral_agents")
+      .select("raw_password")
+      .eq("id", agent.id)
+      .maybeSingle();
+
+    const storedPassword = agentData?.raw_password || "(Password not stored - use Reset Password link)";
     const loginUrl = `${window.location.origin}/referral/login`;
+
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; padding: 30px;">
         <div style="background: linear-gradient(135deg, #0a192f 0%, #1e40af 100%); border-radius: 16px; padding: 30px; text-align: center; margin-bottom: 24px;">
           <h1 style="color: #fbbf24; font-size: 28px; margin: 0 0 6px; font-weight: 900; letter-spacing: 2px;">TECHLAUNCHPAD</h1>
-          <p style="color: #fff; margin: 0; font-size: 13px; opacity: 0.7;">Partner Portal — Credential Reminder</p>
+          <p style="color: #fff; margin: 0; font-size: 13px; opacity: 0.7;">Partner Portal — Login Credentials</p>
         </div>
         <div style="background: #fff; border-radius: 16px; padding: 32px; border: 1px solid #e2e8f0;">
           <h2 style="color: #0a192f; margin: 0 0 8px;">Hello ${agent.name}! 👋</h2>
-          <p style="color: #64748b; font-size: 14px;">Here are your login details for the Partner Portal:</p>
-          <div style="background: #f1f5f9; border-radius: 12px; padding: 20px; margin: 20px 0;">
-            <p style="margin:6px 0;"><strong>Portal:</strong> <a href="${loginUrl}">${loginUrl}</a></p>
-            <p style="margin:6px 0;"><strong>Email:</strong> ${agent.email}</p>
-            <p style="margin:6px 0;"><strong>Referral Code:</strong> <span style="font-family:monospace;font-size:18px;font-weight:900;color:#0a192f;">${agent.referral_code}</span></p>
-            <p style="margin:12px 0 0;color:#e53e3e;font-size:13px;">Password not shown for security. If you forgot your password, click the link below.</p>
+          <p style="color: #64748b; font-size: 14px; margin: 0 0 20px;">Here are your login credentials for the TechLaunchpad Partner Portal:</p>
+          <div style="background: #f1f5f9; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+            <table style="width:100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 10px 0; color: #64748b; font-size: 13px; font-weight: 700; width: 130px;">🌐 Portal URL</td>
+                <td style="padding: 10px 0;"><a href="${loginUrl}" style="color: #1e40af; font-weight: 700;">${loginUrl}</a></td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 0; color: #64748b; font-size: 13px; font-weight: 700;">📧 Email</td>
+                <td style="padding: 10px 0; color: #0a192f; font-weight: 800; font-size: 15px;">${agent.email}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 0; color: #64748b; font-size: 13px; font-weight: 700;">🔑 Password</td>
+                <td style="padding: 10px 0;"><span style="font-size: 18px; font-weight: 900; color: #0a192f; letter-spacing: 2px; background: #dbeafe; padding: 6px 14px; border-radius: 8px; display: inline-block;">${storedPassword}</span></td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 0; color: #64748b; font-size: 13px; font-weight: 700;">🔗 Referral Code</td>
+                <td style="padding: 10px 0;"><span style="font-family: monospace; font-size: 18px; font-weight: 900; color: #92400e; background: #fef3c7; padding: 6px 14px; border-radius: 8px; display: inline-block; letter-spacing: 3px;">${agent.referral_code}</span></td>
+              </tr>
+            </table>
           </div>
-          <a href="${loginUrl}" style="display:block;background:linear-gradient(135deg,#0a192f,#1e40af);color:#fff;text-align:center;padding:14px;border-radius:10px;font-weight:800;font-size:14px;text-decoration:none;">LOGIN TO PARTNER PORTAL →</a>
+          <a href="${loginUrl}" style="display:block; background: linear-gradient(135deg,#0a192f,#1e40af); color:#fff; text-align:center; padding:16px; border-radius:10px; font-weight:900; font-size:15px; text-decoration:none; letter-spacing:1px;">LOGIN TO PARTNER PORTAL →</a>
         </div>
+        <p style="text-align:center; color:#94a3b8; font-size:12px; margin-top:20px;">© ${new Date().getFullYear()} TechLaunchpad. All rights reserved.</p>
       </div>`;
-    const loginUrl2 = `${window.location.origin}/referral/login`;
-    void loginUrl2;
-    const res = await fetch("/api/send-email", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        to: agent.email,
-        subject: "🔑 Your TechLaunchpad Partner Login Details",
-        html
-      })
-    });
-    const result = await res.json();
-    if (res.ok && result.success) {
-      toast.success(`✅ Credentials resent to ${agent.email}`);
-    } else {
-      toast.error(`Failed to send email: ${result.error || 'Check SMTP config'}`);
+
+    try {
+      const res = await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          to: agent.email,
+          subject: "🔑 Your TechLaunchpad Partner Login Credentials",
+          html
+        })
+      });
+      const result = await res.json();
+      if (res.ok && result.success) {
+        toast.success(`✅ Credentials sent to ${agent.email}`);
+      } else {
+        toast.error(`Failed to send email: ${result.error || 'Check SMTP config'}`);
+      }
+    } catch (err: any) {
+      toast.error(`Could not send email: ${err.message}`);
     }
   };
 
