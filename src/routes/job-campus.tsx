@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Briefcase, ArrowRight, Loader2, MapPin, DollarSign, Calendar } from "lucide-react";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
 export const Route = createFileRoute("/job-campus")({
   component: JobCampusPage,
@@ -82,9 +83,9 @@ function JobCampusPage() {
                     {job.title}
                   </h3>
                   
-                  <p className="text-sm text-slate-500 mb-6 line-clamp-3 flex-grow">
-                    {job.description}
-                  </p>
+                  <div className="text-sm text-slate-500 mb-6 flex-grow">
+                    <MarkdownRenderer content={job.description} />
+                  </div>
                   
                   <div className="pt-4 border-t border-slate-100 flex items-center justify-between mt-auto">
                     <div className="text-xs font-bold text-slate-400 flex items-center gap-1">

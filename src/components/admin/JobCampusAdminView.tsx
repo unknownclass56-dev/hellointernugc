@@ -5,9 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Briefcase, Plus, Users, CreditCard } from "lucide-react";
+import { Loader2, Briefcase, Plus, Users, Edit, Trash2, MoreVertical, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export function JobCampusAdminView() {
   const [tab, setTab] = useState<"postings" | "enrollments" | "transactions">("postings");
@@ -16,8 +18,11 @@ export function JobCampusAdminView() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Form states
-  const [isAddOpen, setIsAddOpen] = useState(false);
+  // Job Form states
+  const [isJobDialogOpen, setIsJobDialogOpen] = useState(false);
+  const [isEditingJob, setIsEditingJob] = useState(false);
+  const [editingJobId, setEditingJobId] = useState("");
+  
   const [title, setTitle] = useState("");
   const [jobId, setJobId] = useState("");
   const [desc, setDesc] = useState("");
@@ -31,6 +36,11 @@ export function JobCampusAdminView() {
   const [selectedStudent, setSelectedStudent] = useState("");
   const [students, setStudents] = useState<any[]>([]);
   const [enrolling, setEnrolling] = useState(false);
+
+  // Edit Enrollment State
+  const [isEditEnrollmentOpen, setIsEditEnrollmentOpen] = useState(false);
+  const [editingEnrollmentId, setEditingEnrollmentId] = useState("");
+  const [enrollmentStatus, setEnrollmentStatus] = useState("");
 
   useEffect(() => {
     fetchData();
@@ -53,25 +63,67 @@ export function JobCampusAdminView() {
     setLoading(false);
   };
 
-  const handleCreateJob = async (e: React.FormEvent) => {
+  const openAddJob = () => {
+    setIsEditingJob(false);
+    setEditingJobId("");
+    setTitle("");
+    setJobId("");
+    setDesc("");
+    setSalary("");
+    setFee("0");
+    setIsJobDialogOpen(true);
+  };
+
+  const openEditJob = (job: any) => {
+    setIsEditingJob(true);
+    setEditingJobId(job.id);
+    setTitle(job.title);
+    setJobId(job.job_id);
+    setDesc(job.description);
+    setSalary(job.salary);
+    setFee(job.training_fee.toString());
+    setIsJobDialogOpen(true);
+  };
+
+  const handleSaveJob = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      const { error } = await supabase.from("job_campus_postings").insert({
+      const payload = {
         title,
         job_id: jobId,
         description: desc,
         salary,
         training_fee: parseFloat(fee) || 0
-      });
-      if (error) throw error;
-      toast.success("Job posting created!");
-      setIsAddOpen(false);
+      };
+
+      if (isEditingJob) {
+        const { error } = await supabase.from("job_campus_postings").update(payload).eq("id", editingJobId);
+        if (error) throw error;
+        toast.success("Job posting updated!");
+      } else {
+        const { error } = await supabase.from("job_campus_postings").insert(payload);
+        if (error) throw error;
+        toast.success("Job posting created!");
+      }
+      setIsJobDialogOpen(false);
       fetchData();
     } catch (err: any) {
       toast.error(err.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteJob = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this job posting?")) return;
+    try {
+      const { error } = await supabase.from("job_campus_postings").delete().eq("id", id);
+      if (error) throw error;
+      toast.success("Job deleted!");
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message);
     }
   };
 
@@ -92,6 +144,40 @@ export function JobCampusAdminView() {
       toast.error(err.message);
     } finally {
       setEnrolling(false);
+    }
+  };
+
+  const openEditEnrollment = (enc: any) => {
+    setEditingEnrollmentId(enc.id);
+    setEnrollmentStatus(enc.status);
+    setIsEditEnrollmentOpen(true);
+  };
+
+  const handleUpdateEnrollmentStatus = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEnrolling(true);
+    try {
+      const { error } = await supabase.from("job_campus_enrollments").update({ status: enrollmentStatus }).eq("id", editingEnrollmentId);
+      if (error) throw error;
+      toast.success("Enrollment updated!");
+      setIsEditEnrollmentOpen(false);
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setEnrolling(false);
+    }
+  };
+
+  const handleDeleteEnrollment = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this enrollment?")) return;
+    try {
+      const { error } = await supabase.from("job_campus_enrollments").delete().eq("id", id);
+      if (error) throw error;
+      toast.success("Enrollment deleted!");
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message);
     }
   };
 
@@ -120,20 +206,32 @@ export function JobCampusAdminView() {
           {tab === "postings" && (
             <div className="space-y-4">
               <div className="flex justify-end">
-                <Button onClick={() => setIsAddOpen(true)} className="bg-navy hover:bg-navy/90 text-white rounded-xl">
+                <Button onClick={openAddJob} className="bg-navy hover:bg-navy/90 text-white rounded-xl">
                   <Plus className="size-4 mr-2" /> Add Job
                 </Button>
               </div>
               <div className="grid md:grid-cols-2 gap-4">
                 {postings.map(p => (
-                  <Card key={p.id} className="rounded-2xl shadow-sm">
-                    <CardHeader>
-                      <CardTitle className="text-lg">{p.title}</CardTitle>
-                      <div className="text-sm text-gray-500">ID: {p.job_id}</div>
+                  <Card key={p.id} className="rounded-2xl shadow-sm flex flex-col">
+                    <CardHeader className="flex flex-row items-start justify-between">
+                      <div>
+                        <CardTitle className="text-lg">{p.title}</CardTitle>
+                        <div className="text-sm text-gray-500">ID: {p.job_id}</div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="icon" onClick={() => openEditJob(p)}>
+                          <Edit className="size-4" />
+                        </Button>
+                        <Button variant="outline" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteJob(p.id)}>
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
                     </CardHeader>
-                    <CardContent>
-                      <p className="text-sm line-clamp-3 mb-2">{p.description}</p>
-                      <div className="flex justify-between font-bold text-sm">
+                    <CardContent className="flex-grow">
+                      <div className="text-sm mb-2 max-h-[200px] overflow-y-auto bg-slate-50 p-2 rounded">
+                        <MarkdownRenderer content={p.description} />
+                      </div>
+                      <div className="flex justify-between font-bold text-sm mt-4">
                         <span className="text-green-600">{p.salary}</span>
                         <span className="text-navy">Fee: ₹{p.training_fee}</span>
                       </div>
@@ -151,19 +249,54 @@ export function JobCampusAdminView() {
                   <Users className="size-4 mr-2" /> Enroll Candidate
                 </Button>
               </div>
-              <div className="grid md:grid-cols-2 gap-4">
-                {enrollments.map(e => (
-                  <Card key={e.id} className="rounded-2xl shadow-sm border-l-4 border-l-gold">
-                    <CardHeader>
-                      <CardTitle className="text-md">{e.profiles?.full_name}</CardTitle>
-                      <div className="text-xs text-gray-500">{e.profiles?.email}</div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-sm font-bold text-navy mb-1">{e.job_campus_postings?.title}</div>
-                      <div className="text-xs uppercase bg-slate-100 p-1 rounded inline-block">Status: {e.status}</div>
-                    </CardContent>
-                  </Card>
-                ))}
+              <div className="bg-white p-4 rounded-2xl shadow-sm overflow-x-auto">
+                <table className="w-full text-sm text-left border-collapse">
+                  <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3 border-b">Candidate</th>
+                      <th className="px-4 py-3 border-b">Email</th>
+                      <th className="px-4 py-3 border-b">Job</th>
+                      <th className="px-4 py-3 border-b">Status</th>
+                      <th className="px-4 py-3 border-b">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {enrollments.map(e => (
+                      <tr key={e.id} className="hover:bg-slate-50 transition-colors border-b">
+                        <td className="px-4 py-3 font-bold">{e.profiles?.full_name}</td>
+                        <td className="px-4 py-3 text-slate-500">{e.profiles?.email}</td>
+                        <td className="px-4 py-3 text-navy font-bold">{e.job_campus_postings?.title}</td>
+                        <td className="px-4 py-3">
+                          <span className={`uppercase text-[10px] font-black px-2 py-1 rounded-md ${
+                            e.status === 'enrolled' ? 'bg-blue-100 text-blue-700' :
+                            e.status === 'completed' ? 'bg-green-100 text-green-700' :
+                            'bg-gray-100 text-gray-700'
+                          }`}>
+                            {e.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon"><MoreVertical className="size-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40">
+                              <DropdownMenuItem onClick={() => alert(`Showing details for ${e.profiles?.full_name}`)}>
+                                <Eye className="size-4 mr-2" /> Show
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openEditEnrollment(e)}>
+                                <Edit className="size-4 mr-2" /> Edit Status
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteEnrollment(e.id)}>
+                                <Trash2 className="size-4 mr-2" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
@@ -174,11 +307,11 @@ export function JobCampusAdminView() {
                 <table className="w-full text-sm text-left">
                   <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                     <tr>
-                      <th className="px-4 py-3">Candidate</th>
-                      <th className="px-4 py-3">Job</th>
-                      <th className="px-4 py-3">Amount</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Date</th>
+                      <th className="px-4 py-3 border-b">Candidate</th>
+                      <th className="px-4 py-3 border-b">Job</th>
+                      <th className="px-4 py-3 border-b">Amount</th>
+                      <th className="px-4 py-3 border-b">Status</th>
+                      <th className="px-4 py-3 border-b">Date</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -199,13 +332,13 @@ export function JobCampusAdminView() {
         </>
       )}
 
-      {/* Add Job Dialog */}
-      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+      {/* Add / Edit Job Dialog */}
+      <Dialog open={isJobDialogOpen} onOpenChange={setIsJobDialogOpen}>
         <DialogContent className="rounded-3xl max-w-md">
           <DialogHeader>
-            <DialogTitle>Create New Job Posting</DialogTitle>
+            <DialogTitle>{isEditingJob ? "Edit Job Posting" : "Create New Job Posting"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreateJob} className="space-y-4">
+          <form onSubmit={handleSaveJob} className="space-y-4">
             <div className="space-y-1">
               <Label>Job ID</Label>
               <Input required value={jobId} onChange={e=>setJobId(e.target.value)} placeholder="e.g. JB-100" />
@@ -216,7 +349,7 @@ export function JobCampusAdminView() {
             </div>
             <div className="space-y-1">
               <Label>Description</Label>
-              <Textarea value={desc} onChange={e=>setDesc(e.target.value)} rows={3} />
+              <Textarea value={desc} onChange={e=>setDesc(e.target.value)} rows={6} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
@@ -229,14 +362,14 @@ export function JobCampusAdminView() {
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-4">
-              <Button type="button" variant="ghost" onClick={()=>setIsAddOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Create Job"}</Button>
+              <Button type="button" variant="ghost" onClick={()=>setIsJobDialogOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={saving}>{saving ? "Saving..." : (isEditingJob ? "Update Job" : "Create Job")}</Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Enroll Dialog */}
+      {/* Enroll Candidate Dialog */}
       <Dialog open={isEnrollOpen} onOpenChange={setIsEnrollOpen}>
         <DialogContent className="rounded-3xl max-w-md">
           <DialogHeader>
@@ -245,14 +378,14 @@ export function JobCampusAdminView() {
           <form onSubmit={handleEnroll} className="space-y-4">
             <div className="space-y-1">
               <Label>Select Job</Label>
-              <select required className="w-full h-10 border rounded-lg px-3" value={selectedJob} onChange={e=>setSelectedJob(e.target.value)}>
+              <select required className="w-full h-10 border rounded-lg px-3 bg-white" value={selectedJob} onChange={e=>setSelectedJob(e.target.value)}>
                 <option value="">-- Choose Job --</option>
                 {postings.map(p => <option key={p.id} value={p.id}>{p.title} ({p.job_id})</option>)}
               </select>
             </div>
             <div className="space-y-1">
               <Label>Select Student</Label>
-              <select required className="w-full h-10 border rounded-lg px-3" value={selectedStudent} onChange={e=>setSelectedStudent(e.target.value)}>
+              <select required className="w-full h-10 border rounded-lg px-3 bg-white" value={selectedStudent} onChange={e=>setSelectedStudent(e.target.value)}>
                 <option value="">-- Choose Candidate --</option>
                 {students.map(s => <option key={s.id} value={s.id}>{s.full_name} ({s.email})</option>)}
               </select>
@@ -260,6 +393,29 @@ export function JobCampusAdminView() {
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="ghost" onClick={()=>setIsEnrollOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={enrolling}>{enrolling ? "Enrolling..." : "Enroll"}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Enrollment Status Dialog */}
+      <Dialog open={isEditEnrollmentOpen} onOpenChange={setIsEditEnrollmentOpen}>
+        <DialogContent className="rounded-3xl max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Update Enrollment Status</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdateEnrollmentStatus} className="space-y-4">
+            <div className="space-y-1">
+              <Label>Status</Label>
+              <select required className="w-full h-10 border rounded-lg px-3 bg-white" value={enrollmentStatus} onChange={e=>setEnrollmentStatus(e.target.value)}>
+                <option value="enrolled">Enrolled</option>
+                <option value="completed">Completed</option>
+                <option value="dropped">Dropped</option>
+              </select>
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="ghost" onClick={()=>setIsEditEnrollmentOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={enrolling}>{enrolling ? "Updating..." : "Update Status"}</Button>
             </div>
           </form>
         </DialogContent>

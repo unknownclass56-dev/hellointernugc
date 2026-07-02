@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Briefcase, User, BookOpen, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
 export const Route = createFileRoute("/dashboard/candidate")({
   component: CandidateDashboard,
@@ -116,7 +117,9 @@ function CandidateDashboard() {
                     <CardDescription>Job ID: {job.job_id}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-gray-600 line-clamp-3 mb-4">{job.description}</p>
+                    <div className="mb-4 text-sm max-h-[300px] overflow-y-auto">
+                      <MarkdownRenderer content={job.description} />
+                    </div>
                     <div className="flex justify-between text-sm mb-4">
                       <span className="font-medium text-green-600">{job.salary}</span>
                       <span className="text-gray-500">Fee: ₹{job.training_fee}</span>
