@@ -7,21 +7,24 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Users, Plus, Eye, Trash2, Loader2, Link as LinkIcon } from "lucide-react";
+import { Users, Plus, Eye, Trash2, Loader2, Link as LinkIcon, Edit } from "lucide-react";
 
 export function ReferralAdminView() {
   const [agents, setAgents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Add Agent State
+  // Form State
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingId, setEditingId] = useState("");
+  
   const [aName, setAName] = useState("");
   const [aEmail, setAEmail] = useState("");
   const [aPassword, setAPassword] = useState("");
   const [aPhone, setAPhone] = useState("");
   const [aCode, setACode] = useState("");
   const [aProgram, setAProgram] = useState("internship");
-  const [creating, setCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // History State
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -47,15 +50,23 @@ export function ReferralAdminView() {
     setACode(code);
   };
 
+  const resetForm = () => {
+    setAName(""); setAEmail(""); setAPassword(""); setAPhone(""); setACode(""); setAProgram("internship");
+  };
+
+  const openAddAgent = () => {
+    resetForm();
+    setIsAddOpen(true);
+  };
+
   const handleAddAgent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!aName || !aEmail || !aPassword || !aCode) {
-      toast.error("Please fill required fields (Name, Email, Password, Referral Code)");
+      toast.error("Please fill required fields");
       return;
     }
-    setCreating(true);
+    setSaving(true);
     try {
-      // 1. Create auth user with temp client
       const tempClient = createClient(
         import.meta.env.VITE_SUPABASE_URL,
         import.meta.env.VITE_SUPABASE_ANON_KEY,
@@ -72,7 +83,6 @@ export function ReferralAdminView() {
       if (authError) throw authError;
       if (!authData.user) throw new Error("User creation failed");
 
-      // 2. Insert into profiles
       const { error: profileError } = await supabase.from("profiles").upsert({
         id: authData.user.id,
         full_name: aName,
@@ -83,7 +93,6 @@ export function ReferralAdminView() {
       });
       if (profileError) throw profileError;
 
-      // 3. Insert into referral_agents
       const { error: agentError } = await supabase.from("referral_agents").insert({
         id: authData.user.id,
         name: aName,
@@ -96,13 +105,50 @@ export function ReferralAdminView() {
 
       toast.success("Referral Agent created successfully!");
       setIsAddOpen(false);
-      setAName(""); setAEmail(""); setAPassword(""); setAPhone(""); setACode("");
+      resetForm();
       fetchAgents();
     } catch (err: any) {
-      console.error(err);
       toast.error(err.message || "Failed to create agent");
     } finally {
-      setCreating(false);
+      setSaving(false);
+    }
+  };
+
+  const openEditAgent = (agent: any) => {
+    setEditingId(agent.id);
+    setAName(agent.name);
+    setAEmail(agent.email);
+    setAPhone(agent.phone || "");
+    setACode(agent.referral_code);
+    setAProgram(agent.program || "internship");
+    setIsEditOpen(true);
+  };
+
+  const handleEditAgent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const { error: profileError } = await supabase.from("profiles").update({
+        full_name: aName,
+        phone: aPhone,
+      }).eq("id", editingId);
+      if (profileError) throw profileError;
+
+      const { error: agentError } = await supabase.from("referral_agents").update({
+        name: aName,
+        phone: aPhone,
+        referral_code: aCode,
+        program: aProgram
+      }).eq("id", editingId);
+      if (agentError) throw agentError;
+
+      toast.success("Agent updated successfully!");
+      setIsEditOpen(false);
+      fetchAgents();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update agent");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -135,8 +181,6 @@ export function ReferralAdminView() {
   const handleDeleteAgent = async (id: string) => {
     if (!confirm("Are you sure? This will delete the referral agent and their login access.")) return;
     try {
-      // Deleting from referral_agents will not delete auth user unless backend cascade is setup or admin api is used.
-      // However, we can delete their profile and referral_agents entry, which effectively revokes access.
       const { error } = await supabase.from("referral_agents").delete().eq("id", id);
       if (error) throw error;
       await supabase.from("profiles").delete().eq("id", id);
@@ -158,7 +202,7 @@ export function ReferralAdminView() {
             Manage referral agents and tracked students.
           </p>
         </div>
-        <Button onClick={() => setIsAddOpen(true)} className="bg-navy hover:bg-navy/90 text-white rounded-xl">
+        <Button onClick={openAddAgent} className="bg-navy hover:bg-navy/90 text-white rounded-xl">
           <Plus className="size-4 mr-2" /> Add Agent
         </Button>
       </div>
@@ -186,6 +230,9 @@ export function ReferralAdminView() {
                     <td className="px-4 py-3 font-bold text-navy">{a.referral_code}</td>
                     <td className="px-4 py-3 uppercase text-xs">{a.program}</td>
                     <td className="px-4 py-3 flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => openEditAgent(a)} className="h-8">
+                        <Edit className="size-3 mr-1" /> Edit
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => openHistory(a)} className="h-8">
                         <Eye className="size-3 mr-1" /> History
                       </Button>
@@ -244,7 +291,47 @@ export function ReferralAdminView() {
             </div>
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="ghost" onClick={()=>setIsAddOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={creating}>{creating ? "Creating..." : "Create Agent"}</Button>
+              <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Create Agent"}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Agent Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="rounded-3xl max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Edit Referral Agent</DialogTitle></DialogHeader>
+          <form onSubmit={handleEditAgent} className="space-y-4">
+            <div className="space-y-1">
+              <Label>Full Name</Label>
+              <Input required value={aName} onChange={e=>setAName(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>Email (Cannot be changed here)</Label>
+              <Input disabled type="email" value={aEmail} className="bg-slate-50" />
+            </div>
+            <div className="space-y-1">
+              <Label>Phone</Label>
+              <Input value={aPhone} onChange={e=>setAPhone(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>Target Program</Label>
+              <select className="w-full h-10 border rounded-lg px-3 bg-white" value={aProgram} onChange={e=>setAProgram(e.target.value)}>
+                <option value="internship">Internship</option>
+                <option value="training">Training</option>
+                <option value="job_campus">Job Campus</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label>Referral Code</Label>
+              <div className="flex gap-2">
+                <Input required value={aCode} onChange={e=>setACode(e.target.value.toUpperCase())} className="uppercase" />
+                <Button type="button" variant="outline" onClick={generateCode}>Auto</Button>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="ghost" onClick={()=>setIsEditOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Update Agent"}</Button>
             </div>
           </form>
         </DialogContent>
