@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageShell } from "@/components/PageShell";
-import { ShieldCheck, Briefcase, BookOpen, ChevronRight } from "lucide-react";
+import { ShieldCheck, Briefcase, BookOpen, ChevronRight, UserCheck } from "lucide-react";
 
 export const Route = createFileRoute("/login")({
   component: LoginSelectorPage,
@@ -16,7 +16,7 @@ function LoginSelectorPage() {
           <p className="mt-2 text-muted-foreground max-w-lg mx-auto">Please select your designated portal to access your dashboard. Access is strictly restricted by user type.</p>
         </div>
 
-        <div className="grid gap-8 md:grid-cols-2 max-w-3xl mx-auto">
+        <div className="grid gap-8 md:grid-cols-3 max-w-5xl mx-auto">
           {/* Internship Portal Card */}
           <Link to="/internship/login" className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl hover:border-navy">
             <div className="absolute inset-0 bg-gradient-to-br from-navy/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
@@ -26,6 +26,19 @@ function LoginSelectorPage() {
             <h3 className="mb-2 font-display text-xl font-bold text-navy-deep">Internship Portal</h3>
             <p className="text-sm text-slate-500 mb-8">For students enrolled in internship programs, assignments, and offer letters.</p>
             <div className="flex items-center text-sm font-bold text-navy uppercase tracking-widest group-hover:text-gold transition-colors">
+              Access Portal <ChevronRight className="ml-1 size-4 transition-transform group-hover:translate-x-1" />
+            </div>
+          </Link>
+
+          {/* Candidate Portal Card */}
+          <Link to="/candidate/login" className="group relative overflow-hidden rounded-3xl border border-amber-200 bg-white p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl hover:border-amber-500">
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+            <div className="mb-6 inline-flex size-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 transition-transform group-hover:scale-110">
+              <UserCheck className="size-7" />
+            </div>
+            <h3 className="mb-2 font-display text-xl font-bold text-navy-deep">Candidate Portal</h3>
+            <p className="text-sm text-slate-500 mb-8">For job campus candidates to access vacancies, trainings, and career resources.</p>
+            <div className="flex items-center text-sm font-bold text-amber-600 uppercase tracking-widest group-hover:text-amber-800 transition-colors">
               Access Portal <ChevronRight className="ml-1 size-4 transition-transform group-hover:translate-x-1" />
             </div>
           </Link>

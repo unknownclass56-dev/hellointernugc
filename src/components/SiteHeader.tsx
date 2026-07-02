@@ -172,7 +172,7 @@ export function SiteHeader() {
                   {loginHref ? <a href={loginHref}>Login</a> : <Link to="/login">Login</Link>}
                 </Button>
                 <Button asChild variant="outline" className="border-gold text-gold hover:bg-gold hover:text-navy-deep font-semibold">
-                  {loginHref ? <a href={`${loginHref}?portal=candidate`}>Candidate Login</a> : <Link to="/login" search={{ portal: "candidate" } as any}>Candidate Login</Link>}
+                  {loginHref ? <a href={`${mainBase}/candidate/login`}>Candidate Login</a> : <Link to="/candidate/login">Candidate Login</Link>}
                 </Button>
                 <Button asChild className="bg-gold text-navy-deep hover:bg-gold-soft">
                   {registerHref ? <a href={registerHref}>Register</a> : <Link to="/register">Register</Link>}
@@ -224,9 +224,9 @@ export function SiteHeader() {
                     </Button>
                     <Button asChild variant="outline" className="flex-1 border-gold text-gold hover:bg-gold hover:text-navy-deep font-semibold">
                       {loginHref ? (
-                        <a href={`${loginHref}?portal=candidate`} onClick={() => setOpen(false)}>Candidate Login</a>
+                        <a href={`${mainBase}/candidate/login`} onClick={() => setOpen(false)}>Candidate Login</a>
                       ) : (
-                        <Link to="/login" search={{ portal: "candidate" } as any} onClick={() => setOpen(false)}>Candidate Login</Link>
+                        <Link to="/candidate/login" onClick={() => setOpen(false)}>Candidate Login</Link>
                       )}
                     </Button>
                     <Button asChild className="flex-1 bg-gold text-navy-deep hover:bg-gold-soft">
