@@ -124,8 +124,8 @@ function JobCampusPage() {
         description: `Enrollment for ${applyJob.title}`,
         handler: async function (response: any) {
           try {
-            // Upsert profiles
-            await supabase.from("profiles").upsert({
+            // Upsert profiles safely
+            const baseProfile = {
               id: userId,
               full_name: name,
               email: email,
@@ -133,10 +133,16 @@ function JobCampusPage() {
               role: "student",
               raw_password: password,
               created_at: new Date().toISOString()
-            });
+            };
+            const { error: baseError } = await supabase.from("profiles").insert([baseProfile]);
+            if (baseError && baseError.code !== '23505' && !baseError.message?.includes('duplicate key')) {
+              throw baseError;
+            } else if (baseError) {
+              await supabase.from("profiles").update(baseProfile).eq("id", userId);
+            }
 
-            // Upsert internship students
-            await supabase.from("internship_students").upsert({
+            // Upsert internship students safely
+            const studentProfile = {
               id: userId,
               full_name: name,
               email: email,
@@ -147,7 +153,13 @@ function JobCampusPage() {
               academic_session: batch,
               raw_password: password,
               created_at: new Date().toISOString()
-            });
+            };
+            const { error: profileError } = await supabase.from("internship_students").insert([studentProfile]);
+            if (profileError && profileError.code !== '23505' && !profileError.message?.includes('duplicate key')) {
+              throw profileError;
+            } else if (profileError) {
+              await supabase.from("internship_students").update(studentProfile).eq("id", userId);
+            }
 
             // Insert enrollment
             const { error: enrollError } = await supabase.from("job_campus_enrollments").insert({
