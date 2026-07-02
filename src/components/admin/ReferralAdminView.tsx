@@ -12,6 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+const tempClient = createClient(supabaseUrl, supabaseAnonKey, { auth: { persistSession: false } });
+
 export function ReferralAdminView() {
   const [agents, setAgents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,10 +107,6 @@ export function ReferralAdminView() {
 
     try {
       // 1. Create the user using Supabase Auth directly (prevents 500 errors on login)
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
-      const tempClient = createClient(supabaseUrl, supabaseAnonKey, { auth: { persistSession: false } });
-      
       const { data: authData, error: authError } = await tempClient.auth.signUp({
         email,
         password,
