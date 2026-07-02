@@ -29,6 +29,7 @@ import { supabase } from "@/lib/supabase";
 import { createClient } from "@supabase/supabase-js";
 import { useAuth } from "@/hooks/use-auth";
 import { LogoLoader } from "@/components/LogoLoader";
+import { JobCampusAdminView } from "@/components/admin/JobCampusAdminView";
 
 export const Route = createFileRoute("/dashboard/admin")({
   component: AdminDashboard,
@@ -4910,6 +4911,9 @@ function AdminDashboard() {
 
         </div>
       )}
+
+      {/* ============ JOB CAMPUS MANAGEMENT ============ */}
+      {view === "jobs" && <JobCampusAdminView />}
     </div>
   );
 }

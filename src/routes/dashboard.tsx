@@ -71,6 +71,7 @@ function DashboardLayout() {
       
       let isTrainingStudent = false;
       let isInternshipStudent = false;
+      let isCandidate = false;
 
       // Only perform student checks if the user is not an admin or sales representative
       if (userRole !== "admin" && userRole !== "sales") {
@@ -107,6 +108,16 @@ function DashboardLayout() {
         if (isMatch) {
           isInternshipStudent = true;
         }
+        
+        // Determine if they are a job campus candidate
+        const { data: isCandidateMatch } = await supabase
+          .from("job_campus_enrollments")
+          .select("id")
+          .eq("candidate_id", user.id)
+          .maybeSingle();
+        if (isCandidateMatch) {
+          isCandidate = true;
+        }
       }
 
       // Strictly map role in UI
@@ -114,6 +125,8 @@ function DashboardLayout() {
         // Keep role as admin
       } else if (userRole === "sales") {
         // Keep role as sales
+      } else if (isCandidate) {
+        userRole = "candidate";
       } else if (isTrainingStudent) {
         userRole = "training";
       } else if (isInternshipStudent) {
@@ -128,6 +141,8 @@ function DashboardLayout() {
           navigate({ to: "/dashboard/admin" } as any);
         } else if (userRole === "sales") {
           navigate({ to: "/dashboard/sales" } as any);
+        } else if (userRole === "candidate") {
+          navigate({ to: "/dashboard/candidate" } as any);
         } else if (isTrainingStudent) {
           navigate({ to: "/dashboard/training", search: { tab: "learning" } } as any);
         } else {
@@ -168,6 +183,7 @@ function DashboardLayout() {
     { to: "/dashboard/admin", search: { view: 'internships' }, icon: Briefcase, label: "Internships" },
     { to: "/dashboard/admin", search: { view: 'attendance' }, icon: ListChecks, label: "Attendance Control" },
     { to: "/dashboard/admin", search: { view: 'assignments' }, icon: BookOpen, label: "Assignment Hub" },
+    { to: "/dashboard/admin", search: { view: 'jobs' }, icon: Briefcase, label: "Job Campus" },
     { to: "/dashboard/admin", search: { view: 'transactions' }, icon: CreditCard, label: "Transactions" },
     { to: "/dashboard/admin", search: { view: 'leads' }, icon: Users, label: "Student Leads" },
     { to: "/dashboard/admin", search: { view: 'lectures' }, icon: Video, label: "Online Lectures" },
@@ -202,13 +218,22 @@ function DashboardLayout() {
     { to: "/dashboard/sales", search: { tab: "leads" }, icon: Users, label: "My Students" },
   ];
 
+  const candidateLinks: NavLink[] = [
+    { to: "/dashboard/candidate", icon: LayoutDashboard, label: "Overview" },
+    { to: "/dashboard/candidate", search: { tab: "profile" } as any, icon: User, label: "My Profile" },
+    { to: "/dashboard/candidate", search: { tab: "vacancies" } as any, icon: Briefcase, label: "Job Vacancies" },
+    { to: "/dashboard/candidate", search: { tab: "training" } as any, icon: BookOpen, label: "My Training" },
+  ];
+
   const links = role === "admin" 
     ? adminLinks 
     : role === "sales"
       ? salesLinks
-      : role === "training" 
-        ? trainingLinks 
-        : internshipLinks;
+      : role === "candidate"
+        ? candidateLinks
+        : role === "training" 
+          ? trainingLinks 
+          : internshipLinks;
 
   return (
     <div className="flex h-screen bg-[#f8f9fa] print:bg-white print:h-auto print:block">

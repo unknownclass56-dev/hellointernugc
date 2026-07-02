@@ -15,6 +15,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as JobCampusRouteImport } from './routes/job-campus'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -36,6 +37,7 @@ import { Route as DashboardTrainingRouteImport } from './routes/dashboard/traini
 import { Route as DashboardSalesRouteImport } from './routes/dashboard/sales'
 import { Route as DashboardInboxRouteImport } from './routes/dashboard/inbox'
 import { Route as DashboardCertificatesRouteImport } from './routes/dashboard/certificates'
+import { Route as DashboardCandidateRouteImport } from './routes/dashboard/candidate'
 import { Route as DashboardAdminRouteImport } from './routes/dashboard/admin'
 import { Route as BlogSlugRouteImport } from './routes/blog/$slug'
 import { Route as ApplyIdRouteImport } from './routes/apply/$id'
@@ -82,6 +84,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JobCampusRoute = JobCampusRouteImport.update({
+  id: '/job-campus',
+  path: '/job-campus',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -189,6 +196,11 @@ const DashboardCertificatesRoute = DashboardCertificatesRouteImport.update({
   path: '/certificates',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardCandidateRoute = DashboardCandidateRouteImport.update({
+  id: '/candidate',
+  path: '/candidate',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardAdminRoute = DashboardAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -293,6 +305,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRouteWithChildren
   '/faq': typeof FaqRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/job-campus': typeof JobCampusRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
@@ -304,6 +317,7 @@ export interface FileRoutesByFullPath {
   '/apply/$id': typeof ApplyIdRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/dashboard/admin': typeof DashboardAdminRoute
+  '/dashboard/candidate': typeof DashboardCandidateRoute
   '/dashboard/certificates': typeof DashboardCertificatesRoute
   '/dashboard/inbox': typeof DashboardInboxRoute
   '/dashboard/sales': typeof DashboardSalesRoute
@@ -339,6 +353,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRouteWithChildren
   '/faq': typeof FaqRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/job-campus': typeof JobCampusRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
@@ -350,6 +365,7 @@ export interface FileRoutesByTo {
   '/apply/$id': typeof ApplyIdRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/dashboard/admin': typeof DashboardAdminRoute
+  '/dashboard/candidate': typeof DashboardCandidateRoute
   '/dashboard/certificates': typeof DashboardCertificatesRoute
   '/dashboard/inbox': typeof DashboardInboxRoute
   '/dashboard/sales': typeof DashboardSalesRoute
@@ -386,6 +402,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRouteWithChildren
   '/faq': typeof FaqRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/job-campus': typeof JobCampusRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
@@ -397,6 +414,7 @@ export interface FileRoutesById {
   '/apply/$id': typeof ApplyIdRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/dashboard/admin': typeof DashboardAdminRoute
+  '/dashboard/candidate': typeof DashboardCandidateRoute
   '/dashboard/certificates': typeof DashboardCertificatesRoute
   '/dashboard/inbox': typeof DashboardInboxRoute
   '/dashboard/sales': typeof DashboardSalesRoute
@@ -434,6 +452,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/faq'
     | '/forgot-password'
+    | '/job-campus'
     | '/login'
     | '/privacy'
     | '/register'
@@ -445,6 +464,7 @@ export interface FileRouteTypes {
     | '/apply/$id'
     | '/blog/$slug'
     | '/dashboard/admin'
+    | '/dashboard/candidate'
     | '/dashboard/certificates'
     | '/dashboard/inbox'
     | '/dashboard/sales'
@@ -480,6 +500,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/faq'
     | '/forgot-password'
+    | '/job-campus'
     | '/login'
     | '/privacy'
     | '/register'
@@ -491,6 +512,7 @@ export interface FileRouteTypes {
     | '/apply/$id'
     | '/blog/$slug'
     | '/dashboard/admin'
+    | '/dashboard/candidate'
     | '/dashboard/certificates'
     | '/dashboard/inbox'
     | '/dashboard/sales'
@@ -526,6 +548,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/faq'
     | '/forgot-password'
+    | '/job-campus'
     | '/login'
     | '/privacy'
     | '/register'
@@ -537,6 +560,7 @@ export interface FileRouteTypes {
     | '/apply/$id'
     | '/blog/$slug'
     | '/dashboard/admin'
+    | '/dashboard/candidate'
     | '/dashboard/certificates'
     | '/dashboard/inbox'
     | '/dashboard/sales'
@@ -573,6 +597,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRouteWithChildren
   FaqRoute: typeof FaqRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  JobCampusRoute: typeof JobCampusRoute
   LoginRoute: typeof LoginRoute
   PrivacyRoute: typeof PrivacyRoute
   RegisterRoute: typeof RegisterRoute
@@ -636,6 +661,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/job-campus': {
+      id: '/job-campus'
+      path: '/job-campus'
+      fullPath: '/job-campus'
+      preLoaderRoute: typeof JobCampusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -785,6 +817,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardCertificatesRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/candidate': {
+      id: '/dashboard/candidate'
+      path: '/candidate'
+      fullPath: '/dashboard/candidate'
+      preLoaderRoute: typeof DashboardCandidateRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/admin': {
       id: '/dashboard/admin'
       path: '/admin'
@@ -919,6 +958,7 @@ const BlogRouteWithChildren = BlogRoute._addFileChildren(BlogRouteChildren)
 
 interface DashboardRouteChildren {
   DashboardAdminRoute: typeof DashboardAdminRoute
+  DashboardCandidateRoute: typeof DashboardCandidateRoute
   DashboardCertificatesRoute: typeof DashboardCertificatesRoute
   DashboardInboxRoute: typeof DashboardInboxRoute
   DashboardSalesRoute: typeof DashboardSalesRoute
@@ -938,6 +978,7 @@ interface DashboardRouteChildren {
 
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAdminRoute: DashboardAdminRoute,
+  DashboardCandidateRoute: DashboardCandidateRoute,
   DashboardCertificatesRoute: DashboardCertificatesRoute,
   DashboardInboxRoute: DashboardInboxRoute,
   DashboardSalesRoute: DashboardSalesRoute,
@@ -969,6 +1010,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRouteWithChildren,
   FaqRoute: FaqRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  JobCampusRoute: JobCampusRoute,
   LoginRoute: LoginRoute,
   PrivacyRoute: PrivacyRoute,
   RegisterRoute: RegisterRoute,
