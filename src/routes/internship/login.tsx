@@ -40,37 +40,58 @@ function InternshipLoginPage() {
       return toast.error(error.message);
     }
 
-    let isInternshipStudent = false;
-    let role = "student";
+    let isAllowed = false;
+    let actualPortal = "";
+
     try {
-      // Check if user is admin in profiles
       const { data: profile } = await supabase
         .from("profiles")
         .select("role")
         .eq("id", data.user.id)
         .maybeSingle();
-      if (profile?.role) role = profile.role;
 
-      if (role === "admin") {
-        isInternshipStudent = true;
+      const role = profile?.role || "";
+
+      // Block wrong roles immediately with specific guidance
+      if (role === "candidate") {
+        actualPortal = "Candidate Portal";
+      } else if (role === "training") {
+        actualPortal = "Training Portal";
+      } else if (role === "sales") {
+        actualPortal = "Sales Portal";
+      } else if (role === "admin") {
+        isAllowed = true; // Admins can access any portal
+      } else if (role === "student") {
+        isAllowed = true;
       } else {
-        // Check if user exists in internship_students table
+        // Check internship_students as fallback
         const { data: studentMatch } = await supabase
           .from("internship_students")
           .select("id")
           .eq("id", data.user.id)
           .maybeSingle();
         if (studentMatch) {
-          isInternshipStudent = true;
+          isAllowed = true;
+        } else {
+          // They exist but not as an internship student — check where they belong
+          const { data: enrollment } = await supabase
+            .from("job_campus_enrollments")
+            .select("id")
+            .eq("candidate_id", data.user.id)
+            .maybeSingle();
+          if (enrollment) actualPortal = "Candidate Portal";
         }
       }
     } catch (_) {}
 
     // Strict Role Enforcement
-    if (!isInternshipStudent) {
+    if (!isAllowed) {
       await supabase.auth.signOut();
       setBusy(false);
-      return toast.error("Access denied. Please use the correct login portal for your program type.");
+      const msg = actualPortal
+        ? `🚫 Access Not Allowed! Your account belongs to the ${actualPortal}. Please login from the correct portal.`
+        : "🚫 Access Not Allowed! This portal is for Internship Students only. Please use the correct login portal.";
+      return toast.error(msg, { duration: 6000 });
     }
 
     setBusy(false);

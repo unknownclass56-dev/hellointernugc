@@ -38,7 +38,9 @@ function CandidateLoginPage() {
       return toast.error(error.message);
     }
 
-    let isCandidate = false;
+    let isAllowed = false;
+    let actualPortal = "";
+
     try {
       const { data: profile } = await supabase
         .from("profiles")
@@ -46,30 +48,46 @@ function CandidateLoginPage() {
         .eq("id", data.user.id)
         .maybeSingle();
 
-      const role = profile?.role;
+      const role = profile?.role || "";
 
       if (role === "admin") {
-        // Admins can access everything
-        isCandidate = true;
+        isAllowed = true; // Admins can access any portal
       } else if (role === "candidate") {
-        isCandidate = true;
+        isAllowed = true;
+      } else if (role === "student") {
+        actualPortal = "Internship Portal";
+      } else if (role === "training") {
+        actualPortal = "Training Portal";
+      } else if (role === "sales") {
+        actualPortal = "Sales Portal";
       } else {
-        // Also check job_campus_enrollments as a fallback
+        // Fallback: check if they have a job_campus_enrollment
         const { data: enrollment } = await supabase
           .from("job_campus_enrollments")
           .select("id")
           .eq("candidate_id", data.user.id)
           .maybeSingle();
         if (enrollment) {
-          isCandidate = true;
+          isAllowed = true;
+        } else {
+          // Check if they are internship students
+          const { data: studentMatch } = await supabase
+            .from("internship_students")
+            .select("id")
+            .eq("id", data.user.id)
+            .maybeSingle();
+          if (studentMatch) actualPortal = "Internship Portal";
         }
       }
     } catch (_) {}
 
-    if (!isCandidate) {
+    if (!isAllowed) {
       await supabase.auth.signOut();
       setBusy(false);
-      return toast.error("Access denied. This portal is for Job Campus Candidates only. Please use the correct login portal.");
+      const msg = actualPortal
+        ? `🚫 Access Not Allowed! Your account belongs to the ${actualPortal}. Please login from the correct portal.`
+        : "🚫 Access Not Allowed! This portal is for Job Campus Candidates only. Please use the correct login portal.";
+      return toast.error(msg, { duration: 6000 });
     }
 
     setBusy(false);

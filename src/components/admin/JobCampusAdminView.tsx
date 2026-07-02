@@ -216,19 +216,24 @@ export function JobCampusAdminView() {
     e.preventDefault();
     setSaving(true);
     try {
-      const { error } = await supabase.from("job_campus_candidate_trainings").insert({
+      const savePromise = supabase.from("job_campus_candidate_trainings").insert({
         title: tTitle,
         training_type: tType,
         mode: tMode,
         link: tLink,
         target_postings: tTargets
       });
-      if (error) throw error;
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Request timed out. The table may not exist yet. Please run the migration SQL first.")), 8000)
+      );
+      const { error } = await Promise.race([savePromise, timeoutPromise]) as any;
+      if (error) throw new Error(error.message || JSON.stringify(error));
       toast.success("Training created successfully!");
       setIsTrainingOpen(false);
       fetchData();
     } catch (err: any) {
-      toast.error(err.message);
+      console.error("Training save error:", err);
+      toast.error(err.message || "Failed to save. Check console for details.", { duration: 8000 });
     } finally {
       setSaving(false);
     }
@@ -238,7 +243,7 @@ export function JobCampusAdminView() {
     e.preventDefault();
     setSaving(true);
     try {
-      const { error } = await supabase.from("job_campus_candidate_vacancies").insert({
+      const savePromise = supabase.from("job_campus_candidate_vacancies").insert({
         job_title: vTitle,
         salary: vSalary,
         experience: vExp,
@@ -248,12 +253,17 @@ export function JobCampusAdminView() {
         end_date: vEndDate || null,
         target_postings: vTargets
       });
-      if (error) throw error;
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Request timed out. The table may not exist yet. Please run the migration SQL first.")), 8000)
+      );
+      const { error } = await Promise.race([savePromise, timeoutPromise]) as any;
+      if (error) throw new Error(error.message || JSON.stringify(error));
       toast.success("Vacancy created successfully!");
       setIsVacancyOpen(false);
       fetchData();
     } catch (err: any) {
-      toast.error(err.message);
+      console.error("Vacancy save error:", err);
+      toast.error(err.message || "Failed to save. Check console for details.", { duration: 8000 });
     } finally {
       setSaving(false);
     }
