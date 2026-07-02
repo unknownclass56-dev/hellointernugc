@@ -89,6 +89,7 @@ function JobCampusPage() {
       }
 
       let userId = authData?.user?.id;
+      let session = authData?.session;
       if (!userId) {
         // Attempt sign in if already registered
         const { data: signInData, error: signInError } = await tempClient.auth.signInWithPassword({
@@ -96,9 +97,18 @@ function JobCampusPage() {
         });
         if (signInError) throw new Error("Account exists, but password was incorrect. Please use correct password.");
         userId = signInData.user?.id;
+        session = signInData.session;
       }
 
       if (!userId) throw new Error("Failed to authenticate user.");
+
+      // Set global supabase client session for RLS
+      if (session) {
+        await supabase.auth.setSession({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token
+        });
+      }
 
       // 2. Load Razorpay
       const fee = applyJob.training_fee || 999;
