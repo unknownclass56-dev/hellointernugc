@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { 
-  Users, Plus, Trash2, ShieldCheck, Mail, Phone, Building2, Key, Link2, DollarSign
+  Users, Plus, Trash2, ShieldCheck, Mail, Phone, Building2, Key, Link2, DollarSign, Edit
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,11 @@ export function ReferralAdminView() {
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+
+  // Edit states
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [editingId, setEditingId] = useState<string>("");
 
   // Form states
   const [name, setName] = useState("");
@@ -98,6 +103,51 @@ export function ReferralAdminView() {
       toast.success("Referral agent deleted.");
       fetchAgents();
     }
+  const handleEditClick = (agent: any) => {
+    setEditingId(agent.id);
+    setName(agent.name || "");
+    setEmail(agent.email || "");
+    setPhone(agent.phone || "");
+    setBankAcct(agent.bank_account_number || "");
+    setIfsc(agent.ifsc || "");
+    setBankName(agent.bank_name || "");
+    setAadhar(agent.aadhar_number || "");
+    setUpi(agent.upi_id || "");
+    setCode(agent.referral_code || "");
+    setProgram(agent.program || "job_campus");
+    setIsEditOpen(true);
+  };
+
+  const handleUpdateAgent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUpdating(true);
+    try {
+      // NOTE: Email updating requires user verification in Supabase usually, so we only update profile data here.
+      const { error } = await supabase.from("referral_agents").update({
+        name, phone, bank_account_number: bankAcct, ifsc, bank_name: bankName,
+        aadhar_number: aadhar, upi_id: upi, referral_code: code, program
+      }).eq("id", editingId);
+
+      if (error) throw error;
+      toast.success("Agent details updated successfully!");
+      setIsEditOpen(false);
+      fetchAgents();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update agent");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleResetPassword = async (agentEmail: string) => {
+    if (!confirm(`Send password reset link to ${agentEmail}?`)) return;
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(agentEmail);
+      if (error) throw error;
+      toast.success(`Password reset link sent to ${agentEmail}`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send password reset link");
+    }
   };
 
   return (
@@ -175,9 +225,17 @@ export function ReferralAdminView() {
                         </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(agent.id)} className="text-red-500 hover:text-red-600 hover:bg-red-50">
-                        <Trash2 className="size-4" />
-                      </Button>
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => handleResetPassword(agent.email)} className="text-navy hover:text-navy-deep hover:bg-navy/10" title="Send Password Reset Link">
+                          <Key className="size-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(agent)} className="text-blue-500 hover:text-blue-600 hover:bg-blue-50" title="Edit Agent">
+                          <Edit className="size-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(agent.id)} className="text-red-500 hover:text-red-600 hover:bg-red-50" title="Delete Agent">
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -271,6 +329,92 @@ export function ReferralAdminView() {
               <Button type="button" variant="ghost" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={creating} className="bg-navy hover:bg-navy-deep text-white px-8">
                 {creating ? "Creating Agent..." : "Create & Send Credentials"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-navy-deep flex items-center gap-2">
+              <Edit className="text-blue-500 size-6" /> Edit Referral Agent
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdateAgent} className="space-y-6 mt-4">
+            
+            <div className="grid md:grid-cols-2 gap-6 bg-slate-50 p-5 rounded-xl border border-slate-100">
+              <div className="md:col-span-2">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Account Information</h3>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-slate-500">Full Name *</Label>
+                <Input required value={name} onChange={e => setName(e.target.value)} placeholder="Agent Name" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-slate-500">Email (Cannot be changed here)</Label>
+                <Input disabled value={email} className="bg-slate-200" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-slate-500">Phone</Label>
+                <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91..." />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6 bg-slate-50 p-5 rounded-xl border border-slate-100">
+              <div className="md:col-span-2">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Program & Code</h3>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-slate-500">Target Program *</Label>
+                <Select value={program} onValueChange={setProgram}>
+                  <SelectTrigger className="bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="job_campus">Job Campus</SelectItem>
+                    <SelectItem value="training">Training</SelectItem>
+                    <SelectItem value="internship">Internship</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-slate-500">Unique Referral Code *</Label>
+                <Input required value={code} onChange={e => setCode(e.target.value.toUpperCase().replace(/\s/g, ''))} placeholder="e.g. TLJ2026" className="uppercase font-mono" />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6 bg-slate-50 p-5 rounded-xl border border-slate-100">
+              <div className="md:col-span-2">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Financial & KYC (Optional)</h3>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-slate-500">Bank Name</Label>
+                <Input value={bankName} onChange={e => setBankName(e.target.value)} placeholder="e.g. HDFC Bank" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-slate-500">Account Number</Label>
+                <Input value={bankAcct} onChange={e => setBankAcct(e.target.value)} placeholder="Account Number" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-slate-500">IFSC Code</Label>
+                <Input value={ifsc} onChange={e => setIfsc(e.target.value)} placeholder="IFSC" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-slate-500">UPI ID</Label>
+                <Input value={upi} onChange={e => setUpi(e.target.value)} placeholder="example@upi" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-slate-500">Aadhar Number</Label>
+                <Input value={aadhar} onChange={e => setAadhar(e.target.value)} placeholder="12-digit Aadhar" />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <Button type="button" variant="ghost" onClick={() => setIsEditOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={updating} className="bg-blue-600 hover:bg-blue-700 text-white px-8">
+                {updating ? "Saving Changes..." : "Save Changes"}
               </Button>
             </div>
           </form>
