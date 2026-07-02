@@ -50,6 +50,52 @@ export function ReferralAdminView() {
     setLoading(false);
   };
 
+  // ─── Send credentials via SMTP (same Gmail used for Marketing Mailer) ────
+  const sendCredentialEmail = async (agentName: string, agentEmail: string, agentPassword: string, referralCode: string) => {
+    const loginUrl = `${window.location.origin}/referral/login`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; padding: 30px;">
+        <div style="background: linear-gradient(135deg, #0a192f 0%, #1e40af 100%); border-radius: 16px; padding: 30px; text-align: center; margin-bottom: 24px;">
+          <h1 style="color: #fbbf24; font-size: 28px; margin: 0 0 6px; font-weight: 900; letter-spacing: 2px;">TECHLAUNCHPAD</h1>
+          <p style="color: #fff; margin: 0; font-size: 13px; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px;">Partner Portal Access</p>
+        </div>
+        <div style="background: #fff; border-radius: 16px; padding: 32px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
+          <h2 style="color: #0a192f; font-size: 20px; font-weight: 800; margin: 0 0 8px;">Hello ${agentName}! 👋</h2>
+          <p style="color: #64748b; font-size: 14px; margin: 0 0 24px;">Your Referral Partner account has been created. Here are your login credentials:</p>
+          <div style="background: #f1f5f9; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+            <table style="width:100%; border-collapse: collapse;">
+              <tr><td style="padding: 8px 0; color: #64748b; font-size: 13px; font-weight: 600;">🌐 Portal URL</td><td style="padding: 8px 0;"><a href="${loginUrl}" style="color: #1e40af; font-weight: 700;">${loginUrl}</a></td></tr>
+              <tr><td style="padding: 8px 0; color: #64748b; font-size: 13px; font-weight: 600;">📧 Email</td><td style="padding: 8px 0; color: #0a192f; font-weight: 700;">${agentEmail}</td></tr>
+              <tr><td style="padding: 8px 0; color: #64748b; font-size: 13px; font-weight: 600;">🔑 Password</td><td style="padding: 8px 0;"><code style="background:#e0e7ff;color:#1e40af;padding:4px 10px;border-radius:6px;font-size:15px;font-weight:800;letter-spacing:1px;">${agentPassword}</code></td></tr>
+              <tr><td style="padding: 8px 0; color: #64748b; font-size: 13px; font-weight: 600;">🔗 Referral Code</td><td style="padding: 8px 0;"><span style="background:#fef3c7;color:#92400e;padding:4px 10px;border-radius:6px;font-size:15px;font-weight:900;letter-spacing:2px;font-family:monospace;">${referralCode}</span></td></tr>
+            </table>
+          </div>
+          <a href="${loginUrl}" style="display:block;background:linear-gradient(135deg,#0a192f,#1e40af);color:#fff;text-align:center;padding:14px;border-radius:10px;font-weight:800;font-size:14px;text-decoration:none;letter-spacing:1px;">LOGIN TO PARTNER PORTAL →</a>
+        </div>
+        <p style="text-align:center;color:#94a3b8;font-size:12px;">Please change your password after first login. &copy; ${new Date().getFullYear()} TechLaunchpad</p>
+      </div>`;
+
+    try {
+      const res = await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          to: agentEmail,
+          subject: "🔑 Your TechLaunchpad Partner Portal Credentials",
+          html
+        })
+      });
+      const result = await res.json();
+      if (res.ok && result.success) {
+        toast.success(`✅ Credentials emailed to ${agentEmail}`);
+      } else {
+        toast.error(`Email send failed: ${result.error || 'Unknown error'}`);
+      }
+    } catch (err: any) {
+      toast.error(`Could not send email: ${err.message}`);
+    }
+  };
+
   const handleCreateAgent = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreating(true);
@@ -75,8 +121,11 @@ export function ReferralAdminView() {
         throw new Error(data?.error || "Failed to create user");
       }
 
-      toast.success("Referral Agent created successfully!");
+      toast.success("Referral Agent created successfully! Sending credentials email...");
       setIsCreateOpen(false);
+
+      // Auto-send credentials via SMTP
+      await sendCredentialEmail(name, email, password, code);
       
       // Reset form
       setName(""); setEmail(""); setPhone(""); setPassword(""); setBankAcct("");
@@ -180,13 +229,49 @@ export function ReferralAdminView() {
     }
   };
 
-  const handleResendCredentials = (agent: any) => {
+  const handleResendCredentials = async (agent: any) => {
     if (!agent?.email) {
       toast.error("No email address found for this agent.");
       return;
     }
-    const details = `📋 Agent Login Credentials\n\nPortal: ${window.location.origin}/referral/login\nEmail: ${agent.email}\nReferral Code: ${agent.referral_code || 'N/A'}\n\nTo set a new password, use the 🔑 Reset Password button.`;
-    alert(details);
+    if (!confirm(`Resend login credentials to ${agent.email}?`)) return;
+    // We don't have the stored password after creation, so send a reset link + info
+    const loginUrl = `${window.location.origin}/referral/login`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; padding: 30px;">
+        <div style="background: linear-gradient(135deg, #0a192f 0%, #1e40af 100%); border-radius: 16px; padding: 30px; text-align: center; margin-bottom: 24px;">
+          <h1 style="color: #fbbf24; font-size: 28px; margin: 0 0 6px; font-weight: 900; letter-spacing: 2px;">TECHLAUNCHPAD</h1>
+          <p style="color: #fff; margin: 0; font-size: 13px; opacity: 0.7;">Partner Portal — Credential Reminder</p>
+        </div>
+        <div style="background: #fff; border-radius: 16px; padding: 32px; border: 1px solid #e2e8f0;">
+          <h2 style="color: #0a192f; margin: 0 0 8px;">Hello ${agent.name}! 👋</h2>
+          <p style="color: #64748b; font-size: 14px;">Here are your login details for the Partner Portal:</p>
+          <div style="background: #f1f5f9; border-radius: 12px; padding: 20px; margin: 20px 0;">
+            <p style="margin:6px 0;"><strong>Portal:</strong> <a href="${loginUrl}">${loginUrl}</a></p>
+            <p style="margin:6px 0;"><strong>Email:</strong> ${agent.email}</p>
+            <p style="margin:6px 0;"><strong>Referral Code:</strong> <span style="font-family:monospace;font-size:18px;font-weight:900;color:#0a192f;">${agent.referral_code}</span></p>
+            <p style="margin:12px 0 0;color:#e53e3e;font-size:13px;">Password not shown for security. If you forgot your password, click the link below.</p>
+          </div>
+          <a href="${loginUrl}" style="display:block;background:linear-gradient(135deg,#0a192f,#1e40af);color:#fff;text-align:center;padding:14px;border-radius:10px;font-weight:800;font-size:14px;text-decoration:none;">LOGIN TO PARTNER PORTAL →</a>
+        </div>
+      </div>`;
+    const loginUrl2 = `${window.location.origin}/referral/login`;
+    void loginUrl2;
+    const res = await fetch("/api/send-email", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        to: agent.email,
+        subject: "🔑 Your TechLaunchpad Partner Login Details",
+        html
+      })
+    });
+    const result = await res.json();
+    if (res.ok && result.success) {
+      toast.success(`✅ Credentials resent to ${agent.email}`);
+    } else {
+      toast.error(`Failed to send email: ${result.error || 'Check SMTP config'}`);
+    }
   };
 
   return (
@@ -265,7 +350,7 @@ export function ReferralAdminView() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => handleResetPassword(agent.email)} className="text-navy hover:text-navy-deep hover:bg-navy/10" title="Send Password Reset Link">
+                        <Button variant="ghost" size="icon" onClick={() => handleResendCredentials(agent)} className="text-navy hover:text-navy-deep hover:bg-navy/10" title="Resend Credentials via Email">
                           <Key className="size-4" />
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => handleEditClick(agent)} className="text-blue-500 hover:text-blue-600 hover:bg-blue-50" title="Edit Agent">
