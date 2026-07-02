@@ -22,13 +22,14 @@ export const Route = createFileRoute("/register")({
   validateSearch: (search: Record<string, unknown>) => {
     return {
       program: search.program as string | undefined,
+      ref: search.ref as string | undefined,
     };
   },
 });
 
 function RegisterPage() {
   const navigate = useNavigate();
-  const { program: preSelectedProgram } = (Route as any).useSearch();
+  const { program: preSelectedProgram, ref: refCode } = (Route as any).useSearch();
   
   const [busy, setBusy] = useState(false);
   const [lookupBusy, setLookupBusy] = useState(false);
@@ -54,6 +55,7 @@ function RegisterPage() {
   const [selectedCol, setSelectedCol] = useState("");
   const [regFee, setRegFee] = useState(150);
   const [globalSettings, setGlobalSettings] = useState<any>(null);
+  const [referralCode, setReferralCode] = useState(refCode || "");
 
   useEffect(() => {
     supabase.from("portal_settings").select("*").eq("id", "global").maybeSingle()
@@ -351,6 +353,7 @@ async function fetchStaticData() {
         academic_session: String(data.academic_session || foundStudent?.academic_session),
         university_roll_number: String(data.university_roll_number || foundStudent?.university_roll_number),
         program: String(data.program),
+        referral_code: referralCode,
         raw_password: String(data.password),
         is_claimed: false,
         created_at: new Date().toISOString()
@@ -615,6 +618,10 @@ async function fetchStaticData() {
                     <Label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Confirm Password <span className="text-red-500">*</span></Label>
                     <Input name="confirmPassword" type="password" required minLength={6} className="h-12 border-2 rounded-xl" />
                   </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Referral Code (Optional)</Label>
+                    <Input name="referral_code" value={referralCode} onChange={e => setReferralCode(e.target.value.toUpperCase())} placeholder="e.g. TLJ2026" className="h-12 border-2 rounded-xl font-mono uppercase" />
+                  </div>
                 </div>
 
                 <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100 flex items-center gap-4">
@@ -734,12 +741,15 @@ async function fetchStaticData() {
                 <h3 className="text-white font-black uppercase tracking-widest text-[11px]">03 — Access & Security (प्रवेश और सुरक्षा)</h3>
               </div>
               <div className="p-8 space-y-10">
-                <div className="grid md:grid-cols-3 gap-6">
+                <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Internship Domain <span className="text-red-500">*</span></Label>
                     <select name="program" defaultValue={preSelectedProgram || ""} required className="w-full h-11 border-2 border-[#1e40af]/20 bg-blue-50/50 rounded-lg px-3 text-[10px] font-black uppercase tracking-widest text-[#1e40af]">
                       <option value="">-- CHOOSE --</option>
                       {dbInternships.map(i => <option key={i.id} value={i.title}>{i.title}</option>)}
                     </select>
+                  </div>
+                  <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Referral Code (Optional)</Label>
+                    <Input name="referral_code" value={referralCode} onChange={e => setReferralCode(e.target.value.toUpperCase())} placeholder="e.g. TLJ2026" className="h-11 border-2 rounded-lg font-mono uppercase" />
                   </div>
                   <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Create Password <span className="text-red-500">*</span></Label><Input name="password" type="password" required minLength={6} className="h-11 border-2 rounded-lg" /></div>
                   <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Confirm Password <span className="text-red-500">*</span></Label><Input name="confirmPassword" type="password" required minLength={6} className="h-11 border-2 rounded-lg" /></div>

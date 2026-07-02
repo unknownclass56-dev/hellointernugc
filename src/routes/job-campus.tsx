@@ -15,9 +15,15 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/job-campus")({
   component: JobCampusPage,
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      ref: search.ref as string | undefined,
+    };
+  },
 });
 
 function JobCampusPage() {
+  const { ref: refCode } = Route.useSearch();
   const navigate = useNavigate();
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +41,7 @@ function JobCampusPage() {
   const [batch, setBatch] = useState("");
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
+  const [referralCode, setReferralCode] = useState(refCode || "");
   const [loadingSubmit, setLoadingSubmit] = useState(false);
 
   useEffect(() => {
@@ -79,7 +86,8 @@ function JobCampusPage() {
           data: {
             full_name: name,
             role: "candidate",
-            raw_password: password
+            raw_password: password,
+            referral_code: referralCode
           }
         }
       });
@@ -132,14 +140,11 @@ function JobCampusPage() {
               phone: phone,
               role: "candidate",
               raw_password: password,
+              referral_code: referralCode,
               created_at: new Date().toISOString()
             };
-            const { error: baseError } = await supabase.from("profiles").insert([baseProfile]);
-            if (baseError && baseError.code !== '23505' && !baseError.message?.includes('duplicate key')) {
-              throw baseError;
-            } else if (baseError) {
-              await supabase.from("profiles").update(baseProfile).eq("id", userId);
-            }
+            const { error: baseError } = await supabase.from("profiles").upsert([baseProfile]);
+            if (baseError) throw baseError;
 
             // Upsert candidates safely
             const candidateProfile = {
@@ -336,10 +341,10 @@ function JobCampusPage() {
             <div className="space-y-1">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="john@example.com" />
-
+            </div>
+            <div className="space-y-1">
               <Label htmlFor="phone">Mobile Number</Label>
               <Input id="phone" type="tel" required value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91-XXXXXXXXXX" />
-              <Input id="email" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="john@example.com" />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -361,11 +366,15 @@ function JobCampusPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <Label htmlFor="batch">Batch / Year</Label>
-                <Input id="batch" required value={batch} onChange={e => setBatch(e.target.value)} placeholder="2025" />
+                <Input id="jc-batch" required value={batch} onChange={e=>setBatch(e.target.value)} placeholder="e.g. 2025" className="h-10 border-2 rounded-xl" />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="password">Password</Label>
                 <Input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label htmlFor="jc-ref" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Referral Code (Optional)</Label>
+                <Input id="jc-ref" value={referralCode} onChange={e=>setReferralCode(e.target.value.toUpperCase())} placeholder="e.g. TLJ2026" className="h-10 border-2 rounded-xl font-mono uppercase" />
               </div>
             </div>
 

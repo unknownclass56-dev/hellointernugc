@@ -30,6 +30,7 @@ import { createClient } from "@supabase/supabase-js";
 import { useAuth } from "@/hooks/use-auth";
 import { LogoLoader } from "@/components/LogoLoader";
 import { JobCampusAdminView } from "@/components/admin/JobCampusAdminView";
+import { ReferralAdminView } from "@/components/admin/ReferralAdminView";
 
 export const Route = createFileRoute("/dashboard/admin")({
   component: AdminDashboard,
@@ -1537,6 +1538,7 @@ function AdminDashboard() {
                {view === "marketing" && "Marketing Mailer"}
                {view === "trainings" && "Training Management"}
                {view === "sales" && "Sales Team Management"}
+               {view === "referrals" && "Referral Program Management"}
             </h1>
          </div>
          <div className="flex gap-2">
@@ -4914,6 +4916,9 @@ function AdminDashboard() {
 
       {/* ============ JOB CAMPUS MANAGEMENT ============ */}
       {view === "jobs" && <JobCampusAdminView />}
+
+      {/* ============ REFERRAL MANAGEMENT ============ */}
+      {view === "referrals" && <ReferralAdminView />}
     </div>
   );
 }

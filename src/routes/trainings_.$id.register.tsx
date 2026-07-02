@@ -12,6 +12,11 @@ import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/trainings_/$id/register")({
   component: TrainingRegisterPage,
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      ref: search.ref as string | undefined,
+    };
+  },
 });
 
 const INDIAN_STATES = [
@@ -24,6 +29,7 @@ const INDIAN_STATES = [
 
 function TrainingRegisterPage() {
   const { id } = Route.useParams();
+  const { ref: refCode } = Route.useSearch();
   const navigate = useNavigate();
 
   const [training, setTraining]         = useState<any>(null);
@@ -39,7 +45,7 @@ function TrainingRegisterPage() {
     name: "", email: "", phone: "", state: "",
     university: "", universityId: "", college: "", collegeId: "",
     roll_number: "", subject: "",
-    password: "", agreed: false
+    password: "", agreed: false, referral_code: refCode || ""
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -144,6 +150,7 @@ function TrainingRegisterPage() {
           subject:      form.subject,
           raw_password: form.password,
           status:       "payment_pending",
+          referral_code: form.referral_code
         }).eq("id", existingLead.id);
         leadId = existingLead.id;
       } else {
@@ -162,6 +169,7 @@ function TrainingRegisterPage() {
             subject:      form.subject,
             raw_password: form.password,
             status:       "payment_pending",
+            referral_code: form.referral_code
           }])
           .select()
           .single();
@@ -283,6 +291,7 @@ function TrainingRegisterPage() {
         department:             form.subject,
         role:                   "training",
         raw_password:           form.password,
+        referral_code:          form.referral_code,
         created_at:             new Date().toISOString(),
       }], { onConflict: "id" });
 
@@ -301,6 +310,7 @@ function TrainingRegisterPage() {
             department:             form.subject,
             role:                   "student",
             raw_password:           form.password,
+            referral_code:          form.referral_code,
             created_at:             new Date().toISOString(),
           }], { onConflict: "id" });
         } else {
@@ -629,6 +639,19 @@ function TrainingRegisterPage() {
                   </button>
                 </div>
                 {errors.password && <p className="text-red-500 text-xs font-bold">{errors.password}</p>}
+              </div>
+
+              {/* Referral Code */}
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Referral Code (Optional)</label>
+                <div className="relative">
+                  <input
+                    value={form.referral_code}
+                    onChange={e => setForm(f => ({ ...f, referral_code: e.target.value.toUpperCase() }))}
+                    placeholder="e.g. TLJ2026"
+                    className="w-full h-12 px-4 rounded-xl border-2 font-medium font-mono text-sm uppercase outline-none focus:border-[#0a192f] transition-colors border-slate-200 bg-slate-50"
+                  />
+                </div>
               </div>
 
               {/* Terms */}

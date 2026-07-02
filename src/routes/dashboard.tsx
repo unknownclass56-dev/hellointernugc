@@ -189,6 +189,7 @@ function DashboardLayout() {
     { to: "/dashboard/admin", search: { view: 'lectures' }, icon: Video, label: "Online Lectures" },
     { to: "/dashboard/admin", search: { view: 'trainings' }, icon: BookOpen, label: "Trainings" },
     { to: "/dashboard/admin", search: { view: 'sales' }, icon: TrendingUp, label: "Sales Team" },
+    { to: "/dashboard/admin", search: { view: 'referrals' }, icon: Users, label: "Referrals" },
     { to: "/dashboard/admin", search: { view: 'marketing' }, icon: Mail, label: "Marketing Mailer" },
     { to: "/dashboard/admin", search: { view: 'profile' }, icon: User, label: "My Profile" },
     { to: "/dashboard/certificates", icon: ShieldCheck, label: "Certificates" },
@@ -225,15 +226,23 @@ function DashboardLayout() {
     { to: "/dashboard/candidate", search: { tab: "training" } as any, icon: BookOpen, label: "My Training" },
   ];
 
+  const referralLinks: NavLink[] = [
+    { to: "/dashboard/referral", icon: LayoutDashboard, label: "Overview" },
+    { to: "/dashboard/referral", search: { tab: "add_student" }, icon: Plus, label: "Add Student" },
+    { to: "/dashboard/referral", search: { tab: "students" }, icon: Users, label: "My Students" },
+  ];
+
   const links = role === "admin" 
     ? adminLinks 
     : role === "sales"
       ? salesLinks
-      : role === "candidate"
-        ? candidateLinks
-        : role === "training" 
-          ? trainingLinks 
-          : internshipLinks;
+      : role === "referral"
+        ? referralLinks
+        : role === "candidate"
+          ? candidateLinks
+          : role === "training" 
+            ? trainingLinks 
+            : internshipLinks;
 
   return (
     <div className="flex h-screen bg-[#f8f9fa] print:bg-white print:h-auto print:block">
