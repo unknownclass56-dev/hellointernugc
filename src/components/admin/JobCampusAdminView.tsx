@@ -63,6 +63,14 @@ export function JobCampusAdminView() {
   const [vEndDate, setVEndDate] = useState("");
   const [vTargets, setVTargets] = useState<string[]>([]);
 
+  // Transaction Form states
+  const [isTransactionOpen, setIsTransactionOpen] = useState(false);
+  const [txEnrollmentId, setTxEnrollmentId] = useState("");
+  const [txAmount, setTxAmount] = useState("");
+  const [txStatus, setTxStatus] = useState("completed");
+  const [txDate, setTxDate] = useState("");
+  const [txEnrollments, setTxEnrollments] = useState<any[]>([]);
+
   useEffect(() => {
     fetchData();
   }, [tab]);
@@ -80,6 +88,8 @@ export function JobCampusAdminView() {
     } else if (tab === "transactions") {
       const { data } = await supabase.from("job_campus_transactions").select("*, job_campus_enrollments(*, profiles(*), job_campus_postings(*))").order("created_at", { ascending: false });
       if (data) setTransactions(data);
+      const { data: enrollData } = await supabase.from("job_campus_enrollments").select("id, status, profiles(full_name, email), job_campus_postings(title, job_id)").order("created_at", { ascending: false });
+      if (enrollData) setTxEnrollments(enrollData);
     } else if (tab === "trainings") {
       const { data } = await supabase.from("job_campus_candidate_trainings").select("*").order("created_at", { ascending: false });
       if (data) setTrainings(data);
@@ -273,6 +283,34 @@ export function JobCampusAdminView() {
     if (!error) fetchData();
   };
 
+  const handleSaveTransaction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("job_campus_transactions").insert({
+        enrollment_id: txEnrollmentId,
+        amount: parseFloat(txAmount) || 0,
+        status: txStatus,
+        transaction_date: txDate ? new Date(txDate).toISOString() : new Date().toISOString()
+      });
+      if (error) throw new Error(error.message);
+      toast.success("Transaction recorded!");
+      setIsTransactionOpen(false);
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save transaction.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteTransaction = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this transaction?")) return;
+    const { error } = await supabase.from("job_campus_transactions").delete().eq("id", id);
+    if (!error) { toast.success("Transaction deleted."); fetchData(); }
+    else toast.error(error.message);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex-wrap gap-4">
@@ -463,30 +501,57 @@ export function JobCampusAdminView() {
           )}
 
           {tab === "transactions" && (
-             <div className="space-y-4">
+            <div className="space-y-4">
+              <div className="flex justify-end">
+                <Button onClick={() => {
+                  setTxEnrollmentId(""); setTxAmount(""); setTxStatus("completed"); setTxDate("");
+                  setIsTransactionOpen(true);
+                }} className="bg-navy hover:bg-navy/90 text-white rounded-xl">
+                  <Plus className="size-4 mr-2" /> Add Transaction
+                </Button>
+              </div>
               <div className="bg-white p-4 rounded-2xl shadow-sm overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-                    <tr>
-                      <th className="px-4 py-3 border-b">Candidate</th>
-                      <th className="px-4 py-3 border-b">Job</th>
-                      <th className="px-4 py-3 border-b">Amount</th>
-                      <th className="px-4 py-3 border-b">Status</th>
-                      <th className="px-4 py-3 border-b">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {transactions.map(t => (
-                      <tr key={t.id} className="border-b">
-                        <td className="px-4 py-3 font-bold">{t.job_campus_enrollments?.profiles?.full_name}</td>
-                        <td className="px-4 py-3">{t.job_campus_enrollments?.job_campus_postings?.title}</td>
-                        <td className="px-4 py-3 font-bold text-green-600">₹{t.amount}</td>
-                        <td className="px-4 py-3 uppercase text-xs">{t.status}</td>
-                        <td className="px-4 py-3 text-xs">{new Date(t.transaction_date).toLocaleDateString()}</td>
+                {transactions.length === 0 ? (
+                  <div className="text-center py-12 text-slate-400">
+                    <p className="font-semibold">No transactions recorded yet.</p>
+                    <p className="text-xs mt-1">Click "Add Transaction" to record a payment for an enrolled candidate.</p>
+                  </div>
+                ) : (
+                  <table className="w-full text-sm text-left border-collapse">
+                    <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                      <tr>
+                        <th className="px-4 py-3 border-b">Candidate</th>
+                        <th className="px-4 py-3 border-b">Job</th>
+                        <th className="px-4 py-3 border-b">Amount</th>
+                        <th className="px-4 py-3 border-b">Status</th>
+                        <th className="px-4 py-3 border-b">Date</th>
+                        <th className="px-4 py-3 border-b">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {transactions.map(t => (
+                        <tr key={t.id} className="hover:bg-slate-50 transition-colors border-b">
+                          <td className="px-4 py-3 font-bold">{t.job_campus_enrollments?.profiles?.full_name}</td>
+                          <td className="px-4 py-3">{t.job_campus_enrollments?.job_campus_postings?.title}</td>
+                          <td className="px-4 py-3 font-bold text-green-600">₹{t.amount}</td>
+                          <td className="px-4 py-3">
+                            <span className={`uppercase text-[10px] font-black px-2 py-1 rounded-md ${
+                              t.status === 'completed' ? 'bg-green-100 text-green-700' :
+                              t.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-red-100 text-red-700'
+                            }`}>{t.status}</span>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-slate-500">{new Date(t.transaction_date).toLocaleDateString("en-IN")}</td>
+                          <td className="px-4 py-3">
+                            <Button variant="outline" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteTransaction(t.id)}>
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
           )}
@@ -606,6 +671,48 @@ export function JobCampusAdminView() {
         </DialogContent>
       </Dialog>
 
+
+      {/* Add Transaction Dialog */}
+      <Dialog open={isTransactionOpen} onOpenChange={setIsTransactionOpen}>
+        <DialogContent className="rounded-3xl max-w-md" aria-describedby={undefined}>
+          <DialogHeader><DialogTitle>Record Transaction</DialogTitle></DialogHeader>
+          <form onSubmit={handleSaveTransaction} className="space-y-4">
+            <div className="space-y-1">
+              <Label>Select Enrolled Candidate</Label>
+              <select required className="w-full h-10 border rounded-lg px-3 bg-white" value={txEnrollmentId} onChange={e => setTxEnrollmentId(e.target.value)}>
+                <option value="">-- Choose Enrollment --</option>
+                {txEnrollments.map(en => (
+                  <option key={en.id} value={en.id}>
+                    {en.profiles?.full_name} — {en.job_campus_postings?.title} ({en.status})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label>Amount (₹)</Label>
+                <Input required type="number" step="0.01" min="0" value={txAmount} onChange={e => setTxAmount(e.target.value)} placeholder="e.g. 5000" />
+              </div>
+              <div className="space-y-1">
+                <Label>Status</Label>
+                <select className="w-full h-10 border rounded-lg px-3" value={txStatus} onChange={e => setTxStatus(e.target.value)}>
+                  <option value="completed">Completed</option>
+                  <option value="pending">Pending</option>
+                  <option value="failed">Failed</option>
+                </select>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Transaction Date</Label>
+              <Input type="date" value={txDate} onChange={e => setTxDate(e.target.value)} />
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="ghost" onClick={() => setIsTransactionOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Record Transaction"}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Existing Dialogs (Job, Enroll, Edit) */}
       <Dialog open={isJobDialogOpen} onOpenChange={setIsJobDialogOpen}>
