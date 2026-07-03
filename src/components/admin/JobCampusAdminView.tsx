@@ -216,24 +216,20 @@ export function JobCampusAdminView() {
     e.preventDefault();
     setSaving(true);
     try {
-      const savePromise = supabase.from("job_campus_candidate_trainings").insert({
+      const { error } = await supabase.from("job_campus_candidate_trainings").insert({
         title: tTitle,
         training_type: tType,
         mode: tMode,
         link: tLink,
         target_postings: tTargets
       });
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Request timed out. The table may not exist yet. Please run the migration SQL first.")), 8000)
-      );
-      const { error } = await Promise.race([savePromise, timeoutPromise]) as any;
       if (error) throw new Error(error.message || JSON.stringify(error));
       toast.success("Training created successfully!");
       setIsTrainingOpen(false);
       fetchData();
     } catch (err: any) {
       console.error("Training save error:", err);
-      toast.error(err.message || "Failed to save. Check console for details.", { duration: 8000 });
+      toast.error(err.message || "Failed to save training.", { duration: 8000 });
     } finally {
       setSaving(false);
     }
@@ -243,7 +239,7 @@ export function JobCampusAdminView() {
     e.preventDefault();
     setSaving(true);
     try {
-      const savePromise = supabase.from("job_campus_candidate_vacancies").insert({
+      const { error } = await supabase.from("job_campus_candidate_vacancies").insert({
         job_title: vTitle,
         salary: vSalary,
         experience: vExp,
@@ -253,17 +249,13 @@ export function JobCampusAdminView() {
         end_date: vEndDate || null,
         target_postings: vTargets
       });
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Request timed out. The table may not exist yet. Please run the migration SQL first.")), 8000)
-      );
-      const { error } = await Promise.race([savePromise, timeoutPromise]) as any;
       if (error) throw new Error(error.message || JSON.stringify(error));
       toast.success("Vacancy created successfully!");
       setIsVacancyOpen(false);
       fetchData();
     } catch (err: any) {
       console.error("Vacancy save error:", err);
-      toast.error(err.message || "Failed to save. Check console for details.", { duration: 8000 });
+      toast.error(err.message || "Failed to save vacancy.", { duration: 8000 });
     } finally {
       setSaving(false);
     }
@@ -503,7 +495,7 @@ export function JobCampusAdminView() {
 
       {/* Add Training Dialog */}
       <Dialog open={isTrainingOpen} onOpenChange={setIsTrainingOpen}>
-        <DialogContent className="rounded-3xl max-w-lg">
+        <DialogContent className="rounded-3xl max-w-lg" aria-describedby={undefined}>
           <DialogHeader><DialogTitle>Create Candidate Training</DialogTitle></DialogHeader>
           <form onSubmit={handleSaveTraining} className="space-y-4">
              <div className="space-y-1">
@@ -556,7 +548,7 @@ export function JobCampusAdminView() {
 
       {/* Add Vacancy Dialog */}
       <Dialog open={isVacancyOpen} onOpenChange={setIsVacancyOpen}>
-        <DialogContent className="rounded-3xl max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="rounded-3xl max-w-lg max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
           <DialogHeader><DialogTitle>Create Candidate Job Vacancy</DialogTitle></DialogHeader>
           <form onSubmit={handleSaveVacancy} className="space-y-4">
              <div className="space-y-1">
@@ -617,7 +609,7 @@ export function JobCampusAdminView() {
 
       {/* Existing Dialogs (Job, Enroll, Edit) */}
       <Dialog open={isJobDialogOpen} onOpenChange={setIsJobDialogOpen}>
-        <DialogContent className="rounded-3xl max-w-md">
+        <DialogContent className="rounded-3xl max-w-md" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>{isEditingJob ? "Edit Job Posting" : "Create New Job Posting"}</DialogTitle>
           </DialogHeader>
@@ -653,7 +645,7 @@ export function JobCampusAdminView() {
       </Dialog>
 
       <Dialog open={isEnrollOpen} onOpenChange={setIsEnrollOpen}>
-        <DialogContent className="rounded-3xl max-w-md">
+        <DialogContent className="rounded-3xl max-w-md" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>Enroll Candidate</DialogTitle>
           </DialogHeader>
@@ -681,7 +673,7 @@ export function JobCampusAdminView() {
       </Dialog>
 
       <Dialog open={isEditEnrollmentOpen} onOpenChange={setIsEditEnrollmentOpen}>
-        <DialogContent className="rounded-3xl max-w-sm">
+        <DialogContent className="rounded-3xl max-w-sm" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>Update Enrollment Status</DialogTitle>
           </DialogHeader>
