@@ -77,31 +77,37 @@ export function JobCampusAdminView() {
 
   const fetchData = async () => {
     setLoading(true);
-    if (tab === "postings") {
-      const { data } = await supabase.from("job_campus_postings").select("*").order("created_at", { ascending: false });
-      if (data) setPostings(data);
-    } else if (tab === "enrollments") {
-      const { data } = await supabase.from("job_campus_enrollments").select("*, job_campus_postings(*), profiles(*)").order("created_at", { ascending: false });
-      if (data) setEnrollments(data);
-      const { data: studentsData } = await supabase.from("profiles").select("id, full_name, email").eq("role", "student");
-      if (studentsData) setStudents(studentsData);
-    } else if (tab === "transactions") {
-      const { data } = await supabase.from("job_campus_transactions").select("*, job_campus_enrollments(*, profiles(*), job_campus_postings(*))").order("created_at", { ascending: false });
-      if (data) setTransactions(data);
-      const { data: enrollData } = await supabase.from("job_campus_enrollments").select("id, status, profiles(full_name, email), job_campus_postings(title, job_id)").order("created_at", { ascending: false });
-      if (enrollData) setTxEnrollments(enrollData);
-    } else if (tab === "trainings") {
-      const { data } = await supabase.from("job_campus_candidate_trainings").select("*").order("created_at", { ascending: false });
-      if (data) setTrainings(data);
-      const { data: pData } = await supabase.from("job_campus_postings").select("id, title, job_id").order("created_at", { ascending: false });
-      if (pData) setPostings(pData);
-    } else if (tab === "vacancies") {
-      const { data } = await supabase.from("job_campus_candidate_vacancies").select("*").order("created_at", { ascending: false });
-      if (data) setVacancies(data);
-      const { data: pData } = await supabase.from("job_campus_postings").select("id, title, job_id").order("created_at", { ascending: false });
-      if (pData) setPostings(pData);
+    try {
+      if (tab === "postings") {
+        const { data } = await supabase.from("job_campus_postings").select("*").order("created_at", { ascending: false });
+        if (data) setPostings(data);
+      } else if (tab === "enrollments") {
+        const { data } = await supabase.from("job_campus_enrollments").select("*, job_campus_postings(*), profiles(*)").order("created_at", { ascending: false });
+        if (data) setEnrollments(data);
+        const { data: studentsData } = await supabase.from("profiles").select("id, full_name, email").eq("role", "student");
+        if (studentsData) setStudents(studentsData);
+      } else if (tab === "transactions") {
+        const { data } = await supabase.from("job_campus_transactions").select("*, job_campus_enrollments(*, profiles(*), job_campus_postings(*))").order("created_at", { ascending: false });
+        if (data) setTransactions(data);
+        const { data: enrollData } = await supabase.from("job_campus_enrollments").select("id, status, profiles(full_name, email), job_campus_postings(title, job_id)").order("created_at", { ascending: false });
+        if (enrollData) setTxEnrollments(enrollData);
+      } else if (tab === "trainings") {
+        const { data } = await supabase.from("job_campus_candidate_trainings").select("*").order("created_at", { ascending: false });
+        if (data) setTrainings(data);
+        const { data: pData } = await supabase.from("job_campus_postings").select("id, title, job_id").order("created_at", { ascending: false });
+        if (pData) setPostings(pData);
+      } else if (tab === "vacancies") {
+        const { data } = await supabase.from("job_campus_candidate_vacancies").select("*").order("created_at", { ascending: false });
+        if (data) setVacancies(data);
+        const { data: pData } = await supabase.from("job_campus_postings").select("id, title, job_id").order("created_at", { ascending: false });
+        if (pData) setPostings(pData);
+      }
+    } catch (err: any) {
+      console.error("fetchData error:", err);
+      toast.error("Failed to load data. Please refresh.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const openAddJob = () => {
@@ -164,7 +170,7 @@ export function JobCampusAdminView() {
       toast.success("Job deleted!");
       fetchData();
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err.message || "Failed to delete job.");
     }
   };
 
@@ -218,7 +224,7 @@ export function JobCampusAdminView() {
       toast.success("Enrollment deleted!");
       fetchData();
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err.message || "Failed to delete enrollment.");
     }
   };
 
@@ -273,14 +279,26 @@ export function JobCampusAdminView() {
 
   const handleDeleteTraining = async (id: string) => {
     if (!confirm("Are you sure?")) return;
-    const { error } = await supabase.from("job_campus_candidate_trainings").delete().eq("id", id);
-    if (!error) fetchData();
+    try {
+      const { error } = await supabase.from("job_campus_candidate_trainings").delete().eq("id", id);
+      if (error) throw error;
+      toast.success("Training deleted.");
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete training.");
+    }
   };
 
   const handleDeleteVacancy = async (id: string) => {
     if (!confirm("Are you sure?")) return;
-    const { error } = await supabase.from("job_campus_candidate_vacancies").delete().eq("id", id);
-    if (!error) fetchData();
+    try {
+      const { error } = await supabase.from("job_campus_candidate_vacancies").delete().eq("id", id);
+      if (error) throw error;
+      toast.success("Vacancy deleted.");
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete vacancy.");
+    }
   };
 
   const handleSaveTransaction = async (e: React.FormEvent) => {
